@@ -1,21 +1,24 @@
 <script lang="ts">
-	import { Button, Icon, Menu, MenuButton, MenuItem, Toggle } from 'svelte-ux';
-	import LoginButton from './login_button.svelte';
-	import LogoutButton from './logout_button.svelte';
+	import { Button, Menu, MenuItem, Toggle } from 'svelte-ux';
 	import { jwtDecode } from 'jwt-decode';
 	import { onMount } from 'svelte';
 	import { mdiLogout } from '@mdi/js';
-	import { signOut } from '@auth/sveltekit/client';
+	import { SignIn } from "@auth/sveltekit/components";
+	import { SignOut } from "@auth/sveltekit/components";
 	
 	interface User {
 		status: boolean;
 		user?: {
-			name?: string;
-			email?: string;
+			name?: string | null;
+			email?: string | null;
+			idToken?: string;
+			accessToken?: string;
+			refreshToken?: string;
 		};
 	}
 
 	export let data: User;
+
 	function stringifyToken(token: string) {
 		return JSON.stringify(jwtDecode(token), null, 2);
 	}
@@ -26,46 +29,35 @@
 
 	onMount(() => {
 		if (data && data.user) {
-			idToken = stringifyToken(data.user.idToken);
-			accessToken = stringifyToken(data.user.accessToken);
-			refreshToken = stringifyToken(data.user.refreshToken);
+			if (data.user.idToken) idToken = stringifyToken(data.user.idToken);
+			if (data.user.accessToken) accessToken = stringifyToken(data.user.accessToken);
+			if (data.user.refreshToken) refreshToken = stringifyToken(data.user.refreshToken);
 		}
 	});
-
-	let userOptions = [
-		{
-			label: 'Sign Out',
-			value: data.user?.name,
-			icon: mdiLogout
-		}
-	];
 </script>
 
 <div>
 	{#if data.status}
-		<div class="userloggedin">
-
-		</div>
-
 		<Toggle let:on={open} let:toggle let:toggleOff>
 			<Button variant="fill" size="lg" on:click={toggle}>
-				{data.user?.name}
+				{data.user?.name ?? 'User'}
 				<Menu {open} on:close={toggleOff} matchWidth>
-					<MenuItem on:click={() => signOut()}>Sign Out</MenuItem>
+					<MenuItem>
+						<SignOut>
+							<span slot="submitButton">Sign Out</span>
+						</SignOut>
+					</MenuItem>
 				</Menu>
 			</Button>
 		</Toggle>
 	{:else}
 		<div>
-			<LoginButton />
+			<SignIn>
+				<span slot="submitButton">Sign In</span>
+			</SignIn>
 		</div>
 	{/if}
 </div>
 
 <style>
-	.userloggedin {
-		display: flex;
-		align-items: center;
-		gap: 25px;
-	}
 </style>

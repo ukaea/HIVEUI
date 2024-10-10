@@ -3,13 +3,8 @@
 	import { writable, type Writable } from 'svelte/store';
 	import { Button, ExpansionPanel, Field, Input } from 'svelte-ux';
 	import { mdiPlus, mdiTrashCan } from '@mdi/js';
-	import { page } from '$app/stores';
-	import type { LayoutServerData } from './$types.js';
-	import User from '../components/user.svelte';
 	import { v4 as uuidv4 } from 'uuid';
 	import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-
-	export let data: LayoutServerData;
 
 	class Diagnostic {
 		port: Port;
@@ -910,12 +905,5 @@
 	.right-buttons {
 		display: flex;
 		gap: 10px;
-	}
-
-	.loginsection {
-		display: flex;
-		flex-direction: column;
-		align-items: center;
-		gap: 50px;
 	}
 </style>

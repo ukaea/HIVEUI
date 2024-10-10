@@ -13,12 +13,14 @@
 			}
 		}
 	});
+
+	let navWidth = 0;
 </script>
 
-<AppLayout areas="'header header' 'aside main'" navWidth=0>
+<AppLayout areas="'header header' 'aside main'" {navWidth}>
 	<AppBar title="HIVE Data Ingestion" class="main-appbar">
 		<div slot="actions" class="flex items-center justify-end w-full">
-			<User data={{ user: data?.session?.user, status: Boolean(data?.session) }} />
+			<User data={{ user: data?.session?.user ?? undefined, status: Boolean(data?.session) }} />
 		</div>
 	</AppBar>
 
