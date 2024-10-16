@@ -16,7 +16,7 @@
 		}
 	});
 
-	let navWidth = 240; // Set a fixed width for the navigation sidebar
+	let navWidth = 265; // Set a fixed width for the navigation sidebar
 	let isNavOpen = true; // Keep the sidebar open by default
 </script>
 
@@ -33,11 +33,9 @@
 	</AppBar>
 
 	<svelte:fragment slot="nav">
-		<div class="navside">
-			<NavItem text="Experiment" currentUrl={$page.url} path="/experiment" icon={mdiBookOpenVariantOutline} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
-			<NavItem text="Diagnostic" currentUrl={$page.url} path="/diagnostic" icon={mdiMagnify} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
-			<NavItem text="Pulse" currentUrl={$page.url} path="/pulse" icon={mdiPulse} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
-		</div>
+		<NavItem text="Experiment" currentUrl={$page.url} path="/experiment" icon={mdiBookOpenVariantOutline} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
+		<NavItem text="Diagnostic" currentUrl={$page.url} path="/diagnostic" icon={mdiMagnify} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
+		<NavItem text="Pulse" currentUrl={$page.url} path="/pulse" icon={mdiPulse} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 	</svelte:fragment>
 
 	<main>
@@ -59,5 +57,9 @@
 
 	:global(.main-appbar [slot='actions']) {
 		margin-left: auto;
+	}
+
+	:global(.nav) {
+		border-right: 2px solid white;
 	}
 </style>
