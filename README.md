@@ -11,7 +11,7 @@ AUTH_SECRET="<openssl rand -hex 32>"
 AUTH_KEYCLOAK_ID="<KeycloakClientID>"
 AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
 AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
-PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the KeyChallenge4 folder (no slash at end)>"
+PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
 ```
 
 Then run the following command:
@@ -56,7 +56,7 @@ Developed with Node.js v21.1.0 and npm v10.2.0
    AUTH_KEYCLOAK_ID="<KeycloakClientID>"
    AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
    AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
-   PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the KeyChallenge4 folder (no slash at end)>"
+   PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
    ```
 
 ## Running HiveUI (Development)
