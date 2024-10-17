@@ -1,13 +1,13 @@
 services:
   hiveui:
-    image: ghcr.io/bdevt/hiveui:latest
-    pull_policy: always    
-    ports:
-      - "3000:3000"
+    image: ghcr.io/bdevt/hiveui:develop
+    pull_policy: always
+    network_mode: host
     environment:
-      - AUTH_SECRET
-      - AUTH_KEYCLOAK_ID
-      - AUTH_KEYCLOAK_SECRET
-      - AUTH_KEYCLOAK_ISSUER
-      - PUBLIC_ROOT_FOLDER_LOCATION
+      - AUTH_SECRET=a7869b16641e685c911561c73d3aeb5bcbdc4c24c436e85df166edabe7f85d36
+      - AUTH_KEYCLOAK_ID=metacat-test
+      - AUTH_KEYCLOAK_SECRET=QniovuqdPTnkJ01czWQOnYKp5y93LhqZ
+      - AUTH_KEYCLOAK_ISSUER=http://localhost:9137/realms/realm1
+      - PUBLIC_ROOT_FOLDER_LOCATION=/home/bdev/Fusion/FARSCAPE/HIVEUI
+      - PUBLIC_METACAT_URL="http://localhost:5000"
     restart: unless-stopped
