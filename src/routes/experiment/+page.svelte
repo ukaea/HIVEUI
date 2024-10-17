@@ -134,7 +134,7 @@
 	async function handleFileSubmission(rawMetadata: ExperimentMetadata): Promise<void> {
 		try {
 			const experimentID = rawMetadata.experimentID;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/${experimentID}`;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/`;
 			const fileName = `${experimentID}.json`;
 
 			const saveMetadata = {
