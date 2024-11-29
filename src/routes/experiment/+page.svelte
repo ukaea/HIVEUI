@@ -267,6 +267,7 @@
 				<DateField
 					label="Experiment Start"
 					type="datetime-local"
+					format="dd/mm/yyyy"
 					value={draft.experimentStart}
 					on:change={(e) => {
 						draft.experimentStart = e.detail.value;
@@ -276,6 +277,7 @@
 				<DateField
 					label="Experiment End"
 					type="datetime-local"
+					format="dd/mm/yyyy"
 					value={draft.experimentEnd}
 					on:change={(e) => {
 						draft.experimentEnd = e.detail.value;
