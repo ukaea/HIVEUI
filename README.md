@@ -12,6 +12,7 @@ AUTH_KEYCLOAK_ID="<KeycloakClientID>"
 AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
 AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
 PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
+PUBLIC_METACAT_URL="<Full URL to Metacat>"
 ```
 
 Then run the following command:
@@ -57,6 +58,7 @@ Developed with Node.js v21.1.0 and npm v10.2.0
    AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
    AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
    PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
+   PUBLIC_METACAT_URL="<Full URL to Metacat>"
    ```
 
 ## Running HiveUI (Development)

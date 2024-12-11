@@ -7,7 +7,7 @@ import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 export const POST: RequestHandler = async ({ request }) => {
   try {
     const jsonData = await request.json();
-    if (!jsonData || typeof jsonData !== 'object' || !jsonData.targetPath) {
+    if (!jsonData || typeof jsonData !== 'object' || !jsonData.targetPath || !jsonData.metadata) {
       return json({ success: false, message: 'Invalid JSON structure' }, { status: 400 });
     }
 
@@ -46,7 +46,8 @@ export const POST: RequestHandler = async ({ request }) => {
     }
 
     const filePath = join(directory, fileName);
-    const { targetPath: _, ...dataToSave } = jsonData;
+    
+    const dataToSave = jsonData.metadata;
     const jsonString = JSON.stringify(dataToSave, null, 2);
 
     await writeFile(filePath, jsonString);

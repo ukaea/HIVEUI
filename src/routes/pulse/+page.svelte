@@ -6,6 +6,26 @@
 	import { v4 as uuidv4 } from 'uuid';
 	import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 
+	function handleDiagnosticsInput(event: Event) {
+		const input = (event.target as HTMLInputElement).value;
+		currentMetadata.diagnostics = input
+			.split(',')
+			.map((item) => item.trim())
+			.filter((item) => item !== '');
+	}
+
+	class PulseWithMetadata {
+		pulse: HivePulse;
+		experiment: string;
+		diagnostics: string[];
+
+		constructor() {
+			this.pulse = new HivePulse();
+			this.experiment = '';
+			this.diagnostics = [];
+		}
+	}
+
 	class HivePulse {
 		pulseID: string;
 		firstOperator: Person;
@@ -126,19 +146,19 @@
 
 	class SaveMetadata {
 		targetPath: string;
-		metadata: HivePulse;
+		metadata: PulseWithMetadata;
 
 		constructor() {
 			this.targetPath = '';
-			this.metadata = new HivePulse();
+			this.metadata = new PulseWithMetadata();
 		}
 	}
 
-	const fullMetadata = writable<HivePulse>(new HivePulse());
+	const fullMetadata = writable<PulseWithMetadata>(new PulseWithMetadata());
 
 	let currentSaveLocation: string = PUBLIC_ROOT_FOLDER_LOCATION + '/EXP_01' + '/hive_metadata.json';
 
-	let currentMetadata: HivePulse;
+	let currentMetadata: PulseWithMetadata;
 	fullMetadata.subscribe((value) => {
 		currentMetadata = value;
 	});
@@ -146,7 +166,7 @@
 	onMount(() => {});
 
 	function resetForm() {
-		fullMetadata.set(new HivePulse());
+		fullMetadata.set(new PulseWithMetadata());
 		currentSaveLocation = `${PUBLIC_ROOT_FOLDER_LOCATION}/EXP_01/hive_metadata.json`;
 	}
 
@@ -197,72 +217,78 @@
 
 <div class="flex flex-col items-center justify-start min-h-screen bg-neutral p-4 w-full">
 	<div class="w-full max-w-screen-xl">
-		<ExpansionPanel>
+		<ExpansionPanel open={true}>
 			<div slot="trigger" class="flex-1 p-3">Pulse Information</div>
 			<div class="p-4 flex flex-col space-y-4">
+				<Field label="Experiment ID">
+					<Input placeholder="Experiment identifier" bind:value={currentMetadata.experiment} />
+				</Field>
+				<Field label="Diagnostics">
+					<Input placeholder="Enter diagnostics separated by commas" on:input={handleDiagnosticsInput} />
+				</Field>
 				<Field label="Pulse ID">
-					<Input placeholder="Pulse identifier" bind:value={currentMetadata.pulseID} />
+					<Input placeholder="Pulse identifier" bind:value={currentMetadata.pulse.pulseID} />
 				</Field>
 				<Field label="Operator 1 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.firstOperator.firstName} />
+					<Input placeholder="First name" bind:value={currentMetadata.pulse.firstOperator.firstName} />
 				</Field>
 				<Field label="Operator 1 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.firstOperator.lastName} />
+					<Input placeholder="Last name" bind:value={currentMetadata.pulse.firstOperator.lastName} />
 				</Field>
 				<Field label="Operator 1 email">
-					<Input placeholder="Operator 1 email" bind:value={currentMetadata.firstOperator.email} />
+					<Input placeholder="Operator 1 email" bind:value={currentMetadata.pulse.firstOperator.email} />
 				</Field>
 				<Field label="Operator 2 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.secondOperator.firstName} />
+					<Input placeholder="First name" bind:value={currentMetadata.pulse.secondOperator.firstName} />
 				</Field>
 				<Field label="Operator 2 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.secondOperator.lastName} />
+					<Input placeholder="Last name" bind:value={currentMetadata.pulse.secondOperator.lastName} />
 				</Field>
 				<Field label="Operator 2 email">
-					<Input placeholder="Operator 2 email" bind:value={currentMetadata.secondOperator.email} />
+					<Input placeholder="Operator 2 email" bind:value={currentMetadata.pulse.secondOperator.email} />
 				</Field>
 				<Field label="Pulse Start">
-					<Input type="datetime-local" bind:value={currentMetadata.pulseStart} />
+					<Input type="datetime-local" bind:value={currentMetadata.pulse.pulseStart} />
 				</Field>
 				<Field label="Pulse Duration">
-					<Input type="number" placeholder="Duration" bind:value={currentMetadata.pulseDuration} />
+					<Input type="number" placeholder="Duration" bind:value={currentMetadata.pulse.pulseDuration} />
 				</Field>
 				<Field label="Data Capture Start">
-					<Input type="datetime-local" bind:value={currentMetadata.dataCaptureStart} />
+					<Input type="datetime-local" bind:value={currentMetadata.pulse.dataCaptureStart} />
 				</Field>
 				<Field label="Operator Comment">
-					<Input placeholder="Operator comment" bind:value={currentMetadata.operatorComment} />
+					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
 				</Field>
 				<Field label="Pulse Quality">
-					<Input placeholder="Success / Fail" bind:value={currentMetadata.pulseQuality} />
+					<Input placeholder="Success / Fail" bind:value={currentMetadata.pulse.pulseQuality} />
 				</Field>
 				<div class="col-span-2">
 					<ExpansionPanel>
 						<div slot="trigger" class="flex-1 p-3">Coil Information</div>
 						<div class="p-4 grid grid-cols-2 gap-4">
 							<Field label="Current Type">
-								<Input placeholder="AC / DC" bind:value={currentMetadata.coilInformation.currentType} />
+								<Input placeholder="AC / DC" bind:value={currentMetadata.pulse.coilInformation.currentType} />
 							</Field>
 							<Field label="Input Power">
-								<Input type="number" bind:value={currentMetadata.coilInformation.inputPower} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputPower} />
 							</Field>
 							<Field label="Input Current">
-								<Input type="number" bind:value={currentMetadata.coilInformation.inputCurrent} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputCurrent} />
 							</Field>
 							<Field label="Input Voltage">
-								<Input type="number" bind:value={currentMetadata.coilInformation.inputVoltage} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputVoltage} />
 							</Field>
 							<Field label="Output Frequency">
-								<Input type="number" bind:value={currentMetadata.coilInformation.outputFrequency} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputFrequency} />
 							</Field>
 							<Field label="Output Power">
-								<Input type="number" bind:value={currentMetadata.coilInformation.outputPower} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputPower} />
 							</Field>
 							<Field label="Output Current">
-								<Input type="number" bind:value={currentMetadata.coilInformation.outputCurrent} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputCurrent} />
 							</Field>
 							<Field label="Output Voltage">
-								<Input type="number" bind:value={currentMetadata.coilInformation.outputVoltage} />
+								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputVoltage} />
 							</Field>
 						</div>
 					</ExpansionPanel>
@@ -270,46 +296,46 @@
 						<div slot="trigger" class="flex-1 p-3">Coolant Information</div>
 						<div class="p-4 grid grid-cols-2 gap-4">
 							<Field label="Coolant Type">
-								<Input placeholder="Water / Demineralised Water / Treated Water" bind:value={currentMetadata.coolantInformation.coolantType} />
+								<Input placeholder="Water / Demineralised Water / Treated Water" bind:value={currentMetadata.pulse.coolantInformation.coolantType} />
 							</Field>
 							<Field label="Coolant Flow Rate">
-								<Input placeholder="High / Low" bind:value={currentMetadata.coolantInformation.coolantFlow.rate} />
+								<Input placeholder="High / Low" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.rate} />
 							</Field>
 							<Field label="Coolant Flow Setpoint">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantFlow.setpoint} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.setpoint} />
 							</Field>
 							<Field label="Coolant Flow Value">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantFlow.value} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.value} />
 							</Field>
 							<Field label="Coolant Flow Variance">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantFlow.variance} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.variance} />
 							</Field>
 							<Field label="Coolant Temperature Setpoint">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.setpoint} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.setpoint} />
 							</Field>
 							<Field label="Coolant Temperature In">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.in} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.in} />
 							</Field>
 							<Field label="Coolant Temperature In Variance">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.inVariance} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.inVariance} />
 							</Field>
 							<Field label="Coolant Temperature Out">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.out} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.out} />
 							</Field>
 							<Field label="Coolant Temperature Out Variance">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.outVariance} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.outVariance} />
 							</Field>
 							<Field label="Coolant Temperature Delta">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantTemperature.delta} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.delta} />
 							</Field>
 							<Field label="Coolant Pressure In">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantPressure.in} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.in} />
 							</Field>
 							<Field label="Coolant Pressure Out">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantPressure.out} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.out} />
 							</Field>
 							<Field label="Coolant Pressure Delta">
-								<Input type="number" bind:value={currentMetadata.coolantInformation.coolantPressure.delta} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.delta} />
 							</Field>
 						</div>
 					</ExpansionPanel>

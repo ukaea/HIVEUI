@@ -11,3 +11,4 @@ vite.config.ts.timestamp-*
 /sampleData
 KeyChallenge4
 /diagnostics
+/experiments
