@@ -301,7 +301,16 @@
 						draft.experimentType = e.detail.value;
 						refresh()
 					}}/>
-
+				{#if draft.experimentType == "Induction"}
+					<TextField
+						label="Coil ID"
+						value={draft.coilID}
+						on:change={(e) => {
+							draft.coilID = e.detail.value;
+							refresh()
+						}}
+					/>
+				{/if} 
 				<TextField
 					label="Customer"
 					value={draft.customer}
