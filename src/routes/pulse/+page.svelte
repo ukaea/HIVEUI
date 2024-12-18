@@ -223,7 +223,7 @@
 				<Field label="Experiment ID">
 					<Input placeholder="Experiment identifier" bind:value={currentMetadata.experiment} />
 				</Field>
-				<Field label="Diagnostics">
+				<Field label="Diagnostic Setup Selection​">
 					<Input placeholder="Enter diagnostics separated by commas" on:input={handleDiagnosticsInput} />
 				</Field>
 				<Field label="Pulse ID">
