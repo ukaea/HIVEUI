@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
-	import { tableOrderStore } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem } from 'svelte-ux';
+	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { mdiMagnify, mdiPlus, mdiPencil, mdiAccount } from '@mdi/js';
 
 	class Person {
 		firstName: string;
@@ -25,7 +26,8 @@
 		experimentStart: string;
 		experimentEnd: string;
 		experimentType: string;
-		sampleCooling: string;
+		sampleCooling: boolean;
+		coilID: string;
 		constructor() {
 			this.campaignID = '';
 			this.experimentID = '';
@@ -219,6 +221,14 @@
 	onMount(() => {
 		fetchProposals();
 	});
+	let experimentOptions: MenuOption[] = [
+		{ label: "Induction", value: "Induction" },
+		{ label: "Direct Current", value: "Direct Current" },
+	];
+	let sampleCoolingOptions: MenuOption[] = [
+		{label: "Yes", value: true}, 
+		{label: "No", value: false}
+	]
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -284,14 +294,14 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Experiment Type"
+				<SelectField options = {experimentOptions} 
+					label="Experiment Type" 
 					value={draft.experimentType}
 					on:change={(e) => {
 						draft.experimentType = e.detail.value;
-						refresh();
-					}}
-				/>
+						refresh()
+					}}/>
+
 				<TextField
 					label="Customer"
 					value={draft.customer}
@@ -300,14 +310,12 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Sample Cooling"
-					value={draft.sampleCooling}
+				<SelectField options = {sampleCoolingOptions} label="Sample Cooling" 
+					value={draft.sampleCooling} 
 					on:change={(e) => {
 						draft.sampleCooling = e.detail.value;
-						refresh();
-					}}
-				/>
+						refresh()
+					}} />
 				<TextField
 					label="First Name"
 					value={draft.leadInvestigator.firstName}
