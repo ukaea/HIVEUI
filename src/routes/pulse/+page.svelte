@@ -247,15 +247,6 @@
 				<Field label="Operator 2 email">
 					<Input placeholder="Operator 2 email" bind:value={currentMetadata.pulse.secondOperator.email} />
 				</Field>
-				<Field label="Pulse Start">
-					<Input type="datetime-local" bind:value={currentMetadata.pulse.pulseStart} />
-				</Field>
-				<Field label="Pulse Duration">
-					<Input type="number" placeholder="Duration" bind:value={currentMetadata.pulse.pulseDuration} />
-				</Field>
-				<Field label="Data Capture Start">
-					<Input type="datetime-local" bind:value={currentMetadata.pulse.dataCaptureStart} />
-				</Field>
 				<Field label="Operator Comment">
 					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
 				</Field>
