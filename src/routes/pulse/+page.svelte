@@ -228,24 +228,36 @@
 				<Field label="Diagnostic Setup Selection​">
 					<Input placeholder="Enter diagnostics separated by commas" on:input={handleDiagnosticsInput} />
 				</Field>
-				<Field label="Operator 1 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.pulse.firstOperator.firstName} />
-				</Field>
-				<Field label="Operator 1 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.pulse.firstOperator.lastName} />
-				</Field>
-				<Field label="Operator 1 email">
-					<Input placeholder="Operator 1 email" bind:value={currentMetadata.pulse.firstOperator.email} />
-				</Field>
-				<Field label="Operator 2 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.pulse.secondOperator.firstName} />
-				</Field>
-				<Field label="Operator 2 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.pulse.secondOperator.lastName} />
-				</Field>
-				<Field label="Operator 2 email">
-					<Input placeholder="Operator 2 email" bind:value={currentMetadata.pulse.secondOperator.email} />
-				</Field>
+				<div class="container">
+					<Field label="Operator 1"> 
+						<div class="rows"> 
+							<Field  label="first name">
+								<Input placeholder="First name" bind:value={currentMetadata.pulse.firstOperator.firstName} />
+							</Field>
+							<Field label="last name">
+								<Input placeholder="Last name" bind:value={currentMetadata.pulse.firstOperator.lastName} />
+							</Field>
+							<Field label="email">
+								<Input placeholder="email" bind:value={currentMetadata.pulse.firstOperator.email} />
+							</Field>
+						</div> 
+					</Field>
+				</div> 
+				<div class="container">
+					<Field label="Operator 2"> 
+						<div class="rows"> 
+							<Field label="first name">
+								<Input placeholder="First name" bind:value={currentMetadata.pulse.secondOperator.firstName} />
+							</Field>
+							<Field label="last name">
+								<Input placeholder="Last name" bind:value={currentMetadata.pulse.secondOperator.lastName} />
+							</Field>
+							<Field label="email">
+								<Input placeholder="email" bind:value={currentMetadata.pulse.secondOperator.email} />
+							</Field>
+						</div> 
+					</Field>
+				</div> 
 				<Field label="Operator Comment">
 					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
 				</Field>
@@ -379,7 +391,10 @@
 	.rows{
 		display:grid;
 		width: 100%;
-		grid-template-columns: 1fr 1fr; 
+		grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); 
 		grid-gap: 10px; 
+	}
+	.container{
+		width: 100%
 	}
 </style>
