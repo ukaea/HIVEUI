@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { writable, type Writable } from 'svelte/store';
-	import { Button, ExpansionPanel, Field, Input } from 'svelte-ux';
+	import { Button, ExpansionPanel, Field, Input, SelectField, type MenuOption } from 'svelte-ux';
 	import { mdiPlus, mdiTrashCan } from '@mdi/js';
 	import { v4 as uuidv4 } from 'uuid';
 	import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
@@ -30,10 +30,7 @@
 		pulseID: string;
 		firstOperator: Person;
 		secondOperator: Person;
-		pulseStart: string;
-		pulseDuration: string;
-		dataCaptureStart: string;
-		pulseQuality: string; // PulseQuality type
+		pulseQuality: string = "success"; // PulseQuality type
 		coilInformation: CoilInformation;
 		coolantInformation: CoolantInformation;
 		operatorComment?: string;
@@ -251,7 +248,12 @@
 					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
 				</Field>
 				<Field label="Pulse Quality">
-					<Input placeholder="Success / Fail" bind:value={currentMetadata.pulse.pulseQuality} />
+					<select id="pulse quality" bind:value={currentMetadata.pulse.pulseQuality} >
+						<option value = "" disabled select> Pulse Quality</option>
+						<option value = "success"> Success</option>
+						<option value = "fail"> Fail </option>
+					</select>
+		
 				</Field>
 				<div class="col-span-2">
 					<ExpansionPanel>
@@ -363,5 +365,13 @@
 	.right-buttons {
 		display: flex;
 		gap: 10px;
+	}
+	select{
+		width: 100%; 
+		padding: 0.5rem;
+		background-color: white; 
+		color: grey; 
+		border: 2px solid #ccc;
+		border-radius: 2px; 
 	}
 </style>
