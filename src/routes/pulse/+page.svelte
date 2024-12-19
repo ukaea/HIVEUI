@@ -217,14 +217,16 @@
 		<ExpansionPanel open={true}>
 			<div slot="trigger" class="flex-1 p-3">Pulse Information</div>
 			<div class="p-4 flex flex-col space-y-4">
-				<Field label="Experiment ID">
-					<Input placeholder="Experiment identifier" bind:value={currentMetadata.experiment} />
-				</Field>
+				<div class="rows">
+					<Field label="Experiment ID">
+						<Input placeholder="Experiment identifier" bind:value={currentMetadata.experiment} />
+					</Field>
+					<Field label="Pulse ID">
+						<Input placeholder="Pulse identifier" bind:value={currentMetadata.pulse.pulseID} />
+					</Field>
+				</div> 
 				<Field label="Diagnostic Setup Selection​">
 					<Input placeholder="Enter diagnostics separated by commas" on:input={handleDiagnosticsInput} />
-				</Field>
-				<Field label="Pulse ID">
-					<Input placeholder="Pulse identifier" bind:value={currentMetadata.pulse.pulseID} />
 				</Field>
 				<Field label="Operator 1 first name">
 					<Input placeholder="First name" bind:value={currentMetadata.pulse.firstOperator.firstName} />
@@ -373,5 +375,11 @@
 		color: grey; 
 		border: 2px solid #ccc;
 		border-radius: 2px; 
+	}
+	.rows{
+		display:grid;
+		width: 100%;
+		grid-template-columns: 1fr 1fr; 
+		grid-gap: 10px; 
 	}
 </style>
