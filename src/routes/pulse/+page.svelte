@@ -262,10 +262,10 @@
 					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
 				</Field>
 				<Field label="Pulse Quality">
-					<select id="pulse quality" bind:value={currentMetadata.pulse.pulseQuality} >
-						<option value = "" disabled select> Pulse Quality</option>
-						<option value = "success"> Success</option>
-						<option value = "fail"> Fail </option>
+					<select id="pulse quality" bind:value={currentMetadata.pulse.pulseQuality}>
+						<option value="" disabled select> Pulse Quality</option>
+						<option value="success"> Success</option>
+						<option value="fail"> Fail </option>
 					</select>
 		
 				</Field>
@@ -274,7 +274,11 @@
 						<div slot="trigger" class="flex-1 p-3">Coil Information</div>
 						<div class="p-4 grid grid-cols-2 gap-4">
 							<Field label="Current Type">
-								<Input placeholder="AC / DC" bind:value={currentMetadata.pulse.coilInformation.currentType} />
+								<select bind:value={currentMetadata.pulse.coilInformation.currentType}>
+									<option value="" disabled select> AC / DC </option>
+									<option value="AC"> AC </option>
+									<option value="DC"> DC </option>
+								<select> 
 							</Field>
 							<Field label="Input Power">
 								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputPower} />
