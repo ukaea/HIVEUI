@@ -272,7 +272,7 @@
 				<div class="col-span-2">
 					<ExpansionPanel>
 						<div slot="trigger" class="flex-1 p-3">Coil Information</div>
-						<div class="p-4 grid grid-cols-2 gap-4">
+						<div class="container">
 							<Field label="Current Type">
 								<select bind:value={currentMetadata.pulse.coilInformation.currentType}>
 									<option value="" disabled select> AC / DC </option>
@@ -280,73 +280,41 @@
 									<option value="DC"> DC </option>
 								<select> 
 							</Field>
-							<Field label="Input Power">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputPower} />
-							</Field>
-							<Field label="Input Current">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputCurrent} />
-							</Field>
-							<Field label="Input Voltage">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputVoltage} />
-							</Field>
-							<Field label="Output Frequency">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputFrequency} />
-							</Field>
-							<Field label="Output Power">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputPower} />
-							</Field>
-							<Field label="Output Current">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputCurrent} />
-							</Field>
-							<Field label="Output Voltage">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputVoltage} />
-							</Field>
+						</div>
+						<div class="p-4 grid grid-cols-2 gap-4">
+							{#if currentMetadata.pulse.coilInformation.currentType == "DC"}
+								<Field label="Setpoint DC Voltage">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputPower} />
+								</Field>
+								<Field label="Output DC Voltage">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputCurrent} />
+								</Field>
+								<Field label="Setpoint DC Current">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputVoltage} />
+								</Field>
+								<Field label="Output DC Current">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputFrequency} />
+								</Field>
+								<Field label="Setpoint DC Power">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputPower} />
+								</Field>
+								<Field label="Output DC Power">
+									<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputCurrent} />
+								</Field>
+							{/if}
 						</div>
 					</ExpansionPanel>
 					<ExpansionPanel>
 						<div slot="trigger" class="flex-1 p-3">Coolant Information</div>
-						<div class="p-4 grid grid-cols-2 gap-4">
+						<div class="rows">
 							<Field label="Coolant Type">
 								<Input placeholder="Water / Demineralised Water / Treated Water" bind:value={currentMetadata.pulse.coolantInformation.coolantType} />
 							</Field>
-							<Field label="Coolant Flow Rate">
-								<Input placeholder="High / Low" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.rate} />
-							</Field>
-							<Field label="Coolant Flow Setpoint">
+							<Field label="Target Coolant Flowrate">
 								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.setpoint} />
 							</Field>
-							<Field label="Coolant Flow Value">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.value} />
-							</Field>
-							<Field label="Coolant Flow Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.variance} />
-							</Field>
-							<Field label="Coolant Temperature Setpoint">
+							<Field label="Target Coolant Temperature">
 								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.setpoint} />
-							</Field>
-							<Field label="Coolant Temperature In">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.in} />
-							</Field>
-							<Field label="Coolant Temperature In Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.inVariance} />
-							</Field>
-							<Field label="Coolant Temperature Out">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.out} />
-							</Field>
-							<Field label="Coolant Temperature Out Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.outVariance} />
-							</Field>
-							<Field label="Coolant Temperature Delta">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.delta} />
-							</Field>
-							<Field label="Coolant Pressure In">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.in} />
-							</Field>
-							<Field label="Coolant Pressure Out">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.out} />
-							</Field>
-							<Field label="Coolant Pressure Delta">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.delta} />
 							</Field>
 						</div>
 					</ExpansionPanel>
