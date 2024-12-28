@@ -456,6 +456,7 @@
 	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+		###########################
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h3 class="col-span-2 font-bold mt-4">Device Information</h3>
 				<TextField
@@ -466,69 +467,13 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
-						refresh();
-					}}
-				/>
 
-				<h3 class="col-span-2 font-bold mt-4">Thermocouple</h3>
-				<TextField
-					label="Status"
-					value={draft.diagnostic.status}
-					on:change={(e) => {
-						draft.diagnostic.status = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Attachment"
-					value={draft.diagnostic.attachment}
-					on:change={(e) => {
-						draft.diagnostic.attachment = e.detail.value;
-						refresh();
-					}}
-				/>
+				<h3 class="col-span-2 font-bold mt-4">Thermocouple (TC) </h3>
 				<TextField
 					label="TC Type"
 					value={draft.diagnostic.tcType}
 					on:change={(e) => {
 						draft.diagnostic.tcType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Location"
-					value={draft.diagnostic.location}
-					on:change={(e) => {
-						draft.diagnostic.location = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Area Type"
-					value={draft.diagnostic.areaType}
-					on:change={(e) => {
-						draft.diagnostic.areaType = e.detail.value;
 						refresh();
 					}}
 				/>
