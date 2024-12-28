@@ -263,7 +263,7 @@
 				</Field>
 				<Field label="Pulse Quality">
 					<select id="pulse quality" bind:value={currentMetadata.pulse.pulseQuality}>
-						<option value="" disabled select> Pulse Quality</option>
+						<option value="" disabled select> Select Quality</option>
 						<option value="success"> Success</option>
 						<option value="fail"> Fail </option>
 					</select>
@@ -307,14 +307,19 @@
 					<ExpansionPanel>
 						<div slot="trigger" class="flex-1 p-3">Coolant Information</div>
 						<div class="rows">
-							<Field label="Coolant Type">
-								<Input placeholder="Water / Demineralised Water / Treated Water" bind:value={currentMetadata.pulse.coolantInformation.coolantType} />
+							<Field label="Coolant Type">		
+								<select id="coolant type" bind:value={currentMetadata.pulse.coolantInformation.coolantType} style="height:40px;">
+									<option style="font-size: 30px" value="" disabled select> Select Type</option>
+									<option value="water"> Water </option>
+									<option value="demineralised water"> Demineralised Water </option>
+									<option value="treated water"> Treated Water </option>
+								</select>
 							</Field>
 							<Field label="Target Coolant Flowrate">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.setpoint} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.setpoint} style="height:40px;"/>
 							</Field>
 							<Field label="Target Coolant Temperature">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.setpoint} />
+								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.setpoint} style="height:40px;"/>
 							</Field>
 						</div>
 					</ExpansionPanel>
