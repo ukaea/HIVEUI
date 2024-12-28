@@ -572,30 +572,6 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
-						refresh();
-					}}
-				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Camera Information</h3>
 				<TextField
@@ -717,38 +693,6 @@
 						if (!draft.diagnostic) draft.diagnostic = {};
 						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
 						draft.diagnostic.lensInformation.fieldOfViewY = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Capture Settings</h3>
-				<TextField
-					label="Image Acquisition Rate"
-					value={draft.diagnostic?.captureSettings?.imageAcquisitionRate ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageAcquisitionRate = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Image Noise"
-					value={draft.diagnostic?.captureSettings?.imageNoise ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageNoise = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Image Scale"
-					value={draft.diagnostic?.captureSettings?.imageScale ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageScale = e.detail.value;
 						refresh();
 					}}
 				/>
