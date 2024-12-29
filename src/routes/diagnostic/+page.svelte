@@ -398,10 +398,11 @@
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Diagnostic Metadata</h2>
-		<div class="gap-10">
+		<div class="gap-10 rows">
 			<Button on:click={handleNewThermocouple} variant="fill">New Thermocouple</Button>
 			<Button on:click={handleNewCamera} variant="fill">New Camera</Button>
 			<Button on:click={handleNewDIC} variant="fill">New DIC</Button>
+			<Button on:click={handleNewDIC} variant="fill">New Coil</Button>
 		</div>
 	</div>
 	<div class="table-container">
@@ -456,8 +457,7 @@
 	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-		###########################
-			<div class="p-4 grid grid-cols-2 gap-4">
+			<div>
 				<h3 class="col-span-2 font-bold mt-4">Device Information</h3>
 				<TextField
 					label="Device ID"
@@ -467,8 +467,8 @@
 						refresh();
 					}}
 				/>
-
 				<h3 class="col-span-2 font-bold mt-4">Thermocouple (TC) </h3>
+				<div class=rows>
 				<TextField
 					label="TC Type"
 					value={draft.diagnostic.tcType}
@@ -493,6 +493,7 @@
 						refresh();
 					}}
 				/>
+				</div>
 			</div>
 
 			<div class="flex justify-end gap-2 mt-4">
@@ -893,5 +894,15 @@
 
 	:global(.styled-table tr:hover) {
 		background-color: #f3f4f6;
+	}
+	.rows{
+		display:grid;
+		width: 100%;
+		grid-template-columns: 1fr 1fr 1fr; 
+		grid-gap: 10px; 
+	}
+	.button{
+		margin-bottom:10px;
+  		text-align:center;
 	}
 </style>
