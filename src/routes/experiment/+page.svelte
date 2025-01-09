@@ -319,36 +319,39 @@
 						refresh();
 					}}
 				/>
+				<h3 class="col-span-1 mt-1">Lead Investigator </h3>
+				<div class="col-span-2 grid grid-cols-3 gap-4">
+					<TextField
+						label="First Name"
+						value={draft.leadInvestigator.firstName}
+						on:change={(e) => {
+							draft.leadInvestigator.firstName = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Last Name"
+						value={draft.leadInvestigator.lastName}
+						on:change={(e) => {
+							draft.leadInvestigator.lastName = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Email"
+						value={draft.leadInvestigator.email}
+						on:change={(e) => {
+							draft.leadInvestigator.email = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
 				<SelectField options = {sampleCoolingOptions} label="Sample Cooling" 
 					value={draft.sampleCooling} 
 					on:change={(e) => {
 						draft.sampleCooling = e.detail.value;
 						refresh()
 					}} />
-				<TextField
-					label="First Name"
-					value={draft.leadInvestigator.firstName}
-					on:change={(e) => {
-						draft.leadInvestigator.firstName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Last Name"
-					value={draft.leadInvestigator.lastName}
-					on:change={(e) => {
-						draft.leadInvestigator.lastName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Email"
-					value={draft.leadInvestigator.email}
-					on:change={(e) => {
-						draft.leadInvestigator.email = e.detail.value;
-						refresh();
-					}}
-				/>
 			</div>
 
 			<div class="flex justify-end gap-2 mt-4">
