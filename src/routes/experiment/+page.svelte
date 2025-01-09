@@ -298,32 +298,6 @@
 						refresh();
 					}}
 				/>
-				<div class="col-span-2 grid grid-cols-3 gap-4">
-					<TextField
-						label="First Name"
-						value={draft.leadInvestigator.firstName}
-						on:change={(e) => {
-							draft.leadInvestigator.firstName = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Last Name"
-						value={draft.leadInvestigator.lastName}
-						on:change={(e) => {
-							draft.leadInvestigator.lastName = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Email"
-						value={draft.leadInvestigator.email}
-						on:change={(e) => {
-							draft.leadInvestigator.email = e.detail.value;
-							refresh();
-						}}
-					/>
-				</div>
 				<TextField
 					label="Sample Cooling"
 					value={draft.sampleCooling}
@@ -332,9 +306,34 @@
 						refresh();
 					}}
 				/>
-				<div class="flex justify-end gap-2 mt-4">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
+				<TextField
+					label="First Name"
+					value={draft.leadInvestigator.firstName}
+					on:change={(e) => {
+						draft.leadInvestigator.firstName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Last Name"
+					value={draft.leadInvestigator.lastName}
+					on:change={(e) => {
+						draft.leadInvestigator.lastName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Email"
+					value={draft.leadInvestigator.email}
+					on:change={(e) => {
+						draft.leadInvestigator.email = e.detail.value;
+						refresh();
+					}}
+				/>
+
+			<div class="flex justify-end gap-2 mt-4">
+				<Button on:click={() => commit()} variant="fill">Save</Button>
+				<Button on:click={handleModalClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>

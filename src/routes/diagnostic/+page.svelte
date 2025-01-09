@@ -18,12 +18,20 @@
 	}
 
 	class Thermocouple {
+		status: string;
+		attachment: string;
 		tcType: string;
+		location: string;
+		areaType: string;
 		circleDiameter: string;
 		noiseFloor: string;
 
 		constructor() {
+			this.status = '';
+			this.attachment = '';
 			this.tcType = '';
+			this.location = '';
+			this.areaType = '';
 			this.circleDiameter = '';
 			this.noiseFloor = '';
 		}
@@ -439,7 +447,7 @@
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Diagnostic Metadata</h2>
-		<div class="gap-10 rows">
+		<div class="grid grid-rows-2 grid-flow-col gap-2">
 			<Button on:click={handleNewThermocouple} variant="fill">New Thermocouple</Button>
 			<Button on:click={handleNewCamera} variant="fill">New Camera</Button>
 			<Button on:click={handleNewDIC} variant="fill">New DIC</Button>
@@ -484,6 +492,22 @@
 						refresh();
 					}}
 				/>
+				<TextField
+					label="Port Description"
+					value={draft.port.portDescription}
+					on:change={(e) => {
+						draft.port.portDescription = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Size Standard"
+					value={draft.port.portSizeStandard}
+					on:change={(e) => {
+						draft.port.portSizeStandard = e.detail.value;
+						refresh();
+					}}
+				/>
 			</div>
 
 			<div class="flex justify-end gap-2 mt-4">
@@ -509,31 +533,47 @@
 					}}
 				/>
 				<h3 class="col-span-2 font-bold mt-4">Thermocouple (TC) </h3>
-				<div class=rows>
-				<TextField
-					label="TC Type"
-					value={draft.diagnostic.tcType}
-					on:change={(e) => {
-						draft.diagnostic.tcType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Circle Diameter"
-					value={draft.diagnostic.circleDiameter}
-					on:change={(e) => {
-						draft.diagnostic.circleDiameter = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Noise Floor"
-					value={draft.diagnostic.noiseFloor}
-					on:change={(e) => {
-						draft.diagnostic.noiseFloor = e.detail.value;
-						refresh();
-					}}
-				/>
+				<div class="grid grid-cols-3 gap-2"> 
+					<TextField
+						label="Attachment"
+						value={draft.diagnostic.attachment}
+						on:change={(e) => {
+							draft.diagnostic.attachment = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="TC Type"
+						value={draft.diagnostic.tcType}
+						on:change={(e) => {
+							draft.diagnostic.tcType = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Location"
+						value={draft.diagnostic.location}
+						on:change={(e) => {
+							draft.diagnostic.location = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Circle Diameter"
+						value={draft.diagnostic.circleDiameter}
+						on:change={(e) => {
+							draft.diagnostic.circleDiameter = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Noise Floor"
+						value={draft.diagnostic.noiseFloor}
+						on:change={(e) => {
+							draft.diagnostic.noiseFloor = e.detail.value;
+							refresh();
+						}}
+					/>
 				</div>
 			</div>
 
@@ -556,6 +596,30 @@
 					value={draft.deviceID}
 					on:change={(e) => {
 						draft.deviceID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port ID"
+					value={draft.port.portID}
+					on:change={(e) => {
+						draft.port.portID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Description"
+					value={draft.port.portDescription}
+					on:change={(e) => {
+						draft.port.portDescription = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Size Standard"
+					value={draft.port.portSizeStandard}
+					on:change={(e) => {
+						draft.port.portSizeStandard = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -680,6 +744,37 @@
 						if (!draft.diagnostic) draft.diagnostic = {};
 						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
 						draft.diagnostic.lensInformation.fieldOfViewY = e.detail.value;
+						refresh();
+					}}
+				/>
+				<h3 class="col-span-3 font-bold mt-4">Capture Settings</h3>
+				<TextField
+					label="Image Acquisition Rate"
+					value={draft.diagnostic?.captureSettings?.imageAcquisitionRate ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
+						draft.diagnostic.captureSettings.imageAcquisitionRate = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Image Noise"
+					value={draft.diagnostic?.captureSettings?.imageNoise ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
+						draft.diagnostic.captureSettings.imageNoise = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Image Scale"
+					value={draft.diagnostic?.captureSettings?.imageScale ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
+						draft.diagnostic.captureSettings.imageScale = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -1039,15 +1134,5 @@
 
 	:global(.styled-table tr:hover) {
 		background-color: #f3f4f6;
-	}
-	.rows{
-		display:grid;
-		width: 100%;
-		grid-template-columns: 1fr 1fr 1fr; 
-		grid-gap: 10px; 
-	}
-	.button{
-		margin-bottom:10px;
-  		text-align:center;
 	}
 </style>
