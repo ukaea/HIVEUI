@@ -1,9 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
-	import { tableOrderStore } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem } from 'svelte-ux';
+	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { mdiMagnify, mdiPlus, mdiPencil, mdiAccount } from '@mdi/js';
 
 	class Person {
 		firstName: string;
@@ -26,6 +27,7 @@
 		experimentEnd: string;
 		experimentType: string;
 		sampleCooling: string;
+		coilID: string;
 		constructor() {
 			this.campaignID = '';
 			this.experimentID = '';
@@ -35,6 +37,7 @@
 			this.experimentEnd = '';
 			this.experimentType = '';
 			this.sampleCooling = '';
+			this.coilID = '';
 		}
 	}
 
@@ -219,6 +222,14 @@
 	onMount(() => {
 		fetchProposals();
 	});
+	let experimentOptions: MenuOption[] = [
+		{ label: "Induction", value: "Induction" },
+		{ label: "Direct Current", value: "Direct Current" },
+	];
+	let sampleCoolingOptions: MenuOption[] = [
+		{label: "Yes", value: true}, 
+		{label: "No", value: false}
+	]
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -267,6 +278,7 @@
 				<DateField
 					label="Experiment Start"
 					type="datetime-local"
+					format="dd/mm/yyyy"
 					value={draft.experimentStart}
 					on:change={(e) => {
 						draft.experimentStart = e.detail.value;
@@ -276,20 +288,31 @@
 				<DateField
 					label="Experiment End"
 					type="datetime-local"
+					format="dd/mm/yyyy"
 					value={draft.experimentEnd}
 					on:change={(e) => {
 						draft.experimentEnd = e.detail.value;
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Experiment Type"
+				<SelectField options = {experimentOptions} 
+					label="Experiment Type" 
 					value={draft.experimentType}
+					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentType = e.detail.value;
-						refresh();
-					}}
-				/>
+						refresh()
+					}}/>
+				{#if draft.experimentType == "Induction"}
+					<TextField
+						label="Coil ID"
+						value={draft.coilID}
+						on:change={(e) => {
+							draft.coilID = e.detail.value;
+							refresh()
+						}}
+					/>
+				{/if} 
 				<TextField
 					label="Customer"
 					value={draft.customer}
@@ -298,39 +321,42 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Sample Cooling"
-					value={draft.sampleCooling}
+				<br>
+				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
+				<div class="col-span-2 grid grid-cols-3 gap-4">
+					<TextField
+						label="First Name"
+						value={draft.leadInvestigator.firstName}
+						on:change={(e) => {
+							draft.leadInvestigator.firstName = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Last Name"
+						value={draft.leadInvestigator.lastName}
+						on:change={(e) => {
+							draft.leadInvestigator.lastName = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Email"
+						value={draft.leadInvestigator.email}
+						on:change={(e) => {
+							draft.leadInvestigator.email = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+				<SelectField options = {sampleCoolingOptions} label="Sample Cooling" 
+					value={draft.sampleCooling} 
 					on:change={(e) => {
 						draft.sampleCooling = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="First Name"
-					value={draft.leadInvestigator.firstName}
-					on:change={(e) => {
-						draft.leadInvestigator.firstName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Last Name"
-					value={draft.leadInvestigator.lastName}
-					on:change={(e) => {
-						draft.leadInvestigator.lastName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Email"
-					value={draft.leadInvestigator.email}
-					on:change={(e) => {
-						draft.leadInvestigator.email = e.detail.value;
-						refresh();
-					}}
-				/>
-
+						refresh()
+					}} />
+			</div>
+            
 			<div class="flex justify-end gap-2 mt-4">
 				<Button on:click={() => commit()} variant="fill">Save</Button>
 				<Button on:click={handleModalClose}>Cancel</Button>
