@@ -26,7 +26,7 @@
 		experimentStart: string;
 		experimentEnd: string;
 		experimentType: string;
-		sampleCooling: boolean;
+		sampleCooling: string;
 		coilID: string;
 		constructor() {
 			this.campaignID = '';
@@ -37,6 +37,7 @@
 			this.experimentEnd = '';
 			this.experimentType = '';
 			this.sampleCooling = '';
+			this.coilID = '';
 		}
 	}
 
@@ -297,6 +298,7 @@
 				<SelectField options = {experimentOptions} 
 					label="Experiment Type" 
 					value={draft.experimentType}
+					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentType = e.detail.value;
 						refresh()
@@ -319,7 +321,8 @@
 						refresh();
 					}}
 				/>
-				<h3 class="col-span-1 mt-1">Lead Investigator </h3>
+				<br>
+				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
 				<div class="col-span-2 grid grid-cols-3 gap-4">
 					<TextField
 						label="First Name"
