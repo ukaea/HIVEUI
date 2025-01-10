@@ -161,6 +161,31 @@
 		}
 	}
 
+	class Coil{
+		coilID: string;
+		coilType: string;
+		NumberofTurns: string;
+		CoilOrientation: string;
+		Manufacturer: string;
+		TubeDiameter: string;
+		Nickname: string;
+		Inductance: string;
+		OperationFreq: string;
+
+		constructor(){
+			this.coilID = '';
+			this.coilType = '';
+			this.NumberofTurns = '';
+			this.CoilOrientation = '';
+			this.Manufacturer = '';
+			this.TubeDiameter = '';
+			this.Nickname = '';
+			this.Inductance = '';
+			this.OperationFreq = '';
+		}
+	}
+
+
 	class DeviceMetadata {
 		port: Port;
 		deviceID: string;
@@ -198,6 +223,15 @@
 		}
 	}
 
+	class CoilMetadata extends DeviceMetadata {
+		diagnostic: Coil;
+
+		constructor() {
+			super();
+			this.diagnostic = new Coil();
+		}
+	}
+
 	let sortedData: DeviceMetadata[] = [];
 	const order = tableOrderStore({ initialBy: 'deviceID', initialDirection: 'asc' });
 	let open = false;
@@ -212,6 +246,9 @@
 
 	let openDIC = false;
 	let isNewDIC = false;
+
+	let openCoil = false;
+	let isNewCoil = false;
 
 	function mapScicatToDevice(apiResponse: any): DeviceMetadata {
 		const metadata = new DeviceMetadata();
@@ -362,6 +399,12 @@
 		openDIC = true;
 	}
 
+	function handleNewCoil(): void{
+		selectedMetadata = { ... new CoilMetadata() };
+		isNewCoil = true;
+		openCoil = true;
+	}
+
 	function handleThermocoupleClose(): void {
 		openThermocouple = false;
 		selectedMetadata = null;
@@ -378,6 +421,12 @@
 		openDIC = false;
 		selectedMetadata = null;
 		isNewDIC = false;
+	}
+
+	function handleCoilClose(): void {
+		openCoil = false;
+		selectedMetadata = null;
+		isNewCoil = false;
 	}
 
 	function handleModalClose() {
@@ -398,10 +447,11 @@
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Diagnostic Metadata</h2>
-		<div class="gap-10">
+		<div class="grid grid-rows-2 grid-flow-col gap-2">
 			<Button on:click={handleNewThermocouple} variant="fill">New Thermocouple</Button>
 			<Button on:click={handleNewCamera} variant="fill">New Camera</Button>
 			<Button on:click={handleNewDIC} variant="fill">New DIC</Button>
+			<Button on:click={handleNewCoil} variant="fill">New Coil</Button>
 		</div>
 	</div>
 	<div class="table-container">
@@ -442,38 +492,6 @@
 						refresh();
 					}}
 				/>
-			</div>
-
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleModalClose}>Cancel</Button>
-			</div>
-		</Form>
-	</div>
-</Dialog>
-
-<Dialog open={openThermocouple} on:close={handleThermocoupleClose}>
-	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
-	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-2 gap-4">
-				<h3 class="col-span-2 font-bold mt-4">Device Information</h3>
-				<TextField
-					label="Device ID"
-					value={draft.deviceID}
-					on:change={(e) => {
-						draft.deviceID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
 				<TextField
 					label="Port Description"
 					value={draft.port.portDescription}
@@ -490,64 +508,73 @@
 						refresh();
 					}}
 				/>
+			</div>
 
-				<h3 class="col-span-2 font-bold mt-4">Thermocouple</h3>
+			<div class="flex justify-end gap-2 mt-4">
+				<Button on:click={() => commit()} variant="fill">Save</Button>
+				<Button on:click={handleModalClose}>Cancel</Button>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+<Dialog open={openThermocouple} on:close={handleThermocoupleClose}>
+	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div>
+				<h3 class="col-span-2 font-bold mt-4">Device Information</h3>
 				<TextField
-					label="Status"
-					value={draft.diagnostic.status}
+					label="Device ID"
+					value={draft.deviceID}
 					on:change={(e) => {
-						draft.diagnostic.status = e.detail.value;
+						draft.deviceID = e.detail.value;
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Attachment"
-					value={draft.diagnostic.attachment}
-					on:change={(e) => {
-						draft.diagnostic.attachment = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="TC Type"
-					value={draft.diagnostic.tcType}
-					on:change={(e) => {
-						draft.diagnostic.tcType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Location"
-					value={draft.diagnostic.location}
-					on:change={(e) => {
-						draft.diagnostic.location = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Area Type"
-					value={draft.diagnostic.areaType}
-					on:change={(e) => {
-						draft.diagnostic.areaType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Circle Diameter"
-					value={draft.diagnostic.circleDiameter}
-					on:change={(e) => {
-						draft.diagnostic.circleDiameter = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Noise Floor"
-					value={draft.diagnostic.noiseFloor}
-					on:change={(e) => {
-						draft.diagnostic.noiseFloor = e.detail.value;
-						refresh();
-					}}
-				/>
+				<h3 class="col-span-2 font-bold mt-4">Thermocouple (TC) </h3>
+				<div class="grid grid-cols-3 gap-2"> 
+					<TextField
+						label="Attachment"
+						value={draft.diagnostic.attachment}
+						on:change={(e) => {
+							draft.diagnostic.attachment = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="TC Type"
+						value={draft.diagnostic.tcType}
+						on:change={(e) => {
+							draft.diagnostic.tcType = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Location"
+						value={draft.diagnostic.location}
+						on:change={(e) => {
+							draft.diagnostic.location = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Circle Diameter"
+						value={draft.diagnostic.circleDiameter}
+						on:change={(e) => {
+							draft.diagnostic.circleDiameter = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Noise Floor"
+						value={draft.diagnostic.noiseFloor}
+						on:change={(e) => {
+							draft.diagnostic.noiseFloor = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
 			</div>
 
 			<div class="flex justify-end gap-2 mt-4">
@@ -720,7 +747,6 @@
 						refresh();
 					}}
 				/>
-
 				<h3 class="col-span-3 font-bold mt-4">Capture Settings</h3>
 				<TextField
 					label="Image Acquisition Rate"
@@ -963,6 +989,110 @@
 			<div class="flex justify-end gap-2 mt-4">
 				<Button on:click={() => commit()} variant="fill">Save</Button>
 				<Button on:click={handleDICClose}>Cancel</Button>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+
+
+<Dialog open={openCoil} on:close={handleCoilClose}>
+	<div slot="title">{isNewEntry ? 'Create New Coil' : 'Edit Coil Metadata'}</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<div class="col-span-2">
+					<TextField
+						label="Coil ID"
+						value= {draft.diagnostic?.coilID ?? ''}
+						on:change={(e) => {
+							if (!draft.diagnostic) draft.diagnostic = {};
+							if (!draft.diagnostic.coilID) draft.diagnostic.coilID = {};
+							draft.diagnostic.coilID = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+				<TextField
+					label="Coil Type"
+					value= {draft.diagnostic.coilType}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.coilType) draft.diagnostic.coilType = {};
+						draft.diagnostic.coilType = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Number of Turns"
+					value= {draft.diagnostic.NumberofTurns}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.NumberofTurns) draft.diagnostic.NumberofTurns = {};
+						draft.diagnostic.NumberofTurns = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Coil Orientation"
+					value= {draft.diagnostic.CoilOrientation}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.CoilOrientation) draft.diagnostic.CoilOrientation = {};
+						draft.diagnostic.CoilOrientation = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Manufacturer"
+					value= {draft.diagnostic.Manufacturer}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.Manufacturer) draft.diagnostic.Manufacturer = {};
+						draft.diagnostic.Manufacturer = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Tube Diameter"
+					value= {draft.diagnostic.TubeDiameter}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.TubeDiameter) draft.diagnostic.TubeDiameter = {};
+						draft.diagnostic.TubeDiameter = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Nickname"
+					value= {draft.diagnostic.Nickname}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.Nickname) draft.diagnostic.Nickname = {};
+						draft.diagnostic.Nickname = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Inductance (µH)"
+					value= {draft.diagnostic.Inductance}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.Inductance) draft.diagnostic.Inductance = {};
+						draft.diagnostic.Inductance = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Approx Operating Freq with 6µF capacitor bank (kHz)"
+					value= {draft.diagnostic.OperationFreq}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.OperationFreq) draft.diagnostic.OperationFreq = {};
+						draft.diagnostic.OperationFreq = e.detail.value;
+						refresh();
+					}}
+				/>
 			</div>
 		</Form>
 	</div>
