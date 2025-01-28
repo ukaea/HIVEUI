@@ -101,7 +101,7 @@
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, {
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals`, {
 				headers: {
 					Authorization: `Bearer ${accessToken}`
 				}
@@ -254,7 +254,7 @@
 	</div>
 </div>
 
-<Dialog {open} on:close={handleModalClose}>
+<Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
@@ -375,6 +375,11 @@
 		overflow: hidden;
 	}
 
+	:global(.experimentInputDialog) {
+		max-height: 900px;
+		overflow: hidden;
+	}
+	
 	:global(.styled-table) {
 		width: 100%;
 		border-collapse: collapse;

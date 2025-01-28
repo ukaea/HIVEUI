@@ -1,56 +1,10 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { writable, type Writable } from 'svelte/store';
-	import { Button, ExpansionPanel, Field, Input } from 'svelte-ux';
-	import { mdiPlus, mdiTrashCan } from '@mdi/js';
-	import { v4 as uuidv4 } from 'uuid';
-	import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-
-	function handleDiagnosticsInput(event: Event) {
-		const input = (event.target as HTMLInputElement).value;
-		currentMetadata.diagnostics = input
-			.split(',')
-			.map((item) => item.trim())
-			.filter((item) => item !== '');
-	}
-
-	class PulseWithMetadata {
-		pulse: HivePulse;
-		experiment: string;
-		diagnostics: string[];
-
-		constructor() {
-			this.pulse = new HivePulse();
-			this.experiment = '';
-			this.diagnostics = [];
-		}
-	}
-
-	class HivePulse {
-		pulseID: string;
-		firstOperator: Person;
-		secondOperator: Person;
-		pulseStart: string;
-		pulseDuration: string;
-		dataCaptureStart: string;
-		pulseQuality: string; // PulseQuality type
-		coilInformation: CoilInformation;
-		coolantInformation: CoolantInformation;
-		operatorComment?: string;
-
-		constructor() {
-			this.pulseID = '';
-			this.firstOperator = new Person();
-			this.secondOperator = new Person();
-			this.pulseStart = '';
-			this.pulseDuration = '';
-			this.dataCaptureStart = '';
-			this.pulseQuality = '';
-			this.coilInformation = new CoilInformation();
-			this.coolantInformation = new CoolantInformation();
-			this.operatorComment = '';
-		}
-	}
+	import { Button, Table, Dialog, Form, TextField} from 'svelte-ux';
+	import { tableOrderStore, SelectField, type MenuOption, Notification } from 'svelte-ux';
+	import { page } from '$app/stores';
+	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import {mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
 
 	class Person {
 		firstName: string;
@@ -64,17 +18,24 @@
 		}
 	}
 
-	class CoolantInformation {
-		coolantType: string; // CoolantType
-		coolantFlow: CoolantFlow;
-		coolantTemperature: CoolantTemperature;
-		coolantPressure: CoolantPressure;
-
+	class CoilInformation {
+		currentType: string;
+		inputPower: string;
+		inputCurrent: string;
+		inputVoltage: string;
+		outputFrequency: string;
+		outputPower: string;
+		outputCurrent: string;
+		outputVoltage: string;
 		constructor() {
-			this.coolantType = '';
-			this.coolantFlow = new CoolantFlow();
-			this.coolantTemperature = new CoolantTemperature();
-			this.coolantPressure = new CoolantPressure();
+			this.currentType = '';
+			this.inputPower = '';
+			this.inputCurrent = '';
+			this.inputVoltage = '';
+			this.outputFrequency = '';
+			this.outputPower = '';
+			this.outputCurrent = '';
+			this.outputVoltage = '';
 		}
 	}
 
@@ -122,62 +83,220 @@
 		}
 	}
 
-	class CoilInformation {
-		currentType: string; // CurrentType
-		inputPower: string;
-		inputCurrent: string;
-		inputVoltage: string;
-		outputFrequency: string;
-		outputPower: string;
-		outputCurrent: string;
-		outputVoltage: string;
-
+	class CoolantInformation {
+		coolantType: string;
+		coolantFlow: CoolantFlow;
+		coolantTemperature: CoolantTemperature;
+		coolantPressure: CoolantPressure;
 		constructor() {
-			this.currentType = '';
-			this.inputPower = '';
-			this.inputCurrent = '';
-			this.inputVoltage = '';
-			this.outputFrequency = '';
-			this.outputPower = '';
-			this.outputCurrent = '';
-			this.outputVoltage = '';
+			this.coolantType = '';
+			this.coolantFlow = new CoolantFlow();
+			this.coolantTemperature = new CoolantTemperature();
+			this.coolantPressure = new CoolantPressure();
 		}
 	}
 
-	class SaveMetadata {
-		targetPath: string;
-		metadata: PulseWithMetadata;
-
+	class PulseMetadata {
+		pulseID: string;
+		firstOperator: Person;
+		secondOperator: Person;
+		pulseStart: string;
+		pulseDuration: string;
+		dataCaptureStart: string;
+		operatorComment: string;
+		pulseQuality: string;
+		coilInformation: CoilInformation;
+		coolantInformation: CoolantInformation;
 		constructor() {
-			this.targetPath = '';
-			this.metadata = new PulseWithMetadata();
+			this.pulseID = '';
+			this.firstOperator = new Person();
+			this.secondOperator = new Person();
+			this.pulseStart = '';
+			this.pulseDuration = '';
+			this.dataCaptureStart = '';
+			this.operatorComment = '';
+			this.pulseQuality = '';
+			this.coilInformation = new CoilInformation();
+			this.coolantInformation = new CoolantInformation();
 		}
 	}
 
-	const fullMetadata = writable<PulseWithMetadata>(new PulseWithMetadata());
-
-	let currentSaveLocation: string = PUBLIC_ROOT_FOLDER_LOCATION + '/EXP_01' + '/hive_metadata.json';
-
-	let currentMetadata: PulseWithMetadata;
-	fullMetadata.subscribe((value) => {
-		currentMetadata = value;
-	});
-
-	onMount(() => {});
-
-	function resetForm() {
-		fullMetadata.set(new PulseWithMetadata());
-		currentSaveLocation = `${PUBLIC_ROOT_FOLDER_LOCATION}/EXP_01/hive_metadata.json`;
+	class ExperimentSelectMetadata {
+		experimentID: string;
+		constructor() {
+			this.experimentID = '';
+		}
 	}
 
-	async function handleSubmit() {
+	class DiagnosticSelectMetadata {
+		diagnosticSetupID: string;
+		constructor() {
+			this.diagnosticSetupID = '';
+		}
+	}
+
+	// Includes the experiment and diagnostics
+	class CompiledPulseMetadata {
+		pulse: PulseMetadata;
+		experimentID: string;
+		diagnosticSetupID: string;
+		status: string;
+		constructor() {
+			this.pulse = new PulseMetadata();
+			this.experimentID = '';
+			this.diagnosticSetupID = '';
+			this.status = '';
+		}
+	}
+
+	let sortedData: CompiledPulseMetadata[] = [];
+	let sortedExperiments: ExperimentSelectMetadata[] = [];
+	let sortedDiagnostics: DiagnosticSelectMetadata[] = [];
+
+	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+	let open = false;
+	let selectedMetadata: CompiledPulseMetadata | null = null;
+	let isNewEntry = false;
+
+	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
+		const metadata = new CompiledPulseMetadata();
+		// Assume all fields are valid
+		return Object.assign(metadata, apiResponse);
+	}
+
+	function mapToExperiment(apiResponse: any): ExperimentSelectMetadata {
+		const metadata = new ExperimentSelectMetadata();
+		// Assume all fields are valid
+		return Object.assign(metadata, apiResponse);
+	}
+
+	function mapToDiagnosticSetup(apiResponse: any): DiagnosticSelectMetadata {
+		const metadata = new DiagnosticSelectMetadata();
+		// Assume all fields are valid
+		return Object.assign(metadata, apiResponse);
+	}
+
+	async function fetchExperiments() {
 		try {
-			let saveMetadata: SaveMetadata = {
-				targetPath: currentSaveLocation,
-				metadata: currentMetadata
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, {
+				headers: {
+					Authorization: `Bearer ${accessToken}`
+				}
+			});
+			if (!response.ok) throw new Error('Failed to fetch proposals');
+			const data = await response.json();
+			// Map the API response to ExperimentMetadata
+			sortedExperiments = data.map(mapToExperiment).sort($order.handler);
+			experimentOptions = sortedExperiments.map((experiment) => {
+				return { label: experiment.experimentID, value: experiment.experimentID };
+			});
+		} catch (error) {
+			console.error('Error fetching proposals:', error);
+			alert('Failed to load proposals. Please try again later.');
+		}
+	}
+
+	async function getJsonFiles(directory: string) {
+		try {
+			const response = await fetch(`/api/get-json-list?path=${encodeURIComponent(directory)}`);
+			if (!response.ok) {
+				throw new Error(`Failed to fetch file list: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			if (!data.success) {
+				throw new Error(data.message || 'Failed to fetch file list');
+			}
+
+			return data.files;
+		} catch (error) {
+			console.error('Error fetching file list:', error);
+			throw error;
+		}
+	}
+
+	async function getJsonContent(filename: string) {
+		try {
+			const response = await fetch(`/api/get-json?filename=${encodeURIComponent(filename)}`);
+			if (!response.ok) {
+				throw new Error(`Failed to fetch file content: ${response.statusText}`);
+			}
+
+			const data = await response.json();
+			if (!data.success) {
+				throw new Error(data.message || 'Failed to fetch file content');
+			}
+
+			return data.data;
+		} catch (error) {
+			console.error('Error fetching file content:', error);
+			throw error;
+		}
+	}
+
+	async function fetchDiagnosticSetups() {
+		try {
+			const files = await getJsonFiles('diagnosticsetups');
+			const diagnosticSetups = await Promise.all(files.map((filename: string) => getJsonContent('diagnosticsetups/' + filename)));
+
+			// Map and sort the diagnostic setups
+			sortedDiagnostics = diagnosticSetups.map(mapToDiagnosticSetup).sort($order.handler);
+
+			diagnosticSetupOptions = sortedDiagnostics.map((diagnostic) => {
+				return { label: diagnostic.diagnosticSetupID, value: diagnostic.diagnosticSetupID };
+			});
+		} catch (error) {
+			console.error('Error fetching diagnostic setups:', error);
+			alert('Failed to load diagnostic setups. Please try again later.');
+		}
+	}
+
+	async function fetchPulses() {
+		try {
+			const pulseFiles = await getJsonFiles('pulses');
+			const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
+
+			sortedData = pulseData.map(mapToPulse).sort($order.handler);
+		} catch (error) {
+			console.error('Error fetching pulses:', error);
+			alert('Failed to load pulses. Please try again later.');
+		}
+	}
+
+	async function handleMetadataSubmit(event: CustomEvent<CompiledPulseMetadata>) {
+		const metadata = event.detail;
+
+		try {
+			await handlePulseFileSubmission(metadata);
+			console.log('Metadata file saved successfully');
+			saveNotify = true;
+			
+			setTimeout(() => {
+				saveNotify = false;
+			}, 3000);
+
+			await fetchPulses();
+		} catch (error) {
+			console.error('File submission failed:', error);
+		}
+	}
+
+	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
+		try {
+			const pulseID = metadata.pulse.pulseID;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
+			const fileName = `${pulseID}.json`;
+
+			const saveMetadata = {
+				targetPath: `${filePath}/${fileName}`,
+				metadata: metadata
 			};
 
-			const response = await fetch('/api/save-json', {
+			const fileResponse = await fetch('/api/save-json', {
 				method: 'POST',
 				headers: {
 					'Content-Type': 'application/json'
@@ -185,192 +304,409 @@
 				body: JSON.stringify(saveMetadata)
 			});
 
-			if (response.ok) {
-				alert('Metadata saved successfully!');
-			} else {
-				const errorData = await response.json();
-				alert(`Error saving metadata: ${errorData.message}`);
+			if (!fileResponse.ok) {
+				const errorData = await fileResponse.json();
+				throw new Error(`Failed to save metadata file: ${errorData.message}`);
 			}
 		} catch (error) {
-			console.error('Error:', error);
-			alert('An error occurred while saving the metadata.');
+			console.error('Error saving metadata file:', error);
+			throw error;
 		}
 	}
 
-	function exportForm() {
-		const blob = new Blob([JSON.stringify(currentMetadata, null, 2)], { type: 'application/json' });
-		const url = URL.createObjectURL(blob);
-
-		const a = document.createElement('a');
-		a.href = url;
-		const date = new Date();
-		const filename = `hive_metadata_${date.toISOString().replace(/[:T]/g, '-').slice(0, -5)}.json`;
-		a.download = filename;
-
-		document.body.appendChild(a);
-		a.click();
-		document.body.removeChild(a);
-
-		URL.revokeObjectURL(url);
+	function handleRowClick(row: CompiledPulseMetadata): void {
+		selectedMetadata = { ...row };
+		isNewEntry = false;
+		open = true;
 	}
+
+	function handleNewEntry(): void {
+		selectedMetadata = { ...new CompiledPulseMetadata() };
+		isNewEntry = true;
+		open = true;
+	}
+
+	function handleModalClose() {
+		open = false;
+		selectedMetadata = null;
+		isNewEntry = false;
+	}
+
+	function handleCompletePulse() {
+		if (!selectedMetadata) {
+			return;
+		}
+
+		isCompletingPulse = true;
+	}
+
+	function handleCancelComplete() {
+		isCompletingPulse = false;
+	}
+
+	async function handleConfirmComplete() {
+		if (!selectedMetadata) {
+			return;
+		}
+		isCompletingPulse = false;
+
+		selectedMetadata.status = 'Completed';
+
+		await handlePulseFileSubmission(selectedMetadata);
+		await handleFlagFile(selectedMetadata);
+
+		completeNotify = true;
+		setTimeout(() => {
+			completeNotify = false;
+		}, 3000);
+
+		await fetchPulses();
+	}
+
+	async function handleFlagFile(metadata: CompiledPulseMetadata) {
+		try {
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}`;
+			const fileName = `currentPulse.json`;
+
+			const flagData = {
+				'pulseID': metadata.pulse.pulseID,
+				'pulseLocation': `pulses/${metadata.pulse.pulseID}.json`,
+				'pulseStatus': metadata.status,
+				'experimentID': metadata.experimentID,
+				'diagnosticSetupID': metadata.diagnosticSetupID
+			};
+
+			const saveMetadata = {
+				targetPath: `${filePath}/${fileName}`,
+				metadata: flagData
+			};
+
+			const fileResponse = await fetch('/api/save-json', {
+				method: 'POST',
+				headers: {
+					'Content-Type': 'application/json'
+				},
+				body: JSON.stringify(saveMetadata)
+			});
+
+			if (!fileResponse.ok) {
+				const errorData = await fileResponse.json();
+				throw new Error(`Failed to save metadata file: ${errorData.message}`);
+			}
+		} catch (error) {
+			console.error('Error saving metadata file:', error);
+			throw error;
+		}
+	}	
+
+	onMount(() => {
+		fetchPulses();
+		fetchExperiments();
+		fetchDiagnosticSetups();
+	});
+
+	let pulseQualityOptions: MenuOption[] = [
+		{ label: 'Success', value: 'Success' },
+		{ label: 'Fail', value: 'Fail' }
+	];
+
+	let coilCurrentTypeOptions: MenuOption[] = [
+		{ label: 'AC', value: 'AC' },
+		{ label: 'DC', value: 'DC' }
+	];
+
+	let coolantTypeOptions: MenuOption[] = [
+		{ label: 'Water', value: 'Water' },
+		{ label: 'Demineralised Water', value: 'Demineralised Water' },
+		{ label: 'Treated Water', value: 'Treated Water' }
+	];
+
+	let experimentOptions: MenuOption[] = [];
+
+	let diagnosticSetupOptions: MenuOption[] = [];
+
+	let inputPowerToggle = true;
+	let isCompletingPulse = false;
+
+	let saveNotify = false;
+	let completeNotify = false;
 </script>
 
-<div class="flex flex-col items-center justify-start min-h-screen bg-neutral p-4 w-full">
-	<div class="w-full max-w-screen-xl">
-		<ExpansionPanel open={true}>
-			<div slot="trigger" class="flex-1 p-3">Pulse Information</div>
-			<div class="p-4 flex flex-col space-y-4">
-				<Field label="Experiment ID">
-					<Input placeholder="Experiment identifier" bind:value={currentMetadata.experiment} />
-				</Field>
-				<Field label="Diagnostics">
-					<Input placeholder="Enter diagnostics separated by commas" on:input={handleDiagnosticsInput} />
-				</Field>
-				<Field label="Pulse ID">
-					<Input placeholder="Pulse identifier" bind:value={currentMetadata.pulse.pulseID} />
-				</Field>
-				<Field label="Operator 1 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.pulse.firstOperator.firstName} />
-				</Field>
-				<Field label="Operator 1 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.pulse.firstOperator.lastName} />
-				</Field>
-				<Field label="Operator 1 email">
-					<Input placeholder="Operator 1 email" bind:value={currentMetadata.pulse.firstOperator.email} />
-				</Field>
-				<Field label="Operator 2 first name">
-					<Input placeholder="First name" bind:value={currentMetadata.pulse.secondOperator.firstName} />
-				</Field>
-				<Field label="Operator 2 last name">
-					<Input placeholder="Last name" bind:value={currentMetadata.pulse.secondOperator.lastName} />
-				</Field>
-				<Field label="Operator 2 email">
-					<Input placeholder="Operator 2 email" bind:value={currentMetadata.pulse.secondOperator.email} />
-				</Field>
-				<Field label="Pulse Start">
-					<Input type="datetime-local" bind:value={currentMetadata.pulse.pulseStart} />
-				</Field>
-				<Field label="Pulse Duration">
-					<Input type="number" placeholder="Duration" bind:value={currentMetadata.pulse.pulseDuration} />
-				</Field>
-				<Field label="Data Capture Start">
-					<Input type="datetime-local" bind:value={currentMetadata.pulse.dataCaptureStart} />
-				</Field>
-				<Field label="Operator Comment">
-					<Input placeholder="Operator comment" bind:value={currentMetadata.pulse.operatorComment} />
-				</Field>
-				<Field label="Pulse Quality">
-					<Input placeholder="Success / Fail" bind:value={currentMetadata.pulse.pulseQuality} />
-				</Field>
-				<div class="col-span-2">
-					<ExpansionPanel>
-						<div slot="trigger" class="flex-1 p-3">Coil Information</div>
-						<div class="p-4 grid grid-cols-2 gap-4">
-							<Field label="Current Type">
-								<Input placeholder="AC / DC" bind:value={currentMetadata.pulse.coilInformation.currentType} />
-							</Field>
-							<Field label="Input Power">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputPower} />
-							</Field>
-							<Field label="Input Current">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputCurrent} />
-							</Field>
-							<Field label="Input Voltage">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.inputVoltage} />
-							</Field>
-							<Field label="Output Frequency">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputFrequency} />
-							</Field>
-							<Field label="Output Power">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputPower} />
-							</Field>
-							<Field label="Output Current">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputCurrent} />
-							</Field>
-							<Field label="Output Voltage">
-								<Input type="number" bind:value={currentMetadata.pulse.coilInformation.outputVoltage} />
-							</Field>
-						</div>
-					</ExpansionPanel>
-					<ExpansionPanel>
-						<div slot="trigger" class="flex-1 p-3">Coolant Information</div>
-						<div class="p-4 grid grid-cols-2 gap-4">
-							<Field label="Coolant Type">
-								<Input placeholder="Water / Demineralised Water / Treated Water" bind:value={currentMetadata.pulse.coolantInformation.coolantType} />
-							</Field>
-							<Field label="Coolant Flow Rate">
-								<Input placeholder="High / Low" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.rate} />
-							</Field>
-							<Field label="Coolant Flow Setpoint">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.setpoint} />
-							</Field>
-							<Field label="Coolant Flow Value">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.value} />
-							</Field>
-							<Field label="Coolant Flow Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantFlow.variance} />
-							</Field>
-							<Field label="Coolant Temperature Setpoint">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.setpoint} />
-							</Field>
-							<Field label="Coolant Temperature In">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.in} />
-							</Field>
-							<Field label="Coolant Temperature In Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.inVariance} />
-							</Field>
-							<Field label="Coolant Temperature Out">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.out} />
-							</Field>
-							<Field label="Coolant Temperature Out Variance">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.outVariance} />
-							</Field>
-							<Field label="Coolant Temperature Delta">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantTemperature.delta} />
-							</Field>
-							<Field label="Coolant Pressure In">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.in} />
-							</Field>
-							<Field label="Coolant Pressure Out">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.out} />
-							</Field>
-							<Field label="Coolant Pressure Delta">
-								<Input type="number" bind:value={currentMetadata.pulse.coolantInformation.coolantPressure.delta} />
-							</Field>
-						</div>
-					</ExpansionPanel>
-				</div>
-			</div>
-		</ExpansionPanel>
+<div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
+	<div class="mb-4 flex justify-between items-center">
+		<h2 class="text-2xl font-bold">Pulse Metadata</h2>
+		<Button on:click={handleNewEntry} variant="fill">New Pulse</Button>
 	</div>
-	<div class="button-group w-full max-w-screen-xl">
-		<div class="left-buttons">
-			<button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" on:click={exportForm}>Download</button>
-		</div>
-		<div class="right-buttons">
-			<button class="px-4 py-2 bg-gray-500 text-white rounded hover:bg-gray-600" on:click={resetForm}>Reset</button>
-			<button class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600" on:click={handleSubmit}>Submit</button>
-		</div>
+	<div class="table-container">
+		<Table
+			data={sortedData}
+			columns={[
+				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
+				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
+				{ name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
+				{ name: 'pulse.pulseQuality', align: 'left', header: 'Pulse Quality' },
+				{ name: 'status', align: 'left', header: 'Status' }
+			]}
+			{order}
+			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
+			class="styled-table"
+		/>
 	</div>
 </div>
 
+<Dialog {open} on:close={handleModalClose} class="pulseInputDialog">
+	<div slot="title">
+		<div class="flex justify-between mt-4 relative">
+			<div>{isNewEntry ? 'Create New Pulse' : 'Edit Pulse Metadata'}</div>
+			<div class="absolute right-20 top-0 z-10">
+			</div>
+		</div>	
+	</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div class="p-4 grid grid-cols-3 gap-4">
+				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
+				<SelectField
+					options={experimentOptions}
+					label="Experiment"
+					value={draft.experimentID}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.experimentID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<SelectField
+					options={diagnosticSetupOptions}
+					label="Diagnostic Setup"
+					value={draft.diagnosticSetupID}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.diagnosticSetupID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Pulse ID"
+					value={draft.pulse.pulseID}
+					on:change={(e) => {
+						draft.pulse.pulseID = e.detail.value;
+						refresh();
+					}}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
+				<TextField
+					label="First Name"
+					value={draft.pulse.firstOperator.firstName}
+					on:change={(e) => {
+						draft.pulse.firstOperator.firstName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Last Name"
+					value={draft.pulse.firstOperator.lastName}
+					on:change={(e) => {
+						draft.pulse.firstOperator.lastName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Email"
+					value={draft.pulse.firstOperator.email}
+					on:change={(e) => {
+						draft.pulse.firstOperator.email = e.detail.value;
+						refresh();
+					}}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
+				<TextField
+					label="First Name"
+					value={draft.pulse.secondOperator.firstName}
+					on:change={(e) => {
+						draft.pulse.secondOperator.firstName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Last Name"
+					value={draft.pulse.secondOperator.lastName}
+					on:change={(e) => {
+						draft.pulse.secondOperator.lastName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Email"
+					value={draft.pulse.secondOperator.email}
+					on:change={(e) => {
+						draft.pulse.secondOperator.email = e.detail.value;
+						refresh();
+					}}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Pulse Details</h3>
+				<div class="col-span-3">
+					<TextField
+						label="Comment"
+						value={draft.pulse.comment}
+						on:change={(e) => {
+							draft.pulse.operatorComment = e.detail.value;
+							refresh();
+						}}
+						multiline
+					/>
+				</div>
+				<SelectField
+					options={pulseQualityOptions}
+					label="Pulse Quality"
+					value={draft.pulse.pulseQuality}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.pulse.pulseQuality = e.detail.value;
+						refresh();
+					}}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
+				<SelectField
+					options={coilCurrentTypeOptions}
+					label="Current Type"
+					value={draft.pulse.coilInformation.currentType}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.pulse.coilInformation.currentType = e.detail.value;
+						if (e.detail.value === 'AC') {
+							inputPowerToggle = true;
+						} else {
+							inputPowerToggle = false;
+						}
+						refresh();
+					}}
+				/>
+
+				<TextField
+					label="Input Power"
+					value={draft.pulse.coilInformation.inputPower}
+					on:change={(e) => {
+						draft.pulse.coilInformation.inputPower = e.detail.value;
+						refresh();
+					}}
+					disabled={inputPowerToggle}
+				/>
+				<TextField
+					label="Input Current"
+					value={draft.pulse.coilInformation.inputCurrent}
+					on:change={(e) => {
+						draft.pulse.coilInformation.inputCurrent = e.detail.value;
+						refresh();
+					}}
+					disabled={inputPowerToggle}
+				/>
+				<TextField
+					label="Input Voltage"
+					value={draft.pulse.coilInformation.inputVoltage}
+					on:change={(e) => {
+						draft.pulse.coilInformation.inputVoltage = e.detail.value;
+						refresh();
+					}}
+					disabled={inputPowerToggle}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
+				<SelectField
+					options={coolantTypeOptions}
+					label="Coolant Type"
+					value={draft.pulse.coolantInformation.coolantType}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.pulse.coolantInformation.coolantType = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Target Coolant Flow"
+					value={draft.pulse.coolantInformation.coolantFlow.setpoint}
+					on:change={(e) => {
+						draft.pulse.coolantInformation.coolantFlow.setpoint = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Target Coolant Temperature"
+					value={draft.pulse.coolantInformation.coolantTemperature.setpoint}
+					on:change={(e) => {
+						draft.pulse.coolantInformation.setpoint = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+
+			<div class="flex justify-between mt-4 relative">
+				{#if !isCompletingPulse}
+					<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
+				{:else}
+					<div class="flex gap-2">
+						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
+						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>
+					</div>
+				{/if}
+			 
+				<div class="absolute left-1/2 -translate-x-1/2 -top-3 z-10">
+					<Notification title="Successfully Saved!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
+					<Notification title="Successfully Completed!" icon={mdiCheckCircleOutline} color="success" closeIcon open={completeNotify} />					
+				</div>
+				
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
+			 </div>
+		</Form>
+	</div>
+</Dialog>
+
 <style>
-	.button-center {
-		display: flex;
-		justify-content: center;
-		align-items: center;
-		gap: 10px;
+	.table-container {
+		background-color: white;
+		box-shadow:
+			0 4px 6px -1px rgba(0, 0, 0, 0.1),
+			0 2px 4px -1px rgba(0, 0, 0, 0.06);
+		border-radius: 0.5rem;
+		overflow: hidden;
 	}
 
-	.button-group {
-		display: flex;
-		justify-content: space-between;
-		align-items: center;
-		margin-top: 10px;
+	:global(.pulseInputDialog) {
+		max-height: 90vh;
 	}
 
-	.right-buttons {
-		display: flex;
-		gap: 10px;
+	:global(.styled-table) {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	:global(.styled-table th) {
+		background-color: #2563eb;
+		color: white;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.75rem 1.5rem;
+		text-align: left;
+	}
+
+	:global(.styled-table td) {
+		padding: 1rem 1.5rem;
+		color: #1f2937;
+	}
+
+	:global(.styled-table tr:nth-child(even)) {
+		background-color: #f9fafb;
+	}
+
+	:global(.styled-table tr:hover) {
+		background-color: #f3f4f6;
 	}
 </style>
