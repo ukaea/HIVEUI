@@ -117,6 +117,16 @@
 		}
 	}
 
+	class SpectralRange {
+		temperatureRange: string;
+		wavelengthRange: string;
+
+		constructor() {
+			this.temperatureRange = '';
+			this.wavelengthRange = '';
+		}
+	}
+
 	class LensInformation {
 		make: string;
 		model: string;
@@ -185,6 +195,45 @@
 		}
 	}
 
+	class Flowmeter{
+		cameraInformation: CameraInformation;
+		flowRange: string;
+		flowmeterType: string;
+
+
+		constructor(){
+			this.cameraInformation = new CameraInformation();
+			this.flowRange = '';
+			this.flowmeterType = '';
+		}
+	}
+
+	class Pyrometer{
+		cameraInformation: CameraInformation;
+		spectralRange: SpectralRange;
+		aimingMethod: string;
+
+
+		constructor(){
+			this.cameraInformation = new CameraInformation();
+			this.spetralRange = new SpectralRange();
+			this.aimingMethod = '';
+		}
+	}
+
+	class IrCamera{
+		cameraInformation: CameraInformation;
+		spectralRange: SpectralRange;
+		lens: string;
+
+
+		constructor(){
+			this.cameraInformation = new CameraInformation();
+			this.spetralRange = new SpectralRange();
+			this.lens = '';
+		}
+	}
+
 	class DeviceMetadata {
 		port: Port;
 		deviceID: string;
@@ -231,6 +280,34 @@
 		}
 	}
 
+	class FlowmeterMetadata extends DeviceMetadata {
+		diagnostic: Flowmeter;
+
+		constructor() {
+			super();
+			this.diagnostic = new Flowmeter();
+		}
+	}
+
+
+	class PyrometerMetadata extends DeviceMetadata {
+		diagnostic: Pyrometer;
+
+		constructor() {
+			super();
+			this.diagnostic = new Pyrometer();
+		}
+	}
+
+	class IrCameraMetadata extends DeviceMetadata {
+		diagnostic: IrCamera;
+
+		constructor() {
+			super();
+			this.diagnostic = new IrCamera();
+		}
+	}
+
 	let sortedData: DeviceMetadata[] = [];
 	const order = tableOrderStore({ initialBy: 'deviceID', initialDirection: 'asc' });
 	let open = false;
@@ -248,6 +325,15 @@
 
 	let openCoil = false;
 	let isNewCoil = false;
+
+	let openFlowmeter = false;
+	let isNewFlowmeter = false;
+
+	let openPyrometer = false;
+	let isNewPyrometer = false;
+
+	let openIrCamera = false;
+	let isNewIrCamera = false;
 
 	function mapScicatToDevice(apiResponse: any): DeviceMetadata {
 		const metadata = new DeviceMetadata();
@@ -404,6 +490,24 @@
 		openCoil = true;
 	}
 
+	function handleNewFlowmeter(): void{
+		selectedMetadata = { ... new FlowmeterMetadata() };
+		isNewFlowmeter = true;
+		openFlowmeter = true;
+	}
+
+	function handleNewPyrometer(): void{
+		selectedMetadata = { ... new PyrometerMetadata() };
+		isNewPyrometer = true;
+		openPyrometer = true;
+	}
+
+	function handleNewIrCamera(): void{
+		selectedMetadata = { ... new IrCameraMetadata() };
+		isNewIrCamera = true;
+		openIrCamera = true;
+	}
+
 	function handleThermocoupleClose(): void {
 		openThermocouple = false;
 		selectedMetadata = null;
@@ -426,6 +530,24 @@
 		openCoil = false;
 		selectedMetadata = null;
 		isNewCoil = false;
+	}
+
+	function handleFlowmeterClose(): void {
+		openFlowmeter = false;
+		selectedMetadata = null;
+		isNewFlowmeter = false;
+	}
+
+	function handlePyrometerClose(): void {
+		openPyrometer = false;
+		selectedMetadata = null;
+		isNewPyrometer = false;
+	}
+
+	function handleIrCameraClose(): void {
+		openPyrometer = false;
+		selectedMetadata = null;
+		isNewPyrometer = false;
 	}
 
 	function handleModalClose() {
@@ -451,6 +573,9 @@
 			<Button on:click={handleNewCamera} variant="fill">New Camera</Button>
 			<Button on:click={handleNewDIC} variant="fill">New DIC</Button>
 			<Button on:click={handleNewCoil} variant="fill">New Coil</Button>
+			<Button on:click={handleNewFlowmeter} variant="fill">New Flowmeter</Button>
+			<Button on:click={handleNewPyrometer} variant="fill">New Pyrometer</Button>
+			<Button on:click={handleNewIrCamera} variant="fill">New IR Camera</Button>
 		</div>
 	</div>
 	<div class="table-container">
@@ -1086,6 +1211,262 @@
 						if (!draft.diagnostic) draft.diagnostic = {};
 						if (!draft.diagnostic.OperationFreq) draft.diagnostic.OperationFreq = {};
 						draft.diagnostic.OperationFreq = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+
+<Dialog open={openFlowmeter} on:close={handleFlowmeterClose}>
+	<div slot="title">{isNewEntry ? 'Create New Flowmeter' : 'Edit Flowmeter Metadata'}</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<div class="col-span-2">
+					<TextField
+						label="Device ID"
+						value= {draft.deviceID ?? ''}
+						on:change={(e) => {
+							draft.deviceID = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+				<TextField
+					label="Make"
+					value= {draft.diagnostic?.cameraInformation?.make ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.make = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Model"
+					value= {draft.diagnostic?.cameraInformation?.model ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.model) draft.diagnostic.model = {};
+						draft.diagnostic.cameraInformation.model = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Part Number"
+					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Serial Number"
+					value= {draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.serialNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Flow Range"
+					value= {draft.diagnostic.flowRange}
+					on:change={(e) => {
+						draft.diagnostic.flowRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Flowmeter Type"
+					value= {draft.diagnostic.flowmeterType}
+					on:change={(e) => {
+						draft.diagnostic.flowmeterType = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+
+<Dialog open={openPyrometer} on:close={handlePyrometerClose}>
+	<div slot="title">{isNewEntry ? 'Create New Pyrometer' : 'Edit Pyrometer Metadata'}</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<div class="col-span-2">
+					<TextField
+						label="Device ID"
+						value= {draft.deviceID ?? ''}
+						on:change={(e) => {
+							draft.deviceID = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+				<TextField
+					label="Make"
+					value= {draft.diagnostic?.cameraInformation?.make ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.make = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Model"
+					value= {draft.diagnostic?.cameraInformation?.model ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.model) draft.diagnostic.model = {};
+						draft.diagnostic.cameraInformation.model = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Part Number"
+					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Serial Number"
+					value= {draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.serialNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Temperature Range"
+					value= {draft.diagnostic?.spectralRange?.temperatureRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
+						draft.diagnostic.spectralRange.temperatureRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Wavelength Range"
+					value= {draft.diagnostic?.spectralRange?.wavelengthRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
+						draft.diagnostic.spectralRange.wavelengthRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Aiming Method"
+					value= {draft.diagnostic?.aimingMethod}
+					on:change={(e) => {
+						draft.diagnostic.aimingMethod = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+
+
+<Dialog open={openIrCamera} on:close={handleIrCameraClose}>
+	<div slot="title">{isNewEntry ? 'Create New IR Camera' : 'Edit IR Camera Metadata'}</div>
+	<div class="p-4">
+		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<div class="col-span-2">
+					<TextField
+						label="Device ID"
+						value= {draft.deviceID ?? ''}
+						on:change={(e) => {
+							draft.deviceID = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+				<TextField
+					label="Make"
+					value= {draft.diagnostic?.cameraInformation?.make ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.make = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Model"
+					value= {draft.diagnostic?.cameraInformation?.model ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.model) draft.diagnostic.model = {};
+						draft.diagnostic.cameraInformation.model = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Part Number"
+					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Serial Number"
+					value= {draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.cameraInformation.serialNumber = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Temperature Range"
+					value= {draft.diagnostic?.spectralRange?.temperatureRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
+						draft.diagnostic.spectralRange.temperatureRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Wavelength Range"
+					value= {draft.diagnostic?.spectralRange?.wavelengthRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
+						draft.diagnostic.spectralRange.wavelengthRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Lens"
+					value= {draft.diagnostic.lens}
+					on:change={(e) => {
+						draft.diagnostic.lens = e.detail.value;
 						refresh();
 					}}
 				/>
