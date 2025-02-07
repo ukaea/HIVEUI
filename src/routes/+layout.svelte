@@ -1,10 +1,16 @@
 <script lang="ts">
-	import { AppBar, AppLayout, NavItem, settings } from 'svelte-ux';
+	import { AppBar, AppLayout, NavItem, Button, settings } from 'svelte-ux';
 	import '../app.postcss';
 	import User from '../components/user.svelte';
 	import type { LayoutServerData } from './$types';
 	import { page } from '$app/stores';
 	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse } from '@mdi/js';
+    import { triggerDAG } from "$lib/triggerPipeline";
+    import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from "$env/static/public";
+
+    async function handleTrigger() {
+        const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
+    }
 
 	export let data: LayoutServerData;
 
@@ -28,6 +34,7 @@
 			</a>
 		</svelte:fragment>
 		<div slot="actions" class="flex items-center justify-end w-full">
+            <Button variant="fill" on:click={handleTrigger} class="mr-4">Trigger Pipeline</Button>
 			<User data={{ user: data?.session?.user ?? undefined, status: Boolean(data?.session) }} />
 		</div>
 	</AppBar>

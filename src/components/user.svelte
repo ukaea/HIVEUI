@@ -39,7 +39,7 @@
 <div>
 	{#if data.status}
 		<Toggle let:on={open} let:toggle let:toggleOff>
-			<Button variant="fill" size="lg" on:click={toggle}>
+			<Button variant="fill" on:click={toggle} class="mr-4">
 				{data.user?.name ?? 'User'}
 				<Menu {open} on:close={toggleOff} matchWidth>
 					<MenuItem>
