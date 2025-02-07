@@ -5,22 +5,11 @@
 	import type { LayoutServerData } from './$types';
 	import { page } from '$app/stores';
 	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse } from '@mdi/js';
-    import { triggerDAG } from '../lib/triggerAirflow';
+    import { triggerDAG } from "$lib/triggerPipeline";
+    import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from "$env/static/public";
 
-    let directory: string = "/mnt/d/KirillP/Check01_XCor";
-    let inputfile: string = "Check01_XCor.m3inp";
     async function handleTrigger() {
-        let result: TriggerDAGResponse | null = null;
-        let error: string | null = null;
-        try {
-          result = await triggerDAG(directory, inputfile);
-          error = null;
-        } catch (err) {
-          error = (err as Error).message;
-          result = null;
-        }
-        console.log("Result:", result);
-        console.log("Error:", error);
+        const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
     }
 
 	export let data: LayoutServerData;
