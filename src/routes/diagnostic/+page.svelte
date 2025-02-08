@@ -18,20 +18,18 @@
 	}
 
 	class Thermocouple {
-		status: string;
-		attachment: string;
+		attachmentType: string;
 		tcType: string;
 		location: string;
-		areaType: string;
+		dataChannel: string;
 		circleDiameter: string;
 		noiseFloor: string;
 
 		constructor() {
-			this.status = '';
-			this.attachment = '';
+			this.attachmentType = '';
 			this.tcType = '';
 			this.location = '';
-			this.areaType = '';
+			this.dataChannel = '';
 			this.circleDiameter = '';
 			this.noiseFloor = '';
 		}
@@ -104,7 +102,7 @@
 	class CameraInformation {
 		make: string;
 		model: string;
-		serialNumber?: string;
+		serialNumber: string;
 		resolutionX: string;
 		resolutionY: string;
 
@@ -646,8 +644,9 @@
 	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Device Information</h3>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<div class="col-span-2">
+				<h3 class="col-span-2 font-bold mt-4">Device Information</h3>
 				<TextField
 					label="Device ID"
 					value={draft.deviceID}
@@ -656,16 +655,7 @@
 						refresh();
 					}}
 				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Thermocouple (TC)</h3>
-				<TextField
-					label="Attachment"
-					value={draft.diagnostic.attachment}
-					on:change={(e) => {
-						draft.diagnostic.attachment = e.detail.value;
-						refresh();
-					}}
-				/>
+				</div>
 				<TextField
 					label="TC Type"
 					value={draft.diagnostic.tcType}
@@ -675,26 +665,27 @@
 					}}
 				/>
 				<TextField
-					label="Location"
+					label="Attachment Type"
+					value={draft.diagnostic.attachmentType}
+					on:change={(e) => {
+						draft.diagnostic.attachment = e.detail.value;
+						refresh();
+					}}
+				/>
+				<h3 class="col-span-2 font-bold mt-4">Thermocouple (TC)</h3>
+				<TextField
+					label="Data Channel"
+					value={draft.diagnostic.dataChannel}
+					on:change={(e) => {
+						draft.diagnostic.dataChannel = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Location / Position / Description"
 					value={draft.diagnostic.location}
 					on:change={(e) => {
 						draft.diagnostic.location = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Circle Diameter"
-					value={draft.diagnostic.circleDiameter}
-					on:change={(e) => {
-						draft.diagnostic.circleDiameter = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Noise Floor"
-					value={draft.diagnostic.noiseFloor}
-					on:change={(e) => {
-						draft.diagnostic.noiseFloor = e.detail.value;
 						refresh();
 					}}
 				/>
