@@ -1254,16 +1254,6 @@
 					}}
 				/>
 				<TextField
-					label="Part Number"
-					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
 					label="Serial Number"
 					value= {draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
 					on:change={(e) => {
@@ -1289,6 +1279,10 @@
 						refresh();
 					}}
 				/>
+			</div>
+			<div class="flex justify-end gap-2 mt-4">
+				<Button on:click={() => commit()} variant="fill">Save</Button>
+				<Button on:click={handleDICClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
