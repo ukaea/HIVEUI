@@ -115,15 +115,6 @@
 		}
 	}
 
-	class SpectralRange {
-		temperatureRange: string;
-		wavelengthRange: string;
-
-		constructor() {
-			this.temperatureRange = '';
-			this.wavelengthRange = '';
-		}
-	}
 
 	class LensInformation {
 		make: string;
@@ -208,27 +199,33 @@
 
 	class Pyrometer{
 		cameraInformation: CameraInformation;
-		spectralRange: SpectralRange;
 		aimingMethod: string;
 
 
 		constructor(){
 			this.cameraInformation = new CameraInformation();
-			this.spetralRange = new SpectralRange();
 			this.aimingMethod = '';
 		}
 	}
 
 	class IrCamera{
 		cameraInformation: CameraInformation;
-		spectralRange: SpectralRange;
-		lens: string;
+		temperatureRange: string;
+		spectralRange: string;
+		emissivity: string;
+		framerate: string;
+		port: 		Port;
+		viewportID: string;
 
 
 		constructor(){
 			this.cameraInformation = new CameraInformation();
-			this.spetralRange = new SpectralRange();
-			this.lens = '';
+			this.temperatureRange = '';
+			this.spectralRange = '';
+			this.emissivity = '';
+			this.framerate = '';
+			this.port = new Port();
+			this.viewportID = '';
 		}
 	}
 
@@ -1377,7 +1374,6 @@
 </Dialog>
 
 
-
 <Dialog open={openIrCamera} on:close={handleIrCameraClose}>
 	<div slot="title">{isNewEntry ? 'Create New IR Camera' : 'Edit IR Camera Metadata'}</div>
 	<div class="p-4">
@@ -1414,12 +1410,40 @@
 					}}
 				/>
 				<TextField
-					label="Part Number"
-					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
+					label="Temperature Range"
+					value= {draft.diagnostic?.temperatureRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.temperatureRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Spectral Range"
+					value= {draft.diagnostic?.spectralRange ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.spectralRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Resolution X"
+					value= {draft.diagnostic?.cameraInformation?.resolutionX ?? ''}
 					on:change={(e) => {
 						if (!draft.diagnostic) draft.diagnostic = {};
 						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
+						draft.diagnostic.resolutionX = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Resolution Y"
+					value= {draft.diagnostic?.cameraInformation?.resolutionY ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
+						draft.diagnostic.resolutionY = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -1433,34 +1457,47 @@
 						refresh();
 					}}
 				/>
+				<h3 class="col-span-2 font-bold mt-4">Device Settings</h3>
 				<TextField
-					label="Temperature Range"
-					value= {draft.diagnostic?.spectralRange?.temperatureRange ?? ''}
+					label="Emissivity"
+					value= {draft.diagnostic?.emissivity ?? ''}
 					on:change={(e) => {
 						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
-						draft.diagnostic.spectralRange.temperatureRange = e.detail.value;
+						draft.diagnostic.emissivity = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Wavelength Range"
-					value= {draft.diagnostic?.spectralRange?.wavelengthRange ?? ''}
+					label="Framerate"
+					value= {draft.diagnostic?.framerate ?? ''}
 					on:change={(e) => {
 						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
-						draft.diagnostic.spectralRange.wavelengthRange = e.detail.value;
+						draft.diagnostic.framerate = e.detail.value;
+						refresh();
+					}}
+				/>
+				<h3 class="col-span-2 font-bold mt-4">Location</h3>
+				<TextField
+					label="Port ID"
+					value= {draft.port.portID}
+					on:change={(e) => {
+						draft.port.portID = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Lens"
-					value= {draft.diagnostic.lens}
+					label="Viewport ID"
+					value= {draft.diagnostic?.viewportID ?? ''}
 					on:change={(e) => {
-						draft.diagnostic.lens = e.detail.value;
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.viewportID = e.detail.value;
 						refresh();
 					}}
 				/>
+			</div>
+			<div class="flex justify-end gap-2 mt-4">
+				<Button on:click={() => commit()} variant="fill">Save</Button>
+				<Button on:click={handleDICClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
