@@ -199,12 +199,22 @@
 
 	class Pyrometer{
 		cameraInformation: CameraInformation;
-		aimingMethod: string;
+		temperatureRange: string;
+		spectralRange: string;
+		emissivity: string;
+		framerate: string;
+		port: 		Port;
+		viewportID: string;
 
 
 		constructor(){
 			this.cameraInformation = new CameraInformation();
-			this.aimingMethod = '';
+			this.temperatureRange = '';
+			this.spectralRange = '';
+			this.emissivity = '';
+			this.framerate = '';
+			this.port = new Port();
+			this.viewportID = '';
 		}
 	}
 
@@ -1321,16 +1331,6 @@
 					}}
 				/>
 				<TextField
-					label="Part Number"
-					value= {draft.diagnostic?.cameraInformation?.partNumber ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.partNumber = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
 					label="Serial Number"
 					value= {draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
 					on:change={(e) => {
@@ -1342,32 +1342,63 @@
 				/>
 				<TextField
 					label="Temperature Range"
-					value= {draft.diagnostic?.spectralRange?.temperatureRange ?? ''}
+					value= {draft.diagnostic?.temperatureRange ?? ''}
 					on:change={(e) => {
 						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
-						draft.diagnostic.spectralRange.temperatureRange = e.detail.value;
+						draft.diagnostic.temperatureRange = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Wavelength Range"
-					value= {draft.diagnostic?.spectralRange?.wavelengthRange ?? ''}
+					label="Spectral Range"
+					value= {draft.diagnostic?.spectralRange ?? ''}
 					on:change={(e) => {
 						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.spectralRange) draft.diagnostic.spectralRange = {};
-						draft.diagnostic.spectralRange.wavelengthRange = e.detail.value;
+						draft.diagnostic.spectralRange = e.detail.value;
+						refresh();
+					}}
+				/>
+				<h3 class="col-span-2 font-bold mt-4">Device Settings</h3>
+				<TextField
+					label="Emissivity"
+					value= {draft.diagnostic?.emissivity ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.emissivity = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Aiming Method"
-					value= {draft.diagnostic?.aimingMethod}
+					label="Framerate"
+					value= {draft.diagnostic?.framerate ?? ''}
 					on:change={(e) => {
-						draft.diagnostic.aimingMethod = e.detail.value;
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.framerate = e.detail.value;
 						refresh();
 					}}
 				/>
+				<h3 class="col-span-2 font-bold mt-4">Location</h3>
+				<TextField
+					label="Port ID"
+					value= {draft.port.portID}
+					on:change={(e) => {
+						draft.port.portID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Viewport ID"
+					value= {draft.diagnostic?.viewportID ?? ''}
+					on:change={(e) => {
+						if (!draft.diagnostic) draft.diagnostic = {};
+						draft.diagnostic.viewportID = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+			<div class="flex justify-end gap-2 mt-4">
+				<Button on:click={() => commit()} variant="fill">Save</Button>
+				<Button on:click={handleDICClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
