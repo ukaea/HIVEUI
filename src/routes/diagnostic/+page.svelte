@@ -550,9 +550,9 @@
 	}
 
 	function handleIrCameraClose(): void {
-		openPyrometer = false;
+		openIrCamera = false;
 		selectedMetadata = null;
-		isNewPyrometer = false;
+		isNewIrCamera = false;
 	}
 
 	function handleModalClose() {
@@ -1282,7 +1282,7 @@
 			</div>
 			<div class="flex justify-end gap-2 mt-4">
 				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleDICClose}>Cancel</Button>
+				<Button on:click={handleFlowmeterClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
@@ -1392,7 +1392,7 @@
 			</div>
 			<div class="flex justify-end gap-2 mt-4">
 				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleDICClose}>Cancel</Button>
+				<Button on:click={handlePyrometerClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
@@ -1522,7 +1522,7 @@
 			</div>
 			<div class="flex justify-end gap-2 mt-4">
 				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleDICClose}>Cancel</Button>
+				<Button on:click={handleIrCameraClose}>Cancel</Button>
 			</div>
 		</Form>
 	</div>
