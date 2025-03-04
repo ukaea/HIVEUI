@@ -13,6 +13,12 @@ AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
 AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
 PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
 PUBLIC_METACAT_URL="<Full URL to Metacat>"
+AIRFLOW_URL="<AirflowURL>"
+AIRFLOW_DAG_ID="<DAGID>"
+AIRFLOW_USERNAME="<AirflowUsername>"
+AIRFLOW_PASSWORD="<AirflowPassword>"
+PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
+PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"
 ```
 
 Then run the following command:
@@ -59,6 +65,12 @@ Developed with Node.js v21.1.0 and npm v10.2.0
    AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
    PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
    PUBLIC_METACAT_URL="<Full URL to Metacat>"
+   AIRFLOW_URL="<AirflowURL>"
+   AIRFLOW_DAG_ID="<DAGID>"
+   AIRFLOW_USERNAME="<AirflowUsername>"
+   AIRFLOW_PASSWORD="<AirflowPassword>"
+   PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
+   PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"   
    ```
 
 ## Running HiveUI (Development)
