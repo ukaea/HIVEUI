@@ -47,52 +47,13 @@
 	let selectedMetadata: ExperimentMetadata | null = null;
 	let isNewEntry = false;
 
-	function mapScicatToExperiment(apiResponse: any): ExperimentMetadata {
+	function mapJSONToExperiment(apiResponse: any): ExperimentMetadata {
 		const metadata = new ExperimentMetadata();
-
-		metadata.experimentID = apiResponse.proposalId || '';
-		metadata.campaignID = ''; // Not available in the API response
-
-		metadata.leadInvestigator = {
-			firstName: apiResponse.pi_firstname || '',
-			lastName: apiResponse.pi_lastname || '',
-			email: apiResponse.pi_email || ''
-		};
-
-		metadata.customer = '';
-
-		// Handle MeasurementPeriodList
-		if (apiResponse.MeasurementPeriodList && apiResponse.MeasurementPeriodList.length > 0) {
-			const measurement = apiResponse.MeasurementPeriodList[0];
-			metadata.experimentStart = measurement.start || '';
-			metadata.experimentEnd = measurement.end || '';
-		}
-
-		metadata.sampleCooling = '';
-		return metadata;
+		return Object.assign(metadata, apiResponse);
 	}
 
-	function mapExperimentToScicat(metadata: ExperimentMetadata): any {
-		return {
-			proposalId: metadata.experimentID,
-			pi_firstname: metadata.leadInvestigator.firstName,
-			pi_lastname: metadata.leadInvestigator.lastName,
-			pi_email: metadata.leadInvestigator.email,
-			email: metadata.leadInvestigator.email,
-			ownerGroup: metadata.customer || 'default_group',
-			title: metadata.experimentType || 'Untitled Experiment',
-			MeasurementPeriodList: [
-				{
-					start: metadata.experimentStart,
-					end: metadata.experimentEnd,
-					instrument: metadata.experimentType
-				}
-			],
-
-			abstract: '',
-			sampleCooling: metadata.sampleCooling,
-			campaignId: metadata.campaignID
-		};
+	function mapExperimentToJSON(metadata: ExperimentMetadata): any {
+		return { ...metadata };
 	}
 
 	async function fetchProposals() {
@@ -109,7 +70,7 @@
 			if (!response.ok) throw new Error('Failed to fetch proposals');
 			const data = await response.json();
 			// Map the API response to ExperimentMetadata
-			sortedData = data.map(mapScicatToExperiment).sort($order.handler);
+			sortedData = data.map(mapJSONToExperiment).sort($order.handler);
 		} catch (error) {
 			console.error('Error fetching proposals:', error);
 			alert('Failed to load proposals. Please try again later.');
@@ -174,7 +135,7 @@
 				throw new Error('No access token available');
 			}
 
-			const mappedMetadata = mapExperimentToScicat(rawMetadata);
+			const mappedMetadata = mapExperimentToJSON(rawMetadata);
 			console.log('Mapped metadata:', mappedMetadata);
 
 			const url = `${PUBLIC_METACAT_URL}/api/v1/proposals?schema=any`;

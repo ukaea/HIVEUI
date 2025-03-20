@@ -249,19 +249,14 @@
 	let openCoil = false;
 	let isNewCoil = false;
 
-	function mapScicatToDevice(apiResponse: any): DeviceMetadata {
+	function mapJSONToDevice(apiResponse: any): DeviceMetadata {
 		const metadata = new DeviceMetadata();
-		metadata.deviceID = apiResponse.pid || '';
-		metadata.port = new Port();
-		return metadata;
+		// Assume all fields are valid
+		return Object.assign(metadata, apiResponse);
 	}
 
-	function mapDeviceToSciCat(metadata: DeviceMetadata): any {
-		return {
-			pid: metadata.deviceID,
-			name: metadata.deviceID,
-			uniqueName: metadata.deviceID
-		};
+	function mapDeviceToJSON(metadata: DeviceMetadata): any {
+		return { ...metadata };
 	}
 
 	async function fetchInstruments() {
@@ -277,7 +272,7 @@
 			});
 			if (!response.ok) throw new Error('Failed to fetch diagnostics');
 			const data = await response.json();
-			sortedData = data.map(mapScicatToDevice).sort($order.handler);
+			sortedData = data.map(mapJSONToDevice).sort($order.handler);
 		} catch (error) {
 			console.error('Error fetching diagnostics:', error);
 			alert('Failed to load diagnostics. Please try again later.');
@@ -342,7 +337,7 @@
 				throw new Error('No access token available');
 			}
 
-			const mappedMetadata = mapDeviceToSciCat(rawMetadata);
+			const mappedMetadata = mapDeviceToJSON(rawMetadata);
 			console.log('Mapped metadata:', mappedMetadata);
 
 			const url = `${PUBLIC_METACAT_URL}/api/v1/instruments?schema=any`;
