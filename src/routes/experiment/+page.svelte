@@ -3,8 +3,8 @@
 	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-	import { mdiMagnify, mdiPlus, mdiPencil, mdiAccount } from '@mdi/js';
+	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 
 	class Person {
 		firstName: string;
@@ -23,7 +23,7 @@
 		experimentID: string;
 		leadInvestigator: Person;
 		customer: string;
-		experimentStart: string;
+		experimentStart: Date;
 		experimentEnd: string;
 		experimentType: string;
 		sampleCooling: string;
@@ -33,7 +33,7 @@
 			this.experimentID = '';
 			this.leadInvestigator = new Person();
 			this.customer = '';
-			this.experimentStart = '';
+			this.experimentStart = new Date();
 			this.experimentEnd = '';
 			this.experimentType = '';
 			this.sampleCooling = '';
@@ -46,30 +46,48 @@
 	let open = false;
 	let selectedMetadata: ExperimentMetadata | null = null;
 	let isNewEntry = false;
+	let localOnly = false;
 
 	function mapJSONToExperiment(apiResponse: any): ExperimentMetadata {
 		const metadata = new ExperimentMetadata();
-		return Object.assign(metadata, apiResponse);
+		const mapped = Object.assign(metadata, apiResponse);
+
+		// Convert date strings to Date objects
+		if (mapped.experimentStart) {
+			mapped.experimentStart = new Date(mapped.experimentStart);
+		}
+		if (mapped.experimentEnd) {
+			mapped.experimentEnd = new Date(mapped.experimentEnd);
+		}
+
+		return mapped;
 	}
 
 	function mapExperimentToJSON(metadata: ExperimentMetadata): any {
 		return { ...metadata };
 	}
 
-	async function fetchProposals() {
+	async function fetchExperiments() {
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals`, {
-				headers: {
-					Authorization: `Bearer ${accessToken}`
-				}
-			});
+
+			if (localOnly) {
+				const files = await getJsonFiles('experiments');
+				const data = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
+				sortedData = data.map(mapJSONToExperiment).sort($order.handler);
+
+				// Log the sorted data and type of each entry
+				console.log('Sorted Data:', sortedData);
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
 			if (!response.ok) throw new Error('Failed to fetch proposals');
 			const data = await response.json();
-			// Map the API response to ExperimentMetadata
 			sortedData = data.map(mapJSONToExperiment).sort($order.handler);
 		} catch (error) {
 			console.error('Error fetching proposals:', error);
@@ -79,17 +97,22 @@
 
 	async function handleMetadataSubmit(event: CustomEvent<ExperimentMetadata>) {
 		const rawMetadata = event.detail;
-		console.log('Raw metadata:', rawMetadata);
-
 		try {
 			await handleFileSubmission(rawMetadata);
 		} catch (error) {
 			console.error('File submission failed:', error);
 		}
 
+		if (localOnly) {
+			handleModalClose();
+			await fetchExperiments(); // Refresh the data
+			return;
+		}
+
 		try {
 			await handleAPISubmission(rawMetadata, isNewEntry);
 			handleModalClose();
+			await fetchExperiments();
 		} catch (error) {
 			console.error('API submission failed:', error);
 		}
@@ -101,18 +124,9 @@
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/`;
 			const fileName = `${experimentID}.json`;
 
-			const saveMetadata = {
-				targetPath: `${filePath}/${fileName}`,
-				metadata: rawMetadata
-			};
+			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: rawMetadata };
 
-			const fileResponse = await fetch('/api/save-json', {
-				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
-				body: JSON.stringify(saveMetadata)
-			});
+			const fileResponse = await fetch('/api/save-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saveMetadata) });
 
 			if (!fileResponse.ok) {
 				const errorData = await fileResponse.json();
@@ -140,25 +154,49 @@
 
 			const url = `${PUBLIC_METACAT_URL}/api/v1/proposals?schema=any`;
 			const method = isNewEntry ? 'POST' : 'POST';
-			const endpointResponse = await fetch(url, {
-				method: method,
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${accessToken}`
-				},
-				body: JSON.stringify(mappedMetadata)
-			});
+			const endpointResponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(mappedMetadata) });
 
 			if (!endpointResponse.ok) throw new Error('Failed to save proposal to endpoint');
 
 			console.log('Proposal submitted to API successfully');
 			alert(isNewEntry ? 'New proposal submitted successfully!' : 'Proposal updated successfully!');
-
-			await fetchProposals(); // Refresh the data
 		} catch (error) {
 			console.error('Error submitting proposal to API:', error);
 			alert(`Failed to submit proposal to API: ${error.message}`);
 			throw error; // Re-throw the error if you want calling code to handle it
+		}
+	}
+
+	function handleDelete(): void {
+		if (!selectedMetadata) return;
+
+		if (confirm(`Are you sure you want to delete the experiment with ID: ${selectedMetadata.experimentID}?`)) {
+			if (localOnly) {
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/${selectedMetadata.experimentID}.json`;
+				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete local file');
+						alert('Experiment deleted successfully');
+						fetchExperiments();
+					})
+					.catch((error) => {
+						console.error('Error deleting local file:', error);
+						alert(`Failed to delete experiment: ${error.message}`);
+					});
+			} else {
+				const accessToken = $page.data.session?.sessionToken;
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals/${selectedMetadata.experimentID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete proposal from API');
+						alert('Experiment deleted successfully');
+						fetchExperiments();
+					})
+					.catch((error) => {
+						console.error('Error deleting proposal from API:', error);
+						alert(`Failed to delete experiment: ${error.message}`);
+					});
+			}
+			handleModalClose();
 		}
 	}
 
@@ -181,16 +219,19 @@
 	}
 
 	onMount(() => {
-		fetchProposals();
+		if (PUBLIC_LOCAL_ONLY == 'true') {
+			localOnly = true;
+		}
+		fetchExperiments();
 	});
 	let experimentOptions: MenuOption[] = [
-		{ label: "Induction", value: "Induction" },
-		{ label: "Direct Current", value: "Direct Current" },
+		{ label: 'Induction', value: 'Induction' },
+		{ label: 'Direct Current', value: 'Direct Current' }
 	];
 	let sampleCoolingOptions: MenuOption[] = [
-		{label: "Yes", value: true}, 
-		{label: "No", value: false}
-	]
+		{ label: 'Yes', value: true },
+		{ label: 'No', value: false }
+	];
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -204,9 +245,48 @@
 			columns={[
 				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
 				{ name: 'campaignID', align: 'left', header: 'Campaign ID' },
+				{
+					name: 'leadInvestigator',
+					align: 'left',
+					header: 'Lead Investigator',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value || !value.firstName || !value.lastName) return '';
+						return value.firstName + ' ' + value.lastName;
+					}
+				},
+				{ name: 'customer', align: 'left', header: 'Customer' },
 				{ name: 'experimentType', align: 'left', header: 'Experiment Type' },
-				{ name: 'experimentStart', align: 'left', header: 'Experiment Start' },
-				{ name: 'sampleCooling', align: 'left', header: 'Sample Cooling' }
+				{
+					name: 'experimentStart',
+					align: 'left',
+					header: 'Experiment Start',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const date = new Date(value);
+						return date.toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: '2-digit',
+							year: 'numeric'
+						});
+					}
+				},
+				{
+					name: 'experimentEnd',
+					align: 'left',
+					header: 'Experiment End',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const date = new Date(value);
+						return date.toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: '2-digit',
+							year: 'numeric'
+						});
+					}
+				},
 			]}
 			{order}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -238,8 +318,9 @@
 				/>
 				<DateField
 					label="Experiment Start"
-					type="datetime-local"
-					format="dd/mm/yyyy"
+					format="dd/MM/yyyy"
+					picker
+					clearable
 					value={draft.experimentStart}
 					on:change={(e) => {
 						draft.experimentStart = e.detail.value;
@@ -248,32 +329,35 @@
 				/>
 				<DateField
 					label="Experiment End"
-					type="datetime-local"
-					format="dd/mm/yyyy"
+					format="dd/MM/yyyy"
+					picker
+					clearable
 					value={draft.experimentEnd}
 					on:change={(e) => {
 						draft.experimentEnd = e.detail.value;
 						refresh();
 					}}
 				/>
-				<SelectField options = {experimentOptions} 
-					label="Experiment Type" 
+				<SelectField
+					options={experimentOptions}
+					label="Experiment Type"
 					value={draft.experimentType}
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentType = e.detail.value;
-						refresh()
-					}}/>
-				{#if draft.experimentType == "Induction"}
+						refresh();
+					}}
+				/>
+				{#if draft.experimentType == 'Induction'}
 					<TextField
 						label="Coil ID"
 						value={draft.coilID}
 						on:change={(e) => {
 							draft.coilID = e.detail.value;
-							refresh()
+							refresh();
 						}}
 					/>
-				{/if} 
+				{/if}
 				<TextField
 					label="Customer"
 					value={draft.customer}
@@ -282,7 +366,7 @@
 						refresh();
 					}}
 				/>
-				<br>
+				<br />
 				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
 				<div class="col-span-2 grid grid-cols-3 gap-4">
 					<TextField
@@ -310,17 +394,27 @@
 						}}
 					/>
 				</div>
-				<SelectField options = {sampleCoolingOptions} label="Sample Cooling" 
-					value={draft.sampleCooling} 
+				<SelectField
+					options={sampleCoolingOptions}
+					label="Sample Cooling"
+					value={draft.sampleCooling}
 					on:change={(e) => {
 						draft.sampleCooling = e.detail.value;
-						refresh()
-					}} />
+						refresh();
+					}}
+				/>
 			</div>
-            
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleModalClose}>Cancel</Button>
+
+			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
+				{#if !isNewEntry}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>
@@ -340,7 +434,7 @@
 		max-height: 900px;
 		overflow: hidden;
 	}
-	
+
 	:global(.styled-table) {
 		width: 100%;
 		border-collapse: collapse;
