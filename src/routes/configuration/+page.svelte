@@ -321,13 +321,14 @@
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Configuration Metadata</h2>
-		<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
+		<!-- <Button on:click={handleNewEntry} variant="fill">New Configuration</Button> -->
 	</div>
 	
-	<div class="space-y-6">
+	Coming soon
+
+	<!-- <div class="space-y-6">
 		{#each sortedData as configuration}
 			<div class="bg-white rounded-lg shadow-md p-4">
-				<!-- Configuration Header -->
 				<div class="mb-4 border-b pb-3">
 					<div class="flex justify-between items-start">
 						<div>
@@ -348,7 +349,6 @@
 					</div>
 				</div>
 
-				<!-- Diagnostic Pairs Table -->
 				<div class="table-container">
 					<h4 class="text-md font-medium text-gray-700 mb-2">Diagnostic Configuration</h4>
 					{#if configuration.configurationData.diagnosticPortPairs.length > 0}
@@ -374,10 +374,10 @@
 				<p>No configurations found</p>
 			</div>
 		{/if}
-	</div>
+	</div> -->
 </div>
 
-<Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
+<!-- <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
@@ -498,7 +498,7 @@
 			</div>
 		</Form>
 	</div>
-</Dialog>
+</Dialog> -->
 
 <style>
 	.table-container {
