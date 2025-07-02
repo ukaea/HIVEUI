@@ -101,9 +101,9 @@
 		pulseID: string;
 		firstOperator: Person;
 		secondOperator: Person;
-		pulseStart: string;
+		pulseStart: Date;
 		pulseDuration: string;
-		dataCaptureStart: string;
+		dataCaptureStart: Date;
 		operatorComment: string;
 		pulseQuality: string;
 		coilInformation: CoilInformation;
@@ -112,9 +112,9 @@
 			this.pulseID = '';
 			this.firstOperator = new Person();
 			this.secondOperator = new Person();
-			this.pulseStart = '';
+			this.pulseStart = new Date();
 			this.pulseDuration = '';
-			this.dataCaptureStart = '';
+			this.dataCaptureStart = new Date();
 			this.operatorComment = '';
 			this.pulseQuality = '';
 			this.coilInformation = new CoilInformation();
@@ -162,8 +162,17 @@
 
 	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
 		const metadata = new CompiledPulseMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
+		const mapped =  Object.assign(metadata, apiResponse);
+
+		// Ensure pulseStart and dataCaptureStart are Date objects
+		if (mapped.pulse.pulseStart) {
+			mapped.pulse.pulseStart = new Date(mapped.pulse.pulseStart);
+		}
+		if (mapped.pulse.dataCaptureStart) {
+			mapped.pulse.dataCaptureStart = new Date(mapped.pulse.dataCaptureStart);
+		}
+
+		return mapped;
 	}
 
 	function mapToExperiment(apiResponse: any): ExperimentSelectMetadata {
@@ -427,6 +436,39 @@
 		}
 	}
 
+	function handleDelete(): void {
+		if (!selectedMetadata) return;
+
+		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulse.pulseID}?`)) {
+			if (localOnly) {
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulse.pulseID}.json`;
+				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete local file');
+						alert('Pulse deleted successfully');
+						fetchPulses();
+					})
+					.catch((error) => {
+						console.error('Error deleting local file:', error);
+						alert(`Failed to delete pulse: ${error.message}`);
+					});
+			} else {
+				const accessToken = $page.data.session?.sessionToken;
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulse.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete pulse from API');
+						alert('Pulse deleted successfully');
+						fetchPulses();
+					})
+					.catch((error) => {
+						console.error('Error deleting pulse from API:', error);
+						alert(`Failed to delete pulse: ${error.message}`);
+					});
+			}
+			handleModalClose();
+		}
+	}	
+
 	onMount(() => {
 		if (PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
@@ -474,7 +516,25 @@
 			columns={[
 				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
 				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
-				{ name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
+				// { name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
+				{
+					name: 'pulse.pulseStart',
+					align: 'left',
+					header: 'Pulse Start',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const date = new Date(value);
+						return date.toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: '2-digit',
+							year: 'numeric'
+						}) + ' (' + date.toLocaleTimeString('en-GB', {
+							hour: '2-digit',
+							minute: '2-digit'
+						}) + ')';
+					}
+				},
 				{ name: 'pulse.pulseQuality', align: 'left', header: 'Pulse Quality' },
 				{ name: 'status', align: 'left', header: 'Status' }
 			]}
@@ -526,8 +586,8 @@
 				/>
 				<DateField
 					label="Pulse Start"
-					type="datetime-local"
-					format="dd/mm/yyyy HH:mm"
+					format="dd/MM/yyyy HH:mm"
+					picker
 					value={draft.pulse.pulseStart}
 					on:change={(e) => {
 						draft.pulse.pulseStart = e.detail.value;
@@ -536,8 +596,8 @@
 				/>
 				<DateField
 					label="Data Capture Start"
-					type="datetime-local"
-					format="dd/mm/yyyy HH:mm"
+					format="dd/MM/yyyy HH:mm"
+					picker
 					value={draft.pulse.dataCaptureStart}
 					on:change={(e) => {
 						draft.pulse.dataCaptureStart = e.detail.value;
@@ -703,14 +763,14 @@
 			</div>
 
 			<div class="flex justify-between mt-4 relative">
-				{#if !isCompletingPulse}
-					<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
-				{:else}
-					<div class="flex gap-2">
+				<div class="flex gap-2">
+					{#if !isCompletingPulse}
+						<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
+					{:else}
 						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
 						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>
-					</div>
-				{/if}
+					{/if}
+				</div>
 
 				<div class="absolute left-1/2 -translate-x-1/2 -top-3 z-10">
 					<Notification title="Successfully Saved!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
@@ -718,6 +778,11 @@
 				</div>
 
 				<div class="flex gap-2">
+					{#if !isNewEntry}
+						<div class="mr-4">
+							<Button variant="outline" color="danger" on:click={handleDelete}>Delete</Button>
+						</div>
+					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
