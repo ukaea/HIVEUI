@@ -3,7 +3,8 @@
 	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
 	import { tableOrderStore } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 
 	class Port {
 		portID: string;
@@ -185,56 +186,62 @@
 		}
 	}
 
-	class DeviceMetadata {
+	class DiagnosticMetadata {
 		port: Port;
-		deviceID: string;
+		diagnosticID: string;
+		diagnostic?: any; // Optional field to be set by subclasses
+		diagnosticType?: string;
 
 		constructor() {
 			this.port = new Port();
-			this.deviceID = '';
+			this.diagnosticID = '';
 		}
 	}
 
-	class ThermocoupleMetadata extends DeviceMetadata {
+	class ThermocoupleMetadata extends DiagnosticMetadata {
 		diagnostic: Thermocouple;
 
 		constructor() {
 			super();
 			this.diagnostic = new Thermocouple();
+			this.diagnosticType = 'Thermocouple';
 		}
 	}
 
-	class CameraMetadata extends DeviceMetadata {
+	class CameraMetadata extends DiagnosticMetadata {
 		diagnostic: Camera;
 
 		constructor() {
 			super();
 			this.diagnostic = new Camera();
+			this.diagnosticType = 'Camera';
 		}
 	}
 
-	class DICMetadata extends DeviceMetadata {
+	class DICMetadata extends DiagnosticMetadata {
 		diagnostic: DICConfig;
 
 		constructor() {
 			super();
 			this.diagnostic = new DICConfig();
+			this.diagnosticType = 'DIC';
 		}
 	}
 
-	class CoilMetadata extends DeviceMetadata {
+	class CoilMetadata extends DiagnosticMetadata {
 		diagnostic: Coil;
 
 		constructor() {
 			super();
 			this.diagnostic = new Coil();
+			this.diagnosticType = 'Coil';
 		}
 	}
 
-	let sortedData: DeviceMetadata[] = [];
-	const order = tableOrderStore({ initialBy: 'deviceID', initialDirection: 'asc' });
+	let sortedData: DiagnosticMetadata[] = [];
+	const order = tableOrderStore({ initialBy: 'diagnosticID', initialDirection: 'asc' });
 	let open = false;
-	let selectedMetadata: DeviceMetadata | null = null;
+	let selectedMetadata: DiagnosticMetadata | null = null;
 	let isNewEntry = false;
 
 	let openThermocouple = false;
@@ -249,64 +256,70 @@
 	let openCoil = false;
 	let isNewCoil = false;
 
-	function mapScicatToDevice(apiResponse: any): DeviceMetadata {
-		const metadata = new DeviceMetadata();
-		metadata.deviceID = apiResponse.pid || '';
-		metadata.port = new Port();
-		return metadata;
+	let localOnly = false;
+	function mapJSONToDiagnostic(apiResponse: any): DiagnosticMetadata {
+		const metadata = new DiagnosticMetadata();
+		// Assume all fields are valid
+		return Object.assign(metadata, apiResponse);
 	}
 
-	function mapDeviceToSciCat(metadata: DeviceMetadata): any {
-		return {
-			pid: metadata.deviceID,
-			name: metadata.deviceID,
-			uniqueName: metadata.deviceID
-		};
+	function mapDiagnosticToJSON(metadata: DiagnosticMetadata): any {
+		return { ...metadata };
 	}
 
-	async function fetchInstruments() {
+	async function fetchDiagnostics() {
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/instruments`, {
-				headers: {
-					Authorization: `Bearer ${accessToken}`
-				}
-			});
-			if (!response.ok) throw new Error('Failed to fetch diagnostics');
+
+			if (localOnly) {
+				const files = await getJsonFiles('diagnostics');
+				const data = await Promise.all(files.map((filename: string) => getJsonContent('diagnostics/' + filename)));
+				sortedData = data.map(mapJSONToDiagnostic).sort($order.handler);
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/instruments`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch instruments');
 			const data = await response.json();
-			sortedData = data.map(mapScicatToDevice).sort($order.handler);
+			sortedData = data.map(mapJSONToDiagnostic).sort($order.handler);
 		} catch (error) {
-			console.error('Error fetching diagnostics:', error);
-			alert('Failed to load diagnostics. Please try again later.');
+			console.error('Error fetching instruments:', error);
+			alert('Failed to load instruments. Please try again later.');
 		}
 	}
 
-	async function handleMetadataSubmit(event: CustomEvent<DeviceMetadata>): Promise<void> {
+	async function handleMetadataSubmit(event: CustomEvent<DiagnosticMetadata>): Promise<void> {
 		const rawMetadata = event.detail;
-		console.log('Raw metadata:', rawMetadata);
-
 		try {
 			await handleFileSubmission(rawMetadata);
 		} catch (error) {
 			console.error('File submission failed:', error);
 		}
 
+		if (localOnly) {
+			handleModalClose();
+			await fetchDiagnostics(); // Refresh the data
+			return;
+		}
+
 		try {
 			await handleAPISubmission(rawMetadata, isNewEntry);
 			handleModalClose();
+			await fetchDiagnostics(); // Refresh the data
 		} catch (error) {
 			console.error('API submission failed:', error);
 		}
 	}
 
-	async function handleFileSubmission(rawMetadata: DeviceMetadata): Promise<void> {
+	async function handleFileSubmission(rawMetadata: DiagnosticMetadata): Promise<void> {
 		try {
-			const deviceID = rawMetadata.deviceID;
+			const diagnosticID = rawMetadata.diagnosticID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/diagnostics`;
-			const fileName = `${deviceID}.json`;
+			const fileName = `${diagnosticID}.json`;
 
 			const saveMetadata = {
 				targetPath: `${filePath}/${fileName}`,
@@ -335,14 +348,14 @@
 		}
 	}
 
-	async function handleAPISubmission(rawMetadata: DeviceMetadata, isNewEntry: boolean): Promise<void> {
+	async function handleAPISubmission(rawMetadata: DiagnosticMetadata, isNewEntry: boolean): Promise<void> {
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
 
-			const mappedMetadata = mapDeviceToSciCat(rawMetadata);
+			const mappedMetadata = mapDiagnosticToJSON(rawMetadata);
 			console.log('Mapped metadata:', mappedMetadata);
 
 			const url = `${PUBLIC_METACAT_URL}/api/v1/instruments?schema=any`;
@@ -361,7 +374,7 @@
 			console.log('Diagnostic submitted to API successfully');
 			alert(isNewEntry ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
 
-			await fetchInstruments(); // Refresh the data
+			await fetchDiagnostics(); // Refresh the data
 		} catch (error) {
 			console.error('Error submitting diagnostic to API:', error);
 			alert(`Failed to submit diagnostic to API: ${error.message}`);
@@ -369,10 +382,45 @@
 		}
 	}
 
-	function handleRowClick(row: DeviceMetadata): void {
-		selectedMetadata = { ...row };
+	function handleRowClick(row: DiagnosticMetadata): void {
 		isNewEntry = false;
-		open = true;
+		switch (row.diagnosticType) {
+			case 'Thermocouple':
+				selectedMetadata = new ThermocoupleMetadata();
+				selectedMetadata = Object.assign(selectedMetadata, row);
+				// Convert to plain object for Immer
+				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
+				openThermocouple = true;
+				break;
+			case 'Camera':
+				selectedMetadata = new CameraMetadata();
+				selectedMetadata = Object.assign(selectedMetadata, row);
+				// Convert to plain object for Immer
+				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
+				openCamera = true;
+				break;
+			case 'DIC':
+				selectedMetadata = new DICMetadata();
+				selectedMetadata = Object.assign(selectedMetadata, row);
+				// Convert to plain object for Immer
+				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
+				openDIC = true;
+				break;
+			case 'Coil':
+				selectedMetadata = new CoilMetadata();
+				selectedMetadata = Object.assign(selectedMetadata, row);
+				// Convert to plain object for Immer
+				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
+				openCoil = true;
+				break;
+			default:
+				selectedMetadata = new DiagnosticMetadata();
+				selectedMetadata = Object.assign(selectedMetadata, row);
+				// Convert to plain object for Immer
+				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
+				open = true;
+				break;
+		}
 	}
 
 	function handleNewThermocouple(): void {
@@ -436,10 +484,47 @@
 		handleThermocoupleClose();
 		handleCameraClose();
 		handleDICClose();
+		handleCoilClose();
+	}
+
+	function handleDelete(): void {
+		if (!selectedMetadata) return;
+
+		if (confirm(`Are you sure you want to delete the diagnostic with ID: ${selectedMetadata.diagnosticID}?`)) {
+			if (localOnly) {
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/diagnostics/${selectedMetadata.diagnosticID}.json`;
+				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete local file');
+						alert('Diagnostic deleted successfully');
+						fetchDiagnostics();
+					})
+					.catch((error) => {
+						console.error('Error deleting local file:', error);
+						alert(`Failed to delete diagnostic: ${error.message}`);
+					});
+			} else {
+				const accessToken = $page.data.session?.sessionToken;
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/instruments/${selectedMetadata.diagnosticID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete instrument from API');
+						alert('Instrument deleted successfully');
+						fetchDiagnostics();
+					})
+					.catch((error) => {
+						console.error('Error deleting instrument from API:', error);
+						alert(`Failed to delete instrument: ${error.message}`);
+					});
+			}
+			handleModalClose();
+		}
 	}
 
 	onMount(() => {
-		fetchInstruments();
+		if (PUBLIC_LOCAL_ONLY == 'true') {
+			localOnly = true;
+		}
+		fetchDiagnostics();
 	});
 </script>
 
@@ -460,8 +545,9 @@
 				displayPort: item.port?.portID || 'N/A'
 			}))}
 			columns={[
-				{ name: 'deviceID', align: 'left', header: 'Device ID' },
-				{ name: 'displayPort', align: 'left', header: 'Port' }
+				{ name: 'diagnosticID', align: 'left', header: 'Diagnostic ID' },
+				{ name: 'diagnosticType', align: 'left', header: 'Diagnostic Type' },
+				{ name: 'port.portID', align: 'left', header: 'Port ID' }
 			]}
 			{order}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -476,10 +562,10 @@
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<TextField
-					label="Device ID"
-					value={draft.deviceID}
+					label="Diagnostic ID"
+					value={draft.diagnosticID}
 					on:change={(e) => {
-						draft.deviceID = e.detail.value;
+						draft.diagnosticID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -509,9 +595,16 @@
 				/>
 			</div>
 
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleModalClose}>Cancel</Button>
+			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
+				{#if !isNewEntry}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>
@@ -522,12 +615,36 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Device Information</h3>
+				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
 				<TextField
-					label="Device ID"
-					value={draft.deviceID}
+					label="Diagnostic ID"
+					value={draft.diagnosticID}
 					on:change={(e) => {
-						draft.deviceID = e.detail.value;
+						draft.diagnosticID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port ID"
+					value={draft.port.portID}
+					on:change={(e) => {
+						draft.port.portID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Description"
+					value={draft.port.portDescription}
+					on:change={(e) => {
+						draft.port.portDescription = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Size Standard"
+					value={draft.port.portSizeStandard}
+					on:change={(e) => {
+						draft.port.portSizeStandard = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -575,9 +692,16 @@
 				/>
 			</div>
 
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleThermocoupleClose}>Cancel</Button>
+			<div class="flex gap-2 mt-4 {!isNewThermocouple ? 'justify-between' : 'justify-end'}">
+				{#if !isNewThermocouple}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>
@@ -588,12 +712,12 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Device Information</h3>
+				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
 				<TextField
-					label="Device ID"
-					value={draft.deviceID}
+					label="Diagnostic ID"
+					value={draft.diagnosticID}
 					on:change={(e) => {
-						draft.deviceID = e.detail.value;
+						draft.diagnosticID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -778,9 +902,16 @@
 				/>
 			</div>
 
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleCameraClose}>Cancel</Button>
+			<div class="flex gap-2 mt-4 {!isNewCamera ? 'justify-between' : 'justify-end'}">
+				{#if !isNewCamera}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>
@@ -791,12 +922,12 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Device Information</h3>
+				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
 				<TextField
-					label="Device ID"
-					value={draft.deviceID}
+					label="Diagnostic ID"
+					value={draft.diagnosticID}
 					on:change={(e) => {
-						draft.deviceID = e.detail.value;
+						draft.diagnosticID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -984,9 +1115,16 @@
 				/>
 			</div>
 
-			<div class="flex justify-end gap-2 mt-4">
-				<Button on:click={() => commit()} variant="fill">Save</Button>
-				<Button on:click={handleDICClose}>Cancel</Button>
+			<div class="flex gap-2 mt-4 {!isNewDIC ? 'justify-between' : 'justify-end'}">
+				{#if !isNewDIC}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>
@@ -997,7 +1135,42 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<div class="col-span-2">
+				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
+				<TextField
+					label="Diagnostic ID"
+					value={draft.diagnosticID}
+					on:change={(e) => {
+						draft.diagnosticID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port ID"
+					value={draft.port.portID}
+					on:change={(e) => {
+						draft.port.portID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Description"
+					value={draft.port.portDescription}
+					on:change={(e) => {
+						draft.port.portDescription = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Port Size Standard"
+					value={draft.port.portSizeStandard}
+					on:change={(e) => {
+						draft.port.portSizeStandard = e.detail.value;
+						refresh();
+					}}
+				/>
+
+				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
+				<div class="col-span-1">
 					<TextField
 						label="Coil ID"
 						value={draft.diagnostic?.coilID ?? ''}
@@ -1089,6 +1262,17 @@
 						refresh();
 					}}
 				/>
+			</div>
+			<div class="flex gap-2 mt-4 {!isNewCoil ? 'justify-between' : 'justify-end'}">
+				{#if !isNewCoil}
+					<div>
+						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={handleCoilClose}>Cancel</Button>
+				</div>
 			</div>
 		</Form>
 	</div>

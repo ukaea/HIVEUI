@@ -1,10 +1,11 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField} from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
 	import { tableOrderStore, SelectField, type MenuOption, Notification } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-	import {mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
+	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
+	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 
 	class Person {
 		firstName: string;
@@ -100,9 +101,9 @@
 		pulseID: string;
 		firstOperator: Person;
 		secondOperator: Person;
-		pulseStart: string;
+		pulseStart: Date;
 		pulseDuration: string;
-		dataCaptureStart: string;
+		dataCaptureStart: Date;
 		operatorComment: string;
 		pulseQuality: string;
 		coilInformation: CoilInformation;
@@ -111,9 +112,9 @@
 			this.pulseID = '';
 			this.firstOperator = new Person();
 			this.secondOperator = new Person();
-			this.pulseStart = '';
+			this.pulseStart = new Date();
 			this.pulseDuration = '';
-			this.dataCaptureStart = '';
+			this.dataCaptureStart = new Date();
 			this.operatorComment = '';
 			this.pulseQuality = '';
 			this.coilInformation = new CoilInformation();
@@ -128,40 +129,50 @@
 		}
 	}
 
-	class DiagnosticSelectMetadata {
-		diagnosticSetupID: string;
+	class ConfiguationSelectMetadata {
+		configurationID: string;
 		constructor() {
-			this.diagnosticSetupID = '';
+			this.configurationID = '';
 		}
 	}
 
-	// Includes the experiment and diagnostics
+	// Includes the experiment and configurations
 	class CompiledPulseMetadata {
 		pulse: PulseMetadata;
 		experimentID: string;
-		diagnosticSetupID: string;
+		configurationID: string;
 		status: string;
 		constructor() {
 			this.pulse = new PulseMetadata();
 			this.experimentID = '';
-			this.diagnosticSetupID = '';
+			this.configurationID = '';
 			this.status = '';
 		}
 	}
 
 	let sortedData: CompiledPulseMetadata[] = [];
 	let sortedExperiments: ExperimentSelectMetadata[] = [];
-	let sortedDiagnostics: DiagnosticSelectMetadata[] = [];
+	let sortedConfigurations: ConfiguationSelectMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
+	let localOnly = false;
 
 	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
 		const metadata = new CompiledPulseMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
+		const mapped =  Object.assign(metadata, apiResponse);
+
+		// Ensure pulseStart and dataCaptureStart are Date objects
+		if (mapped.pulse.pulseStart) {
+			mapped.pulse.pulseStart = new Date(mapped.pulse.pulseStart);
+		}
+		if (mapped.pulse.dataCaptureStart) {
+			mapped.pulse.dataCaptureStart = new Date(mapped.pulse.dataCaptureStart);
+		}
+
+		return mapped;
 	}
 
 	function mapToExperiment(apiResponse: any): ExperimentSelectMetadata {
@@ -170,8 +181,8 @@
 		return Object.assign(metadata, apiResponse);
 	}
 
-	function mapToDiagnosticSetup(apiResponse: any): DiagnosticSelectMetadata {
-		const metadata = new DiagnosticSelectMetadata();
+	function mapToConfiguration(apiResponse: any): ConfiguationSelectMetadata {
+		const metadata = new ConfiguationSelectMetadata();
 		// Assume all fields are valid
 		return Object.assign(metadata, apiResponse);
 	}
@@ -182,11 +193,19 @@
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, {
-				headers: {
-					Authorization: `Bearer ${accessToken}`
-				}
-			});
+
+			if (localOnly) {
+				const files = await getJsonFiles('experiments');
+				const data = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
+				sortedExperiments = data.map(mapToExperiment).sort($order.handler);
+				experimentOptions = sortedExperiments.map((experiment) => {
+					return { label: experiment.experimentID, value: experiment.experimentID };
+				});
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
 			if (!response.ok) throw new Error('Failed to fetch proposals');
 			const data = await response.json();
 			// Map the API response to ExperimentMetadata
@@ -200,67 +219,46 @@
 		}
 	}
 
-	async function getJsonFiles(directory: string) {
+	async function fetchConfigurations() {
 		try {
-			const response = await fetch(`/api/get-json-list?path=${encodeURIComponent(directory)}`);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch file list: ${response.statusText}`);
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
 			}
 
+			if (localOnly) {
+				const files = await getJsonFiles('configurations');
+				const configurations = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
+
+				// Map and sort the configuration
+				sortedConfigurations = configurations.map(mapToConfiguration).sort($order.handler);
+				configurationOptions = sortedConfigurations.map((configuration) => {
+					return { label: configuration.configurationID, value: configuration.configurationID };
+				});
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations`, { headers: { Authorization: `Bearer ${accessToken}` } });
+			if (!response.ok) throw new Error('Failed to fetch configurations');
 			const data = await response.json();
-			if (!data.success) {
-				throw new Error(data.message || 'Failed to fetch file list');
-			}
-
-			return data.files;
-		} catch (error) {
-			console.error('Error fetching file list:', error);
-			throw error;
-		}
-	}
-
-	async function getJsonContent(filename: string) {
-		try {
-			const response = await fetch(`/api/get-json?filename=${encodeURIComponent(filename)}`);
-			if (!response.ok) {
-				throw new Error(`Failed to fetch file content: ${response.statusText}`);
-			}
-
-			const data = await response.json();
-			if (!data.success) {
-				throw new Error(data.message || 'Failed to fetch file content');
-			}
-
-			return data.data;
-		} catch (error) {
-			console.error('Error fetching file content:', error);
-			throw error;
-		}
-	}
-
-	async function fetchDiagnosticSetups() {
-		try {
-			const files = await getJsonFiles('diagnosticsetups');
-			const diagnosticSetups = await Promise.all(files.map((filename: string) => getJsonContent('diagnosticsetups/' + filename)));
-
-			// Map and sort the diagnostic setups
-			sortedDiagnostics = diagnosticSetups.map(mapToDiagnosticSetup).sort($order.handler);
-
-			diagnosticSetupOptions = sortedDiagnostics.map((diagnostic) => {
-				return { label: diagnostic.diagnosticSetupID, value: diagnostic.diagnosticSetupID };
+			sortedConfigurations = data.map(mapToConfiguration).sort($order.handler);
+			configurationOptions = sortedConfigurations.map((configuration) => {
+				return { label: configuration.configurationID, value: configuration.configurationID };
 			});
 		} catch (error) {
-			console.error('Error fetching diagnostic setups:', error);
-			alert('Failed to load diagnostic setups. Please try again later.');
+			console.error('Error fetching configurations:', error);
+			alert('Failed to load configurations. Please try again later.');
 		}
 	}
 
 	async function fetchPulses() {
 		try {
-			const pulseFiles = await getJsonFiles('pulses');
-			const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
-
-			sortedData = pulseData.map(mapToPulse).sort($order.handler);
+			if (localOnly) {
+				const pulseFiles = await getJsonFiles('pulses');
+				const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
+				sortedData = pulseData.map(mapToPulse).sort($order.handler);
+				return;
+			}
 		} catch (error) {
 			console.error('Error fetching pulses:', error);
 			alert('Failed to load pulses. Please try again later.');
@@ -272,16 +270,55 @@
 
 		try {
 			await handlePulseFileSubmission(metadata);
-			console.log('Metadata file saved successfully');
 			saveNotify = true;
-			
+
 			setTimeout(() => {
 				saveNotify = false;
 			}, 3000);
-
-			await fetchPulses();
 		} catch (error) {
 			console.error('File submission failed:', error);
+		}
+
+		if (localOnly) {
+			handleModalClose();
+			await fetchPulses(); // Refresh the data
+			return;
+		}
+
+		try {
+			await handleAPISubmission(metadata, isNewEntry);
+			await fetchPulses();
+		} catch (error) {
+			console.error('API submission failed:', error);
+		}
+	}
+
+	async function handleAPISubmission(metadata: CompiledPulseMetadata, isNewEntry: boolean): Promise<void> {
+		//Not currently implemented
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulse.pulseID}`;
+
+			const response = await fetch(url, {
+				method: isNewEntry ? 'POST' : 'PUT',
+				headers: {
+					'Content-Type': 'application/json',
+					Authorization: `Bearer ${accessToken}`
+				},
+				body: JSON.stringify(metadata)
+			});
+
+			if (!response.ok) {
+				const errorData = await response.json();
+				throw new Error(`Failed to save metadata: ${errorData.message}`);
+			}
+		} catch (error) {
+			console.error('Error saving metadata:', error);
+			throw error;
 		}
 	}
 
@@ -369,11 +406,11 @@
 			const fileName = `currentPulse.json`;
 
 			const flagData = {
-				'pulseID': metadata.pulse.pulseID,
-				'pulseLocation': `pulses/${metadata.pulse.pulseID}.json`,
-				'pulseStatus': metadata.status,
-				'experimentID': metadata.experimentID,
-				'diagnosticSetupID': metadata.diagnosticSetupID
+				pulseID: metadata.pulse.pulseID,
+				pulseLocation: `pulses/${metadata.pulse.pulseID}.json`,
+				pulseStatus: metadata.status,
+				experimentID: metadata.experimentID,
+				configurationID: metadata.configurationID
 			};
 
 			const saveMetadata = {
@@ -397,12 +434,48 @@
 			console.error('Error saving metadata file:', error);
 			throw error;
 		}
+	}
+
+	function handleDelete(): void {
+		if (!selectedMetadata) return;
+
+		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulse.pulseID}?`)) {
+			if (localOnly) {
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulse.pulseID}.json`;
+				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete local file');
+						alert('Pulse deleted successfully');
+						fetchPulses();
+					})
+					.catch((error) => {
+						console.error('Error deleting local file:', error);
+						alert(`Failed to delete pulse: ${error.message}`);
+					});
+			} else {
+				const accessToken = $page.data.session?.sessionToken;
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulse.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete pulse from API');
+						alert('Pulse deleted successfully');
+						fetchPulses();
+					})
+					.catch((error) => {
+						console.error('Error deleting pulse from API:', error);
+						alert(`Failed to delete pulse: ${error.message}`);
+					});
+			}
+			handleModalClose();
+		}
 	}	
 
 	onMount(() => {
+		if (PUBLIC_LOCAL_ONLY == 'true') {
+			localOnly = true;
+		}
 		fetchPulses();
 		fetchExperiments();
-		fetchDiagnosticSetups();
+		fetchConfigurations();
 	});
 
 	let pulseQualityOptions: MenuOption[] = [
@@ -423,7 +496,7 @@
 
 	let experimentOptions: MenuOption[] = [];
 
-	let diagnosticSetupOptions: MenuOption[] = [];
+	let configurationOptions: MenuOption[] = [];
 
 	let inputPowerToggle = true;
 	let isCompletingPulse = false;
@@ -443,7 +516,25 @@
 			columns={[
 				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
 				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
-				{ name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
+				// { name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
+				{
+					name: 'pulse.pulseStart',
+					align: 'left',
+					header: 'Pulse Start',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const date = new Date(value);
+						return date.toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: '2-digit',
+							year: 'numeric'
+						}) + ' (' + date.toLocaleTimeString('en-GB', {
+							hour: '2-digit',
+							minute: '2-digit'
+						}) + ')';
+					}
+				},
 				{ name: 'pulse.pulseQuality', align: 'left', header: 'Pulse Quality' },
 				{ name: 'status', align: 'left', header: 'Status' }
 			]}
@@ -458,14 +549,21 @@
 	<div slot="title">
 		<div class="flex justify-between mt-4 relative">
 			<div>{isNewEntry ? 'Create New Pulse' : 'Edit Pulse Metadata'}</div>
-			<div class="absolute right-20 top-0 z-10">
-			</div>
-		</div>	
+			<div class="absolute right-20 top-0 z-10"></div>
+		</div>
 	</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
+				<TextField
+					label="Pulse ID"
+					value={draft.pulse.pulseID}
+					on:change={(e) => {
+						draft.pulse.pulseID = e.detail.value;
+						refresh();
+					}}
+				/>
 				<SelectField
 					options={experimentOptions}
 					label="Experiment"
@@ -477,20 +575,40 @@
 					}}
 				/>
 				<SelectField
-					options={diagnosticSetupOptions}
-					label="Diagnostic Setup"
-					value={draft.diagnosticSetupID}
+					options={configurationOptions}
+					label="Configuration"
+					value={draft.configurationID}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.diagnosticSetupID = e.detail.value;
+						draft.configurationID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<DateField
+					label="Pulse Start"
+					format="dd/MM/yyyy HH:mm"
+					picker
+					value={draft.pulse.pulseStart}
+					on:change={(e) => {
+						draft.pulse.pulseStart = e.detail.value;
+						refresh();
+					}}
+				/>
+				<DateField
+					label="Data Capture Start"
+					format="dd/MM/yyyy HH:mm"
+					picker
+					value={draft.pulse.dataCaptureStart}
+					on:change={(e) => {
+						draft.pulse.dataCaptureStart = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Pulse ID"
-					value={draft.pulse.pulseID}
+					label="Pulse Duration"
+					value={draft.pulse.pulseDuration}
 					on:change={(e) => {
-						draft.pulse.pulseID = e.detail.value;
+						draft.pulse.pulseDuration = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -645,25 +763,30 @@
 			</div>
 
 			<div class="flex justify-between mt-4 relative">
-				{#if !isCompletingPulse}
-					<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
-				{:else}
-					<div class="flex gap-2">
+				<div class="flex gap-2">
+					{#if !isCompletingPulse}
+						<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
+					{:else}
 						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
 						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>
-					</div>
-				{/if}
-			 
+					{/if}
+				</div>
+
 				<div class="absolute left-1/2 -translate-x-1/2 -top-3 z-10">
 					<Notification title="Successfully Saved!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
-					<Notification title="Successfully Completed!" icon={mdiCheckCircleOutline} color="success" closeIcon open={completeNotify} />					
+					<Notification title="Successfully Completed!" icon={mdiCheckCircleOutline} color="success" closeIcon open={completeNotify} />
 				</div>
-				
+
 				<div class="flex gap-2">
+					{#if !isNewEntry}
+						<div class="mr-4">
+							<Button variant="outline" color="danger" on:click={handleDelete}>Delete</Button>
+						</div>
+					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
-			 </div>
+			</div>
 		</Form>
 	</div>
 </Dialog>

@@ -4,7 +4,7 @@
 	import User from '../components/user.svelte';
 	import type { LayoutServerData } from './$types';
 	import { page } from '$app/stores';
-	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse } from '@mdi/js';
+	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse, mdiContentSaveCog } from '@mdi/js';
     import { triggerDAG } from "$lib/triggerPipeline";
     import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from "$env/static/public";
 
@@ -42,6 +42,7 @@
 	<svelte:fragment slot="nav">
 		<NavItem text="Experiment" currentUrl={$page.url} path="/experiment" icon={mdiBookOpenVariantOutline} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Diagnostic" currentUrl={$page.url} path="/diagnostic" icon={mdiMagnify} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
+		<NavItem text="Configuration" currentUrl={$page.url} path="/configuration" icon={mdiContentSaveCog} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Pulse" currentUrl={$page.url} path="/pulse" icon={mdiPulse} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 	</svelte:fragment>
 

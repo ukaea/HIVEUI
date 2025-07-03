@@ -19,6 +19,7 @@ AIRFLOW_USERNAME="<AirflowUsername>"
 AIRFLOW_PASSWORD="<AirflowPassword>"
 PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
 PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"
+PUBLIC_LOCAL_ONLY="<true or false>"
 ```
 
 Then run the following command:
@@ -71,6 +72,7 @@ Developed with Node.js v21.1.0 and npm v10.2.0
    AIRFLOW_PASSWORD="<AirflowPassword>"
    PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
    PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"   
+   PUBLIC_LOCAL_ONLY="<true or false>"
    ```
 
 ## Running HiveUI (Development)
