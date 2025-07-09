@@ -5,12 +5,12 @@
 	import type { LayoutServerData } from './$types';
 	import { page } from '$app/stores';
 	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse, mdiContentSaveCog } from '@mdi/js';
-    import { triggerDAG } from "$lib/triggerPipeline";
-    import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from "$env/static/public";
+	import { triggerDAG } from '$lib/triggerPipeline';
+	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
 
-    async function handleTrigger() {
-        const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
-    }
+	async function handleTrigger() {
+		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
+	}
 
 	export let data: LayoutServerData;
 
@@ -34,7 +34,7 @@
 			</a>
 		</svelte:fragment>
 		<div slot="actions" class="flex items-center justify-end w-full">
-            <Button variant="fill" on:click={handleTrigger} class="mr-4">Trigger Pipeline</Button>
+			<Button variant="fill" on:click={handleTrigger} class="mr-4">Trigger Pipeline</Button>
 			<User data={{ user: data?.session?.user ?? undefined, status: Boolean(data?.session) }} />
 		</div>
 	</AppBar>
@@ -69,5 +69,37 @@
 
 	:global(.nav) {
 		border-right: 2px solid white;
+	}
+
+	:global(.styled-table) {
+		width: 100%;
+		border-collapse: collapse;
+	}
+
+	:global(.styled-table th) {
+		background-color: #2563eb;
+		color: white;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.05em;
+		padding: 0.75rem 1.5rem;
+		text-align: left;
+	}
+
+	:global(.styled-table td) {
+		padding: 1rem 1.5rem;
+		color: #1f2937;
+	}
+
+	:global(.styled-table tr:nth-child(even)) {
+		background-color: #f9fafb;
+	}
+
+	:global(.styled-table tr:hover) {
+		background-color: #f3f4f6;
+	}
+
+	:global(.label.group-focus-within\:text-\[var\(--color\)\]) {
+		color: rgb(179, 179, 179) !important;
 	}
 </style>
