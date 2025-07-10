@@ -155,6 +155,11 @@
 	let sortedConfigurations: ConfiguationSelectMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+
+	order.subscribe((value) => {
+		sortedData = sortedData.sort($order.handler);
+	});
+
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
@@ -669,7 +674,7 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.pulse.comment}
+						value={draft.pulse.operatorComment}
 						on:change={(e) => {
 							draft.pulse.operatorComment = e.detail.value;
 							refresh();
@@ -798,38 +803,10 @@
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
-		overflow: hidden;
+    	overflow-x: auto;
 	}
 
 	:global(.pulseInputDialog) {
 		max-height: 90vh;
-	}
-
-	:global(.styled-table) {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	:global(.styled-table th) {
-		background-color: #2563eb;
-		color: white;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.75rem 1.5rem;
-		text-align: left;
-	}
-
-	:global(.styled-table td) {
-		padding: 1rem 1.5rem;
-		color: #1f2937;
-	}
-
-	:global(.styled-table tr:nth-child(even)) {
-		background-color: #f9fafb;
-	}
-
-	:global(.styled-table tr:hover) {
-		background-color: #f3f4f6;
 	}
 </style>

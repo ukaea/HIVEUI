@@ -6,17 +6,17 @@
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 
-	class Port {
-		portID: string;
-		portDescription: string;
-		portSizeStandard: string;
+	// class Port {
+	// 	portID: string;
+	// 	portDescription: string;
+	// 	portSizeStandard: string;
 
-		constructor() {
-			this.portID = '';
-			this.portDescription = '';
-			this.portSizeStandard = '';
-		}
-	}
+	// 	constructor() {
+	// 		this.portID = '';
+	// 		this.portDescription = '';
+	// 		this.portSizeStandard = '';
+	// 	}
+	// }
 
 	class Thermocouple {
 		status: string;
@@ -187,13 +187,11 @@
 	}
 
 	class DiagnosticMetadata {
-		port: Port;
 		diagnosticID: string;
 		diagnostic?: any; // Optional field to be set by subclasses
 		diagnosticType?: string;
 
 		constructor() {
-			this.port = new Port();
 			this.diagnosticID = '';
 		}
 	}
@@ -240,6 +238,11 @@
 
 	let sortedData: DiagnosticMetadata[] = [];
 	const order = tableOrderStore({ initialBy: 'diagnosticID', initialDirection: 'asc' });
+
+	order.subscribe(() => {
+		sortedData = sortedData.sort($order.handler);
+	});
+
 	let open = false;
 	let selectedMetadata: DiagnosticMetadata | null = null;
 	let isNewEntry = false;
@@ -540,14 +543,10 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={sortedData.map((item) => ({
-				...item,
-				displayPort: item.port?.portID || 'N/A'
-			}))}
+			data={sortedData}
 			columns={[
 				{ name: 'diagnosticID', align: 'left', header: 'Diagnostic ID' },
 				{ name: 'diagnosticType', align: 'left', header: 'Diagnostic Type' },
-				{ name: 'port.portID', align: 'left', header: 'Port ID' }
 			]}
 			{order}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -566,30 +565,6 @@
 					value={draft.diagnosticID}
 					on:change={(e) => {
 						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -621,30 +596,6 @@
 					value={draft.diagnosticID}
 					on:change={(e) => {
 						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -718,30 +669,6 @@
 					value={draft.diagnosticID}
 					on:change={(e) => {
 						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -931,31 +858,7 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
-						refresh();
-					}}
-				/>
-
+				
 				<h3 class="col-span-3 font-bold mt-4">Setup Information</h3>
 				<TextField
 					label="Configuration"
@@ -1143,31 +1046,7 @@
 						draft.diagnosticID = e.detail.value;
 						refresh();
 					}}
-				/>
-				<TextField
-					label="Port ID"
-					value={draft.port.portID}
-					on:change={(e) => {
-						draft.port.portID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Description"
-					value={draft.port.portDescription}
-					on:change={(e) => {
-						draft.port.portDescription = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Port Size Standard"
-					value={draft.port.portSizeStandard}
-					on:change={(e) => {
-						draft.port.portSizeStandard = e.detail.value;
-						refresh();
-					}}
-				/>
+				/>				
 
 				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
 				<div class="col-span-1">
@@ -1285,38 +1164,10 @@
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
-		overflow: hidden;
+		overflow-x: auto;
 	}
 
 	:global(.diagnosticInputDialog) {
 		max-height: 90vh;
-	}
-
-	:global(.styled-table) {
-		width: 100%;
-		border-collapse: collapse;
-	}
-
-	:global(.styled-table th) {
-		background-color: #2563eb;
-		color: white;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.05em;
-		padding: 0.75rem 1.5rem;
-		text-align: left;
-	}
-
-	:global(.styled-table td) {
-		padding: 1rem 1.5rem;
-		color: #1f2937;
-	}
-
-	:global(.styled-table tr:nth-child(even)) {
-		background-color: #f9fafb;
-	}
-
-	:global(.styled-table tr:hover) {
-		background-color: #f3f4f6;
 	}
 </style>
