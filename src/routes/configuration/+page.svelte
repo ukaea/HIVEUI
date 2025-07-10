@@ -6,25 +6,6 @@
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 
-	class Person {
-		firstName: string;
-		lastName: string;
-		email: string;
-
-		constructor() {
-			this.firstName = '';
-			this.lastName = '';
-			this.email = '';
-		}
-	}
-
-	class ExperimentSelectMetadata {
-		experimentID: string;
-		constructor() {
-			this.experimentID = '';
-		}
-	}
-
 	class DiagnosticSelectMetadata {
 		diagnosticID: string;
 		constructor() {
@@ -54,24 +35,25 @@
 		configurationID: string;
 		configurationName: string;
 		configurationDescription: string;
-		configurationExperiment: string;
 		configurationData: ConfigurationData;
 
 		constructor() {
 			this.configurationID = '';
 			this.configurationName = '';
 			this.configurationDescription = '';
-			this.configurationExperiment = '';
 			this.configurationData = new ConfigurationData();
 		}
 	}
 
 	let sortedData: ConfigurationMetadata[] = [];
-	let sortedExperiments: ExperimentSelectMetadata[] = [];
 	let sortedDiagnostics: DiagnosticSelectMetadata[] = [];
-	let experimentOptions: MenuOption[] = [];
 	let diagnosticOptions: MenuOption[] = [];
 	const order = tableOrderStore({ initialBy: 'configurationID', initialDirection: 'asc' });
+
+	order.subscribe((value) => {
+		sortedData = sortedData.sort($order.handler);
+	});
+
 	let open = false;
 	let selectedMetadata: ConfigurationMetadata | null = null;
 	let isNewEntry = false;
@@ -86,48 +68,10 @@
 		return { ...metadata };
 	}
 
-	function mapToExperiment(apiResponse: any): ExperimentSelectMetadata {
-		const metadata = new ExperimentSelectMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
-	}
-
 	function mapToDiagnostic(apiResponse: any): DiagnosticSelectMetadata {
 		const metadata = new DiagnosticSelectMetadata();
 		// Assume all fields are valid
 		return Object.assign(metadata, apiResponse);
-	}
-
-	async function fetchExperiments() {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('experiments');
-				const data = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
-				sortedExperiments = data.map(mapToExperiment).sort($order.handler);
-				experimentOptions = sortedExperiments.map((experiment) => {
-					return { label: experiment.experimentID, value: experiment.experimentID };
-				});
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch proposals');
-			const data = await response.json();
-			// Map the API response to ExperimentMetadata
-			sortedExperiments = data.map(mapToExperiment).sort($order.handler);
-			experimentOptions = sortedExperiments.map((experiment) => {
-				return { label: experiment.experimentID, value: experiment.experimentID };
-			});
-		} catch (error) {
-			console.error('Error fetching proposals:', error);
-			alert('Failed to load proposals. Please try again later.');
-		}
 	}
 
 	async function fetchDiagnostics() {
@@ -140,26 +84,16 @@
 			if (localOnly) {
 				const files = await getJsonFiles('diagnostics');
 				const data = await Promise.all(files.map((filename: string) => getJsonContent('diagnostics/' + filename)));
-				sortedDiagnostics = data.map(mapToDiagnostic).sort($order.handler);
+				sortedDiagnostics = data.map(mapToDiagnostic);
 				diagnosticOptions = sortedDiagnostics.map((diagnostic) => {
 					return { label: diagnostic.diagnosticID, value: diagnostic.diagnosticID };
 				});
+				console.log('Diagnostics loaded:', sortedDiagnostics);
 				return;
 			}
-
-			//FIX
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch proposals');
-			const data = await response.json();
-			// Map the API response to ExperimentMetadata
-			sortedExperiments = data.map(mapToExperiment).sort($order.handler);
-			experimentOptions = sortedExperiments.map((experiment) => {
-				return { label: experiment.experimentID, value: experiment.experimentID };
-			});
 		} catch (error) {
-			console.error('Error fetching proposals:', error);
-			alert('Failed to load proposals. Please try again later.');
+			console.error('Error fetching diagnostics:', error);
+			alert('Failed to load diagnostics. Please try again later.');
 		}
 	}
 
@@ -176,15 +110,9 @@
 				sortedData = data.map(mapJSONToConfiguration).sort($order.handler);
 				return;
 			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch proposals');
-			const data = await response.json();
-			sortedData = data.map(mapJSONToConfiguration).sort($order.handler);
 		} catch (error) {
-			console.error('Error fetching proposals:', error);
-			alert('Failed to load proposals. Please try again later.');
+			console.error('Error fetching configurations:', error);
+			alert('Failed to load configurations. Please try again later.');
 		}
 	}
 
@@ -266,26 +194,15 @@
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
-						alert('Experiment deleted successfully');
+						alert('Configuration deleted successfully');
 						fetchConfigurations();
 					})
 					.catch((error) => {
 						console.error('Error deleting local file:', error);
-						alert(`Failed to delete experiment: ${error.message}`);
-					});
-			} else {
-				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals/${selectedMetadata.experimentID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
-					.then((response) => {
-						if (!response.ok) throw new Error('Failed to delete proposal from API');
-						alert('Experiment deleted successfully');
-						fetchConfigurations();
-					})
-					.catch((error) => {
-						console.error('Error deleting proposal from API:', error);
-						alert(`Failed to delete experiment: ${error.message}`);
+						alert(`Failed to delete configuration: ${error.message}`);
 					});
 			}
+
 			handleModalClose();
 		}
 	}
@@ -308,11 +225,14 @@
 		isNewEntry = false;
 	}
 
+	let newDiagnosticID = '';
+	let newPort = '';
+
 	onMount(() => {
 		if (PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
-		fetchExperiments();
+
 		fetchDiagnostics();
 		fetchConfigurations();
 	});
@@ -321,170 +241,104 @@
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Configuration Metadata</h2>
-		<!-- <Button on:click={handleNewEntry} variant="fill">New Configuration</Button> -->
+		<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
 	</div>
-	
-	Coming soon
-
-	<!-- <div class="space-y-6">
-		{#each sortedData as configuration}
-			<div class="bg-white rounded-lg shadow-md p-4">
-				<div class="mb-4 border-b pb-3">
-					<div class="flex justify-between items-start">
-						<div>
-							<h3 class="text-lg font-semibold text-gray-800">{configuration.configurationName}</h3>
-							<p class="text-sm text-gray-600">ID: {configuration.configurationID}</p>
-							<p class="text-sm text-gray-600">Experiment: {configuration.configurationExperiment}</p>
-							{#if configuration.configurationDescription}
-								<p class="text-sm text-gray-500 mt-1">{configuration.configurationDescription}</p>
-							{/if}
-						</div>
-						<Button 
-							on:click={() => handleRowClick(configuration)} 
-							variant="outline"
-							class="text-sm"
-						>
-							Edit
-						</Button>
-					</div>
-				</div>
-
-				<div class="table-container">
-					<h4 class="text-md font-medium text-gray-700 mb-2">Diagnostic Configuration</h4>
-					{#if configuration.configurationData.diagnosticPortPairs.length > 0}
-						<Table
-							data={configuration.configurationData.diagnosticPortPairs}
-							columns={[
-								{ name: 'diagnosticID', align: 'left', header: 'Diagnostic ID' },
-								{ name: 'port', align: 'left', header: 'Port' }
-							]}
-							class="styled-table diagnostic-pairs-table"
-						/>
-					{:else}
-						<div class="text-gray-500 text-sm italic py-2">
-							No diagnostic port pairs configured
-						</div>
-					{/if}
-				</div>
-			</div>
-		{/each}
-
-		{#if sortedData.length === 0}
-			<div class="text-center text-gray-500 py-8">
-				<p>No configurations found</p>
-			</div>
-		{/if}
-	</div> -->
+	<div class="table-container">
+		<Table
+			data={sortedData}
+			columns={[
+				{ name: 'configurationID', align: 'left', header: 'ID' },
+				{ name: 'configurationName', align: 'left', header: 'Name' },
+				{ name: 'configurationDescription', align: 'left', header: 'Description' }
+			]}
+			{order}
+			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
+			class="styled-table"
+		/>
+	</div>
 </div>
 
-<!-- <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
+<Dialog {open} on:close={handleModalClose} class="configurationInputDialog">
+	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Edit Configuration Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			<div class="p-4 grid grid-cols-2 gap-4">
+				<h3 class="col-span-3 font-bold mt-4">Configuration Information</h3>
 				<TextField
-					label="Experiment ID"
-					value={draft.experimentID}
+					label="Configuration ID"
+					value={draft.configurationID}
 					on:change={(e) => {
-						draft.experimentID = e.detail.value;
+						draft.configurationID = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Campaign ID"
-					value={draft.campaignID}
+					label="Configuration Name"
+					value={draft.configurationName}
 					on:change={(e) => {
-						draft.campaignID = e.detail.value;
+						draft.configurationName = e.detail.value;
 						refresh();
 					}}
 				/>
-				<DateField
-					label="Experiment Start"
-					type="datetime-local"
-					format="dd/mm/yyyy"
-					value={draft.experimentStart}
-					on:change={(e) => {
-						draft.experimentStart = e.detail.value;
-						refresh();
-					}}
-				/>
-				<DateField
-					label="Experiment End"
-					type="datetime-local"
-					format="dd/mm/yyyy"
-					value={draft.experimentEnd}
-					on:change={(e) => {
-						draft.experimentEnd = e.detail.value;
-						refresh();
-					}}
-				/>
-				<SelectField
-					options={experimentOptions}
-					label="Experiment Type"
-					value={draft.experimentType}
-					autoplacement={false}
-					on:change={(e) => {
-						draft.experimentType = e.detail.value;
-						refresh();
-					}}
-				/>
-				{#if draft.experimentType == 'Induction'}
-					<TextField
-						label="Coil ID"
-						value={draft.coilID}
-						on:change={(e) => {
-							draft.coilID = e.detail.value;
-							refresh();
-						}}
-					/>
-				{/if}
 				<TextField
-					label="Customer"
-					value={draft.customer}
+					label="Configuration Description"
+					value={draft.configurationDescription}
 					on:change={(e) => {
-						draft.customer = e.detail.value;
+						draft.configurationDescription = e.detail.value;
 						refresh();
 					}}
 				/>
-				<br />
-				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
-				<div class="col-span-2 grid grid-cols-3 gap-4">
-					<TextField
-						label="First Name"
-						value={draft.leadInvestigator.firstName}
-						on:change={(e) => {
-							draft.leadInvestigator.firstName = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Last Name"
-						value={draft.leadInvestigator.lastName}
-						on:change={(e) => {
-							draft.leadInvestigator.lastName = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Email"
-						value={draft.leadInvestigator.email}
-						on:change={(e) => {
-							draft.leadInvestigator.email = e.detail.value;
-							refresh();
-						}}
-					/>
-				</div>
-				<SelectField
-					options={sampleCoolingOptions}
-					label="Sample Cooling"
-					value={draft.sampleCooling}
-					on:change={(e) => {
-						draft.sampleCooling = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
 
+				<h3 class="col-span-3 font-bold mt-4">Diagnostics</h3>
+				<div>
+					<div class="p-4">
+						{#each draft.configurationData.diagnosticPortPairs as pair, index}
+							<div class="flex gap-4 items-center mb-4">
+								<div class="flex-1">
+									<SelectField label="Diagnostic ID" options={diagnosticOptions} bind:value={pair.diagnosticID} placeholder="Select diagnostic" />
+								</div>
+								<div class="flex-1">
+									<TextField label="Port" bind:value={pair.port} placeholder="Enter port" />
+								</div>
+								<button
+									type="button"
+									on:click={() => {
+										draft.configurationData.diagnosticPortPairs = draft.configurationData.diagnosticPortPairs.filter((_, i) => i !== index);
+										refresh();
+									}}
+									class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 self-end mb-1"
+								>
+									Delete
+								</button>
+							</div>
+						{/each}
+
+						<!-- Blank fields for adding new pair -->
+						<div class="flex gap-4 items-center mb-4 border-t pt-4">
+							<div class="flex-1">
+								<SelectField label="New Diagnostic ID" options={diagnosticOptions} bind:value={newDiagnosticID} placeholder="Select diagnostic" />
+							</div>
+							<div class="flex-1">
+								<TextField label="New Port" bind:value={newPort} placeholder="Enter port" />
+							</div>
+							<Button
+								on:click={() => {
+									if (newDiagnosticID && newPort) {
+										draft.configurationData.diagnosticPortPairs.push({ diagnosticID: newDiagnosticID, port: newPort });
+										newDiagnosticID = '';
+										newPort = '';
+										refresh();
+									}
+								}}
+								variant="outline"
+								disabled={!newDiagnosticID || !newPort}
+							>
+								Add
+							</Button>
+						</div>
+					</div>
+				</div>
+			</div>
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
 				{#if !isNewEntry}
 					<div>
@@ -498,7 +352,7 @@
 			</div>
 		</Form>
 	</div>
-</Dialog> -->
+</Dialog>
 
 <style>
 	.table-container {
@@ -507,7 +361,7 @@
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
-    	overflow-x: auto;
+		overflow-x: auto;
 	}
 
 	:global(.experimentInputDialog) {

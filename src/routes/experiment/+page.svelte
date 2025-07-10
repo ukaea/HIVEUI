@@ -43,6 +43,11 @@
 
 	let sortedData: ExperimentMetadata[] = [];
 	const order = tableOrderStore({ initialBy: 'experimentID', initialDirection: 'asc' });
+
+	order.subscribe(() => {
+		sortedData = sortedData.sort($order.handler);
+	});
+
 	let open = false;
 	let selectedMetadata: ExperimentMetadata | null = null;
 	let isNewEntry = false;
@@ -80,7 +85,7 @@
 				sortedData = data.map(mapJSONToExperiment).sort($order.handler);
 
 				// Log the sorted data and type of each entry
-				console.log('Sorted Data:', sortedData);
+				//console.log('Sorted Data:', sortedData);
 				return;
 			}
 

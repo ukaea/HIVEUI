@@ -155,6 +155,11 @@
 	let sortedConfigurations: ConfiguationSelectMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+
+	order.subscribe((value) => {
+		sortedData = sortedData.sort($order.handler);
+	});
+
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
@@ -669,7 +674,7 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.pulse.comment}
+						value={draft.pulse.operatorComment}
 						on:change={(e) => {
 							draft.pulse.operatorComment = e.detail.value;
 							refresh();
