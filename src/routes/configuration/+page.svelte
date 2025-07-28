@@ -280,25 +280,46 @@
 						refresh();
 					}}
 				/>
-				<TextField
-					label="Configuration Description"
-					value={draft.configurationDescription}
-					on:change={(e) => {
-						draft.configurationDescription = e.detail.value;
-						refresh();
-					}}
-				/>
+				<div class="col-span-2">
+					<TextField
+						label="Configuration Description"
+						multiline
+						classes={{ input: 'h-[100px]' }}
+						value={draft.configurationDescription}
+						on:change={(e) => {
+							draft.configurationDescription = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
 
-				<h3 class="col-span-3 font-bold mt-4">Diagnostics</h3>
-				<div>
+				<h3 class="col-span-2 font-bold mt-4">Diagnostics</h3>
+				<div class="col-span-2">
 					<div class="p-4">
-						{#each draft.configurationData.diagnosticPortPairs as pair, index}
+						{#each draft.configurationData.diagnosticPortPairs as pair, index (index)}
 							<div class="flex gap-4 items-center mb-4">
 								<div class="flex-1">
-									<SelectField label="Diagnostic ID" options={diagnosticOptions} bind:value={pair.diagnosticID} placeholder="Select diagnostic" />
+									<SelectField
+										label="Diagnostic ID"
+										options={diagnosticOptions}
+										value={pair.diagnosticID}
+										on:change={(e) => {
+											draft.configurationData.diagnosticPortPairs[index].diagnosticID = e.detail.value;
+											refresh();
+										}}
+										placeholder="Select diagnostic"
+									/>
 								</div>
 								<div class="flex-1">
-									<TextField label="Port" bind:value={pair.port} placeholder="Enter port" />
+									<TextField
+										label="Port"
+										value={pair.port}
+										on:change={(e) => {
+											draft.configurationData.diagnosticPortPairs[index].port = e.detail.value;
+											refresh();
+										}}
+										placeholder="Enter port"
+									/>
 								</div>
 								<button
 									type="button"
@@ -316,15 +337,30 @@
 						<!-- Blank fields for adding new pair -->
 						<div class="flex gap-4 items-center mb-4 border-t pt-4">
 							<div class="flex-1">
-								<SelectField label="New Diagnostic ID" options={diagnosticOptions} bind:value={newDiagnosticID} placeholder="Select diagnostic" />
+								<SelectField
+									label="New Diagnostic ID"
+									options={diagnosticOptions}
+									value={newDiagnosticID}
+									on:change={(e) => {
+										newDiagnosticID = e.detail.value;
+									}}
+									placeholder="Select diagnostic"
+								/>
 							</div>
 							<div class="flex-1">
-								<TextField label="New Port" bind:value={newPort} placeholder="Enter port" />
+								<TextField
+									label="New Port"
+									value={newPort}
+									on:change={(e) => {
+										newPort = e.detail.value ?? '';
+									}}
+									placeholder="Enter port"
+								/>
 							</div>
 							<Button
 								on:click={() => {
 									if (newDiagnosticID && newPort) {
-										draft.configurationData.diagnosticPortPairs.push({ diagnosticID: newDiagnosticID, port: newPort });
+										draft.configurationData.diagnosticPortPairs = [...draft.configurationData.diagnosticPortPairs, { diagnosticID: newDiagnosticID, port: newPort }];
 										newDiagnosticID = '';
 										newPort = '';
 										refresh();
