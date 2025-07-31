@@ -9,6 +9,6 @@ FROM node:18.18.0-alpine AS deployer
 WORKDIR /app
 COPY --from=builder /app/build build/
 COPY --from=builder /app/package*.json ./
-EXPOSE 3000
+EXPOSE 3003
 ENV NODE_ENV=production
-CMD ["sh", "-c", "ORIGIN=http://localhost:3000 node build"]
+CMD ["sh", "-c", "ORIGIN=http://scicat-test.apps.l:3003 node build"]
