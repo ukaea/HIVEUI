@@ -4,31 +4,22 @@ import { getJsonContent } from "$lib/jsonUtils";
 export class CampaignMetadata {
     campaignUUID: string;
     campaignName: string;
-    customerOrg: string;
-    customerContactPerson: PersonMetadata;
     experiments: ExperimentMetadata[];
 
     constructor() {
         this.campaignUUID = '';
         this.campaignName = '';
-        this.customerOrg = '';
-        this.customerContactPerson = new PersonMetadata();
         this.experiments = [];
     }
 
-    static async fromJSON(apiResponse: any): Promise<CampaignMetadata> {
+    static async fromJSON(json: any): Promise<CampaignMetadata> {
         const metadata = new CampaignMetadata();
 
-        metadata.campaignUUID = apiResponse.campaignUUID || '';
-        metadata.campaignName = apiResponse.campaignName || '';
-        metadata.customerOrg = apiResponse.customerOrg || '';
-        
-        if (apiResponse.customerContactPerson) {
-            metadata.customerContactPerson = PersonMetadata.fromJSON(apiResponse.customerContactPerson);
-        }
-        
-        if (apiResponse.experiments && Array.isArray(apiResponse.experiments)) {
-            const experimentPromises = apiResponse.experiments.map(async (experimentUUID: string) => {
+        metadata.campaignUUID = json.campaignUUID || '';
+        metadata.campaignName = json.campaignName || '';
+
+        if (json.experiments && Array.isArray(json.experiments)) {
+            const experimentPromises = json.experiments.map(async (experimentUUID: string) => {
                 try {
                     const experimentData = await getJsonContent(`experiments/${experimentUUID}.json`);
                     return ExperimentMetadata.fromJSON(experimentData);
@@ -49,8 +40,6 @@ export class CampaignMetadata {
         return {
             campaignUUID: campaign.campaignUUID,
             campaignName: campaign.campaignName,
-            customerOrg: campaign.customerOrg,
-            customerContactPerson: PersonMetadata.toJSON(campaign.customerContactPerson),
             experiments: campaign.experiments.map(exp => exp.experimentUUID)
         };
     }

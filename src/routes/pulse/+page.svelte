@@ -521,7 +521,6 @@
 			columns={[
 				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
 				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
-				// { name: 'pulse.pulseStart', align: 'left', header: 'Pulse Start' },
 				{
 					name: 'pulse.pulseStart',
 					align: 'left',

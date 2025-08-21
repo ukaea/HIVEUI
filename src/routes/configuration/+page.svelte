@@ -401,7 +401,7 @@
 	}
 
 	:global(.experimentInputDialog) {
-		max-height: 900px;
+		max-height: 90vh;
 		overflow: hidden;
 	}
 </style>

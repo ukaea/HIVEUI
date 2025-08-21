@@ -5,7 +5,7 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { CampaignMetadata, ExperimentMetadata } from '$lib/models';
+	import { CampaignMetadata, ExperimentMetadata, PersonMetadata } from '$lib/models';
 
 	let sortedData: CampaignMetadata[] = [];
 	const campaignOrder = tableOrderStore({ initialBy: 'campaignName', initialDirection: 'asc' });
@@ -171,7 +171,7 @@
 	function handleModalClose() {
 		open = false;
 		selectedMetadata = null;
-		selectedExperiment = null;		
+		selectedExperiment = null;
 		isNewEntry = false;
 	}
 
@@ -223,8 +223,7 @@
 			data={sortedData}
 			columns={[
 				{ name: 'campaignName', align: 'left', header: 'Campaign Name' },
-				{ name: 'customerOrg', align: 'left', header: 'Customer Organization' },
-				{ name: 'customerContactPerson', align: 'left', header: 'Customer Contact' }
+				{ name: 'campaignUUID', align: 'left', header: 'Campaign UUID' }
 			]}
 			order={campaignOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -249,25 +248,9 @@
 				/>
 				<TextField
 					label="Campaign UUID"
-					value={draft.campaignUUID}
+					value={isNewEntry ? (draft.campaignUUID = crypto.randomUUID()) : draft.campaignUUID}
 					on:change={(e) => {
 						draft.campaignUUID = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Customer Organization"
-					value={draft.customerOrg}
-					on:change={(e) => {
-						draft.customerOrg = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Customer Contact"
-					value={draft.customerContactPerson.email}
-					on:change={(e) => {
-						draft.customerContactPerson.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -308,6 +291,7 @@
 					<div class="flex gap-2">
 						<SelectField
 							label="Add Experiment"
+							value={selectedExperiment?.experimentUUID || ''}
 							options={allExperiments.map((exp) => ({ label: exp.experimentName, value: exp.experimentUUID }))}
 							on:change={(e) => {
 								selectedExperiment = allExperiments.find((exp) => exp.experimentUUID === e.detail.value) || null;
@@ -372,7 +356,7 @@
 	}
 
 	:global(.campaignInputDialog) {
-		max-height: 900px;
+		max-height: 90vh;
 		overflow: hidden;
 	}
 </style>
