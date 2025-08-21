@@ -48,8 +48,13 @@
 		}
 	}
 
-	async function handleMetadataSubmit(event: CustomEvent<CampaignMetadata>) {
-		const rawMetadata = event.detail;
+	async function handleMetadataSubmit() {
+		const rawMetadata = selectedMetadata;
+		if (!rawMetadata || !rawMetadata.campaignUUID) {
+			alert('Campaign UUID is required.');
+			return;
+		}
+		console.log('Submitting metadata:', rawMetadata);
 		try {
 			await handleFileSubmission(rawMetadata);
 		} catch (error) {
@@ -58,7 +63,7 @@
 
 		if (localOnly) {
 			handleModalClose();
-			await fetchCampaigns(); // Refresh the data
+			await fetchCampaigns();
 			return;
 		}
 
@@ -76,8 +81,8 @@
 			const campaignUUID = rawMetadata.campaignUUID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/campaigns/`;
 			const fileName = `${campaignUUID}.json`;
-
-			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: rawMetadata };
+			let cleanedMetadata = CampaignMetadata.toJSON(rawMetadata);
+			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
 
 			const fileResponse = await fetch('/api/save-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saveMetadata) });
 
@@ -166,16 +171,9 @@
 	function handleModalClose() {
 		open = false;
 		selectedMetadata = null;
+		selectedExperiment = null;		
 		isNewEntry = false;
 	}
-
-	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
-			localOnly = true;
-		}
-		fetchCampaigns();
-		fetchExperiments();
-	});
 
 	async function fetchExperiments() {
 		try {
@@ -201,6 +199,18 @@
 			alert('Failed to load proposals. Please try again later.');
 		}
 	}
+
+	function handleFormCancel() {
+		handleModalClose();
+	}
+
+	onMount(() => {
+		if (PUBLIC_LOCAL_ONLY == 'true') {
+			localOnly = true;
+		}
+		fetchCampaigns();
+		fetchExperiments();
+	});
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -226,7 +236,7 @@
 <Dialog {open} on:close={handleModalClose} class="campaignInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Campaign' : 'Edit Campaign Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Campaign</h4>
 				<TextField
@@ -287,9 +297,12 @@
 							<Button
 								on:click={() => {
 									draft.experiments = draft.experiments.filter((_, i) => i !== index);
+									current = draft;
+									refresh();
 								}}
 								variant="outline"
-								color="danger">Delete</Button>
+								color="danger">Delete</Button
+							>
 						</div>
 					{/each}
 					<div class="flex gap-2">
@@ -303,8 +316,15 @@
 						<Button
 							on:click={() => {
 								if (selectedExperiment) {
-									draft.experiments = [...draft.experiments, selectedExperiment];
-									console.log('All experiments:', draft.experiments);
+									// Check if experiment is already added
+									if (!draft.experiments.some((exp) => exp.experimentUUID === selectedExperiment.experimentUUID)) {
+										draft.experiments = [...draft.experiments, selectedExperiment];
+									} else {
+										alert('Experiment already added to this campaign.');
+									}
+
+									selectedExperiment = null;
+									current = draft;
 									refresh();
 								}
 							}}
@@ -322,8 +342,19 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
+					<Button
+						on:click={() => {
+							selectedMetadata = current;
+							handleMetadataSubmit();
+						}}
+						variant="fill">Save</Button
+					><Button
+						on:click={() => {
+							revertAll();
+							handleFormCancel();
+						}}
+						style={{ marginLeft: 'auto' }}>Cancel</Button
+					>
 				</div>
 			</div>
 		</Form>
