@@ -1,101 +1,35 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem, map } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-
-	class DiagnosticSelectMetadata {
-		diagnosticID: string;
-		constructor() {
-			this.diagnosticID = '';
-		}
-	}
-
-	class DiagnosticPortPair {
-		diagnosticID: string;
-		port: string;
-
-		constructor() {
-			this.diagnosticID = '';
-			this.port = '';
-		}
-	}
-
-	class ConfigurationData {
-		diagnosticPortPairs: DiagnosticPortPair[];
-
-		constructor() {
-			this.diagnosticPortPairs = [];
-		}
-	}
-
-	class ConfigurationMetadata {
-		configurationID: string;
-		configurationName: string;
-		configurationDescription: string;
-		configurationData: ConfigurationData;
-
-		constructor() {
-			this.configurationID = '';
-			this.configurationName = '';
-			this.configurationDescription = '';
-			this.configurationData = new ConfigurationData();
-		}
-	}
+	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 
 	let sortedData: ConfigurationMetadata[] = [];
-	let sortedDiagnostics: DiagnosticSelectMetadata[] = [];
-	let diagnosticOptions: MenuOption[] = [];
-	const order = tableOrderStore({ initialBy: 'configurationID', initialDirection: 'asc' });
+	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
-	order.subscribe((value) => {
-		sortedData = sortedData.sort($order.handler);
+	configurationOrder.subscribe(() => {
+		sortedData = sortedData.sort($configurationOrder.handler);
 	});
 
+	let allEquipment: EquipmentMetadata[] = [];
+	let allCombinations: CombinationMetadata[] = [];
+	let selectedEquipment: EquipmentMetadata | null = null;
+	let selectedCombination: CombinationMetadata | null = null;
+
+	// Main configuration dialog
 	let open = false;
 	let selectedMetadata: ConfigurationMetadata | null = null;
 	let isNewEntry = false;
+
+	// Combination creation dialog
+	let combinationDialogOpen = false;
+	let newCombination: CombinationMetadata | null = null;
+	let isNewCombination = false;
+
 	let localOnly = false;
-
-	function mapJSONToConfiguration(apiResponse: any): ConfigurationMetadata {
-		const metadata = new ConfigurationMetadata();
-		return Object.assign(metadata, apiResponse);
-	}
-
-	function mapConfigurationToJSON(metadata: ConfigurationMetadata): any {
-		return { ...metadata };
-	}
-
-	function mapToDiagnostic(apiResponse: any): DiagnosticSelectMetadata {
-		const metadata = new DiagnosticSelectMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
-	}
-
-	async function fetchDiagnostics() {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('diagnostics');
-				const data = await Promise.all(files.map((filename: string) => getJsonContent('diagnostics/' + filename)));
-				sortedDiagnostics = data.map(mapToDiagnostic);
-				diagnosticOptions = sortedDiagnostics.map((diagnostic) => {
-					return { label: diagnostic.diagnosticID, value: diagnostic.diagnosticID };
-				});
-				console.log('Diagnostics loaded:', sortedDiagnostics);
-				return;
-			}
-		} catch (error) {
-			console.error('Error fetching diagnostics:', error);
-			alert('Failed to load diagnostics. Please try again later.');
-		}
-	}
 
 	async function fetchConfigurations() {
 		try {
@@ -106,18 +40,83 @@
 
 			if (localOnly) {
 				const files = await getJsonFiles('configurations');
-				const data = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
-				sortedData = data.map(mapJSONToConfiguration).sort($order.handler);
+				const configurationData = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
+				const configurations = await Promise.all(configurationData.map(ConfigurationMetadata.fromJSON));
+				sortedData = configurations.sort($configurationOrder.handler);
 				return;
 			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch configurations');
+			const data = await response.json();
+			const configurations = await Promise.all(data.map(ConfigurationMetadata.fromJSON));
+			sortedData = configurations.sort($configurationOrder.handler);
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert('Failed to load configurations. Please try again later.');
 		}
 	}
 
-	async function handleMetadataSubmit(event: CustomEvent<ConfigurationMetadata>) {
-		const rawMetadata = event.detail;
+	async function fetchCombinations() {
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			if (localOnly) {
+				const files = await getJsonFiles('combinations');
+				const combinationData = await Promise.all(files.map((filename: string) => getJsonContent('combinations/' + filename)));
+				const combinations = await Promise.all(combinationData.map(CombinationMetadata.fromJSON));
+				allCombinations = combinations;
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/combinations`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch combinations');
+			const data = await response.json();
+			const combinations = await Promise.all(data.map(CombinationMetadata.fromJSON));
+			allCombinations = combinations;
+		} catch (error) {
+			console.error('Error fetching combinations:', error);
+			alert('Failed to load combinations. Please try again later.');
+		}
+	}
+
+	async function fetchEquipment() {
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			if (localOnly) {
+				const files = await getJsonFiles('equipment');
+				const equipmentData = await Promise.all(files.map((filename: string) => getJsonContent('equipment/' + filename)));
+				allEquipment = await Promise.all(equipmentData.map(EquipmentMetadata.fromJSON));
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch equipment');
+			const data = await response.json();
+			allEquipment = data.map(EquipmentMetadata.fromJSON);
+		} catch (error) {
+			console.error('Error fetching equipment:', error);
+			alert('Failed to load equipment. Please try again later.');
+		}
+	}
+
+	async function handleConfigurationSubmit() {
+		const rawMetadata = selectedMetadata;
+		if (!rawMetadata || !rawMetadata.configurationUUID) {
+			alert('Configuration UUID is required.');
+			return;
+		}
+		console.log('Submitting metadata:', rawMetadata);
 		try {
 			await handleFileSubmission(rawMetadata);
 		} catch (error) {
@@ -126,7 +125,7 @@
 
 		if (localOnly) {
 			handleModalClose();
-			await fetchConfigurations(); // Refresh the data
+			await fetchConfigurations();
 			return;
 		}
 
@@ -141,11 +140,11 @@
 
 	async function handleFileSubmission(rawMetadata: ConfigurationMetadata): Promise<void> {
 		try {
-			const configurationID = rawMetadata.configurationID;
+			const configurationUUID = rawMetadata.configurationUUID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/configurations/`;
-			const fileName = `${configurationID}.json`;
-
-			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: rawMetadata };
+			const fileName = `${configurationUUID}.json`;
+			let cleanedMetadata = ConfigurationMetadata.toJSON(rawMetadata);
+			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
 
 			const fileResponse = await fetch('/api/save-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saveMetadata) });
 
@@ -165,32 +164,99 @@
 
 	async function handleAPISubmission(rawMetadata: ConfigurationMetadata, isNewEntry: boolean): Promise<void> {
 		try {
-			// Implement later
-			// const accessToken = $page.data.session?.sessionToken;
-			// if (!accessToken) {
-			// 	throw new Error('No access token available');
-			// }
-			// const mappedMetadata = mapConfigurationToJSON(rawMetadata);
-			// console.log('Mapped metadata:', mappedMetadata);
-			// const url = `${PUBLIC_METACAT_URL}/api/v1/proposals?schema=any`;
-			// const method = isNewEntry ? 'POST' : 'POST';
-			// const endpointResponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(mappedMetadata) });
-			// if (!endpointResponse.ok) throw new Error('Failed to save proposal to endpoint');
-			// console.log('Proposal submitted to API successfully');
-			// alert(isNewEntry ? 'New proposal submitted successfully!' : 'Proposal updated successfully!');
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			const mappedMetadata = ConfigurationMetadata.toJSON(rawMetadata);
+			const url = `${PUBLIC_METACAT_URL}/api/v1/configurations?schema=any`;
+			const method = isNewEntry ? 'POST' : 'POST';
+			const endpointResponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(mappedMetadata) });
+
+			if (!endpointResponse.ok) throw new Error('Failed to save configuration to endpoint');
+
+			console.log('Configuration submitted to API successfully');
+			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 		} catch (error) {
-			// console.error('Error submitting proposal to API:', error);
-			// alert(`Failed to submit proposal to API: ${error.message}`);
-			// throw error; // Re-throw the error if you want calling code to handle it
+			console.error('Error submitting configuration to API:', error);
+			alert(`Failed to submit configuration to API: ${error.message}`);
+			throw error;
+		}
+	}
+
+	async function handleCombinationSubmit() {
+		if (!newCombination || !newCombination.combinationUUID) {
+			alert('Combination UUID is required.');
+			return;
+		}
+
+		try {
+			await handleCombinationFileSubmission(newCombination);
+
+			if (!localOnly) {
+				await handleCombinationAPISubmission(newCombination, isNewCombination);
+			}
+
+			handleCombinationDialogClose();
+			alert('Combination created successfully!');
+			await fetchCombinations();
+		} catch (error) {
+			console.error('Error submitting combination:', error);
+		}
+	}
+
+	async function handleCombinationFileSubmission(rawMetadata: CombinationMetadata): Promise<void> {
+		try {
+			const combinationUUID = rawMetadata.combinationUUID;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/combinations/`;
+			const fileName = `${combinationUUID}.json`;
+			let cleanedMetadata = CombinationMetadata.toJSON(rawMetadata);
+			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
+
+			const fileResponse = await fetch('/api/save-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saveMetadata) });
+
+			if (!fileResponse.ok) {
+				const errorData = await fileResponse.json();
+				throw new Error(`Failed to save combination file: ${errorData.message}`);
+			}
+
+			console.log('Combination file saved successfully');
+		} catch (error) {
+			console.error('Error saving combination file:', error);
+			alert(`Failed to save combination file: ${error.message}`);
+			throw error;
+		}
+	}
+
+	async function handleCombinationAPISubmission(rawMetadata: CombinationMetadata, isNewEntry: boolean): Promise<void> {
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			const mappedMetadata = CombinationMetadata.toJSON(rawMetadata);
+			const url = `${PUBLIC_METACAT_URL}/api/v1/combinations?schema=any`;
+			const method = isNewEntry ? 'POST' : 'POST';
+			const endpointResponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(mappedMetadata) });
+
+			if (!endpointResponse.ok) throw new Error('Failed to save combination to endpoint');
+
+			console.log('Combination submitted to API successfully');
+		} catch (error) {
+			console.error('Error submitting combination to API:', error);
+			alert(`Failed to submit combination to API: ${error.message}`);
+			throw error;
 		}
 	}
 
 	function handleDelete(): void {
 		if (!selectedMetadata) return;
 
-		if (confirm(`Are you sure you want to delete the configuration with ID: ${selectedMetadata.configurationID}?`)) {
+		if (confirm(`Are you sure you want to delete the configuration with UUID: ${selectedMetadata.configurationUUID}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/configurations/${selectedMetadata.configurationID}.json`;
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/configurations/${selectedMetadata.configurationUUID}.json`;
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
@@ -201,8 +267,19 @@
 						console.error('Error deleting local file:', error);
 						alert(`Failed to delete configuration: ${error.message}`);
 					});
+			} else {
+				const accessToken = $page.data.session?.sessionToken;
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations/${selectedMetadata.configurationUUID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+					.then((response) => {
+						if (!response.ok) throw new Error('Failed to delete configuration from API');
+						alert('Configuration deleted successfully');
+						fetchConfigurations();
+					})
+					.catch((error) => {
+						console.error('Error deleting configuration from API:', error);
+						alert(`Failed to delete configuration: ${error.message}`);
+					});
 			}
-
 			handleModalClose();
 		}
 	}
@@ -225,33 +302,78 @@
 		isNewEntry = false;
 	}
 
-	let newDiagnosticID = '';
-	let newPort = '';
+	function handleNewCombination(): void {
+		newCombination = { ...new CombinationMetadata() };
+		isNewCombination = true;
+		selectedEquipment = [];
+		combinationDialogOpen = true;
+	}
+
+	function handleCombinationDialogClose() {
+		combinationDialogOpen = false;
+		newCombination = null;
+		selectedEquipment = [];
+		isNewCombination = false;
+	}
+
+	function handleFormCancel() {
+		handleModalClose();
+	}
+
+	function handleCombinationFormCancel() {
+		handleCombinationDialogClose();
+	}
+
+	function addEquipmentToCombination(equipment: EquipmentMetadata) {
+		if (newCombination && !newCombination.equipment.some((eq) => eq.equipmentUUID === equipment.equipmentUUID)) {
+			newCombination.equipment = [...newCombination.equipment, equipment];
+		}
+	}
+
+	function removeEquipmentFromCombination(equipmentUUID: string) {
+		if (newCombination) {
+			newCombination.equipment = newCombination.equipment.filter((eq) => eq.equipmentUUID !== equipmentUUID);
+		}
+	}
+
+	function removeCombinationFromConfiguration(index: number) {
+		if (selectedMetadata) {
+			selectedMetadata.equipmentCombinations = selectedMetadata.equipmentCombinations.filter((_, i) => i !== index);
+		}
+	}
 
 	onMount(() => {
 		if (PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
-
-		fetchDiagnostics();
 		fetchConfigurations();
+		fetchCombinations();
+		fetchEquipment();
 	});
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
-		<h2 class="text-2xl font-bold">Configuration Metadata</h2>
-		<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
+		<h2 class="text-2xl font-bold">Configurations</h2>
+		<div>
+			<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
+			<Button on:click={handleNewCombination} variant="fill">New Combination</Button>
+		</div>
 	</div>
 	<div class="table-container">
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'configurationID', align: 'left', header: 'ID' },
-				{ name: 'configurationName', align: 'left', header: 'Name' },
-				{ name: 'configurationDescription', align: 'left', header: 'Description' }
+				{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
+				{ name: 'configurationDescription', align: 'left', header: 'Description' },
+				{
+					name: 'equipmentCombinations',
+					align: 'left',
+					header: 'Equipment Combinations',
+					format: (value) => (Array.isArray(value) ? `${value.length} combinations` : '0 combinations')
+				}
 			]}
-			{order}
+			order={configurationOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
 		/>
@@ -259,19 +381,11 @@
 </div>
 
 <Dialog {open} on:close={handleModalClose} class="configurationInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Edit Configuration Metadata'}</div>
+	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Edit Configuration'}</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Configuration Information</h3>
-				<TextField
-					label="Configuration ID"
-					value={draft.configurationID}
-					on:change={(e) => {
-						draft.configurationID = e.detail.value;
-						refresh();
-					}}
-				/>
+				<h4 class="col-span-2 mt-1">Configuration Details</h4>
 				<TextField
 					label="Configuration Name"
 					value={draft.configurationName}
@@ -280,11 +394,17 @@
 						refresh();
 					}}
 				/>
+				<TextField
+					label="Configuration UUID"
+					value={isNewEntry ? (draft.configurationUUID = crypto.randomUUID()) : draft.configurationUUID}
+					on:change={(e) => {
+						draft.configurationUUID = e.detail.value;
+						refresh();
+					}}
+				/>
 				<div class="col-span-2">
 					<TextField
-						label="Configuration Description"
-						multiline
-						classes={{ input: 'h-[100px]' }}
+						label="Description"
 						value={draft.configurationDescription}
 						on:change={(e) => {
 							draft.configurationDescription = e.detail.value;
@@ -292,89 +412,73 @@
 						}}
 					/>
 				</div>
+			</div>
 
-				<h3 class="col-span-2 font-bold mt-4">Diagnostics</h3>
-				<div class="col-span-2">
-					<div class="p-4">
-						{#each draft.configurationData.diagnosticPortPairs as pair, index (index)}
-							<div class="flex gap-4 items-center mb-4">
-								<div class="flex-1">
-									<SelectField
-										label="Diagnostic ID"
-										options={diagnosticOptions}
-										value={pair.diagnosticID}
-										on:change={(e) => {
-											draft.configurationData.diagnosticPortPairs[index].diagnosticID = e.detail.value;
-											refresh();
-										}}
-										placeholder="Select diagnostic"
-									/>
-								</div>
-								<div class="flex-1">
-									<TextField
-										label="Port"
-										value={pair.port}
-										on:change={(e) => {
-											draft.configurationData.diagnosticPortPairs[index].port = e.detail.value;
-											refresh();
-										}}
-										placeholder="Enter port"
-									/>
-								</div>
-								<button
-									type="button"
-									on:click={() => {
-										draft.configurationData.diagnosticPortPairs = draft.configurationData.diagnosticPortPairs.filter((_, i) => i !== index);
-										refresh();
-									}}
-									class="px-2 py-1 bg-red-500 text-white rounded hover:bg-red-600 self-end mb-1"
-								>
-									Delete
-								</button>
-							</div>
-						{/each}
-
-						<!-- Blank fields for adding new pair -->
-						<div class="flex gap-4 items-center mb-4 border-t pt-4">
-							<div class="flex-1">
-								<SelectField
-									label="New Diagnostic ID"
-									options={diagnosticOptions}
-									value={newDiagnosticID}
-									on:change={(e) => {
-										newDiagnosticID = e.detail.value;
-									}}
-									placeholder="Select diagnostic"
-								/>
-							</div>
-							<div class="flex-1">
-								<TextField
-									label="New Port"
-									value={newPort}
-									on:change={(e) => {
-										newPort = e.detail.value ?? '';
-									}}
-									placeholder="Enter port"
-								/>
-							</div>
+			<div class="p-4 gap-4">
+				<h4 class="col-span-2 mt-1 mb-4">Equipment Combinations</h4>
+				<div class="space-y-3">
+					{#each draft.equipmentCombinations as combination, index (combination.combinationUUID)}
+						<div class="flex gap-2">
+							<TextField
+								label="Combination Name"
+								value={combination.combinationName}
+								on:change={(e) => {
+									combination.combinationName = e.detail.value;
+									refresh();
+								}}
+							/>
+							<TextField
+								label="Combination UUID"
+								value={combination.combinationUUID}
+								on:change={(e) => {
+									combination.combinationUUID = e.detail.value;
+									refresh();
+								}}
+							/>
 							<Button
 								on:click={() => {
-									if (newDiagnosticID && newPort) {
-										draft.configurationData.diagnosticPortPairs = [...draft.configurationData.diagnosticPortPairs, { diagnosticID: newDiagnosticID, port: newPort }];
-										newDiagnosticID = '';
-										newPort = '';
-										refresh();
-									}
+									draft.equipmentCombinations = draft.equipmentCombinations.filter((_, i) => i !== index);
+									current = draft;
+									refresh();
 								}}
 								variant="outline"
-								disabled={!newDiagnosticID || !newPort}
+								color="danger"
+								size="sm">Remove</Button
 							>
-								Add
-							</Button>
 						</div>
+					{/each}
+					<div class="flex gap-2">
+						<SelectField
+							label="Add Combination"
+							value={selectedCombination?.combinationUUID || ''}
+							options={allCombinations.map((combination) => ({ label: combination.combinationName, value: combination.combinationUUID }))}
+							on:change={(e) => {
+								selectedCombination = allCombinations.find((combination) => combination.combinationUUID === e.detail.value) || null;
+							}}
+						/>
+						<Button
+							on:click={() => {
+								if (selectedCombination) {
+									// Check if combination is already added
+									if (!draft.equipmentCombinations.some((combination) => combination.combinationUUID === selectedCombination.combinationUUID)) {
+										draft.equipmentCombinations = [...draft.equipmentCombinations, selectedCombination];
+										console.log('Combination added:', selectedCombination);
+									} else {
+										alert('Combination already added to this configuration.');
+									}
+
+									selectedCombination = null;
+									current = draft;
+									refresh();
+								}
+							}}
+							variant="fill"
+							color="primary">Add</Button
+						>
 					</div>
 				</div>
 			</div>
+
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
 				{#if !isNewEntry}
 					<div>
@@ -382,9 +486,135 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
+					<Button
+						on:click={() => {
+							selectedMetadata = current;
+							handleConfigurationSubmit();
+						}}
+						variant="fill">Save</Button
+					>
+					<Button
+						on:click={() => {
+							revertAll();
+							handleFormCancel();
+						}}
+						style={{ marginLeft: 'auto' }}>Cancel</Button
+					>
 				</div>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+<!-- Combination Creation Dialog -->
+<Dialog open={combinationDialogOpen} on:close={handleCombinationDialogClose} class="combinationInputDialog">
+	<div slot="title">Create New Equipment Combination</div>
+	<div class="p-4">
+		<Form initial={newCombination} let:draft let:refresh let:current let:revertAll>
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<h4 class="col-span-2 mt-1">Combination Details</h4>
+				<TextField
+					label="Combination Name"
+					value={draft?.combinationName || ''}
+					on:change={(e) => {
+						if (draft) {
+							draft.combinationName = e.detail.value;
+							newCombination = draft;
+							refresh();
+						}
+					}}
+				/>
+				<TextField
+					label="Combination UUID"
+					value={isNewCombination ? (draft ? (draft.combinationUUID = crypto.randomUUID()) : '') : draft?.combinationUUID || ''}
+					on:change={(e) => {
+						if (draft) {
+							draft.combinationUUID = e.detail.value;
+							newCombination = draft;
+							refresh();
+						}
+					}}
+				/>
+			</div>
+
+			<div class="p-4 gap-4">
+				<h4 class="col-span-2 mt-1 mb-4">Equipment</h4>
+				<div class="space-y-3">
+					{#each draft.equipment as equipment, index (equipment.equipmentUUID)}
+						<div class="flex gap-2">
+							<TextField
+								label="Equipment Name"
+								value={equipment.equipmentName}
+								on:change={(e) => {
+									equipment.equipmentName = e.detail.value;
+									refresh();
+								}}
+							/>
+							<TextField
+								label="Equipment UUID"
+								value={equipment.equipmentUUID}
+								on:change={(e) => {
+									equipment.equipmentUUID = e.detail.value;
+									refresh();
+								}}
+							/>
+							<Button
+								on:click={() => {
+									draft.equipment = draft.equipment.filter((_, i) => i !== index);
+									current = draft;
+									refresh();
+								}}
+								variant="outline"
+								color="danger"
+								size="sm">Remove</Button
+							>
+						</div>
+					{/each}
+					<div class="flex gap-2">
+						<SelectField
+							label="Add Equipment"
+							value={selectedEquipment?.equipmentUUID || ''}
+							options={allEquipment.map((equipment) => ({ label: equipment.equipmentName, value: equipment.equipmentUUID }))}
+							on:change={(e) => {
+								selectedEquipment = allEquipment.find((equipment) => equipment.equipmentUUID === e.detail.value) || null;
+							}}
+						/>
+						<Button
+							on:click={() => {
+								if (selectedEquipment) {
+									// Check if equipment is already added
+									if (!draft.equipment.some((equipment) => equipment.equipmentUUID === selectedEquipment.equipmentUUID)) {
+										draft.equipment = [...draft.equipment, selectedEquipment];
+									} else {
+										alert('Equipment already added to this configuration.');
+									}
+
+									selectedEquipment = null;
+									current = draft;
+									refresh();
+								}
+							}}
+							variant="fill"
+							color="primary">Add</Button
+						>
+					</div>
+				</div>
+			</div>
+
+			<div class="flex gap-2 mt-4 justify-end">
+				<Button
+					on:click={() => {
+						newCombination = current;
+						handleCombinationSubmit();
+					}}
+					variant="fill">Save</Button
+				>
+				<Button
+					on:click={() => {
+						revertAll();
+						handleCombinationFormCancel();
+					}}>Cancel</Button
+				>
 			</div>
 		</Form>
 	</div>
@@ -400,8 +630,13 @@
 		overflow-x: auto;
 	}
 
-	:global(.experimentInputDialog) {
-		max-height: 900px;
+	:global(.configurationInputDialog) {
+		max-height: 90vh;
+		overflow: hidden;
+	}
+
+	:global(.combinationInputDialog) {
+		max-height: 90vh;
 		overflow: hidden;
 	}
 </style>
