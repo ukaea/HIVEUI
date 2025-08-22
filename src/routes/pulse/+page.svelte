@@ -1,23 +1,12 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, type MenuOption, Notification } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-
-	class Person {
-		firstName: string;
-		lastName: string;
-		email: string;
-
-		constructor() {
-			this.firstName = '';
-			this.lastName = '';
-			this.email = '';
-		}
-	}
+	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
 
 	class CoilInformation {
 		currentType: string;
@@ -99,8 +88,8 @@
 
 	class PulseMetadata {
 		pulseID: string;
-		firstOperator: Person;
-		secondOperator: Person;
+		firstOperator: PersonMetadata;
+		secondOperator: PersonMetadata;
 		pulseStart: Date;
 		pulseDuration: string;
 		dataCaptureStart: Date;
@@ -110,8 +99,8 @@
 		coolantInformation: CoolantInformation;
 		constructor() {
 			this.pulseID = '';
-			this.firstOperator = new Person();
-			this.secondOperator = new Person();
+			this.firstOperator = new PersonMetadata();
+			this.secondOperator = new PersonMetadata();
 			this.pulseStart = new Date();
 			this.pulseDuration = '';
 			this.dataCaptureStart = new Date();
@@ -122,39 +111,27 @@
 		}
 	}
 
-	class ExperimentSelectMetadata {
-		experimentID: string;
-		constructor() {
-			this.experimentID = '';
-		}
-	}
-
-	class ConfiguationSelectMetadata {
-		configurationID: string;
-		constructor() {
-			this.configurationID = '';
-		}
-	}
-
 	// Includes the experiment and configurations
 	class CompiledPulseMetadata {
 		pulse: PulseMetadata;
-		experimentID: string;
-		configurationID: string;
+		experimentUUID: string;
+		configurationUUID: string;
 		status: string;
 		constructor() {
 			this.pulse = new PulseMetadata();
-			this.experimentID = '';
-			this.configurationID = '';
+			this.experimentUUID = '';
+			this.configurationUUID = '';
 			this.status = '';
 		}
 	}
 
 	let sortedData: CompiledPulseMetadata[] = [];
-	let sortedExperiments: ExperimentSelectMetadata[] = [];
-	let sortedConfigurations: ConfiguationSelectMetadata[] = [];
+	let sortedExperiments: ExperimentMetadata[] = [];
+	let sortedConfigurations: ConfigurationMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
+	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
 	order.subscribe((value) => {
 		sortedData = sortedData.sort($order.handler);
@@ -177,19 +154,9 @@
 			mapped.pulse.dataCaptureStart = new Date(mapped.pulse.dataCaptureStart);
 		}
 
+		console.log('Mapped Pulse:', mapped);
+
 		return mapped;
-	}
-
-	function mapToExperiment(apiResponse: any): ExperimentSelectMetadata {
-		const metadata = new ExperimentSelectMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
-	}
-
-	function mapToConfiguration(apiResponse: any): ConfiguationSelectMetadata {
-		const metadata = new ConfiguationSelectMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
 	}
 
 	async function fetchExperiments() {
@@ -201,26 +168,25 @@
 
 			if (localOnly) {
 				const files = await getJsonFiles('experiments');
-				const data = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
-				sortedExperiments = data.map(mapToExperiment).sort($order.handler);
-				experimentOptions = sortedExperiments.map((experiment) => {
-					return { label: experiment.experimentID, value: experiment.experimentID };
-				});
+				const experimentData = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
+				const experiments = await Promise.all(experimentData.map(ExperimentMetadata.fromJSON));
+				sortedExperiments = experiments.sort($experimentOrder.handler);
+
+				experimentOptions = sortedExperiments.map((experiment) => ({
+					label: experiment.experimentName,
+					value: experiment.experimentUUID
+				}));
 				return;
 			}
 
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals?filter=%7B%7D`, { headers: { Authorization: `Bearer ${accessToken}` } });
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/experiments`, { headers: { Authorization: `Bearer ${accessToken}` } });
 
-			if (!response.ok) throw new Error('Failed to fetch proposals');
+			if (!response.ok) throw new Error('Failed to fetch experiments');
 			const data = await response.json();
-			// Map the API response to ExperimentMetadata
-			sortedExperiments = data.map(mapToExperiment).sort($order.handler);
-			experimentOptions = sortedExperiments.map((experiment) => {
-				return { label: experiment.experimentID, value: experiment.experimentID };
-			});
+			sortedExperiments = data.map(ExperimentMetadata.fromJSON).sort($experimentOrder.handler);
 		} catch (error) {
-			console.error('Error fetching proposals:', error);
-			alert('Failed to load proposals. Please try again later.');
+			console.error('Error fetching experiments:', error);
+			alert('Failed to load experiments. Please try again later.');
 		}
 	}
 
@@ -233,23 +199,23 @@
 
 			if (localOnly) {
 				const files = await getJsonFiles('configurations');
-				const configurations = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
+				const configurationData = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
+				const configurations = await Promise.all(configurationData.map(ConfigurationMetadata.fromJSON));
+				sortedConfigurations = configurations.sort($configurationOrder.handler);
 
-				// Map and sort the configuration
-				sortedConfigurations = configurations.map(mapToConfiguration).sort($order.handler);
-				configurationOptions = sortedConfigurations.map((configuration) => {
-					return { label: configuration.configurationID, value: configuration.configurationID };
-				});
+				configurationOptions = sortedConfigurations.map((configuration) => ({
+					label: configuration.configurationName,
+					value: configuration.configurationUUID
+				}));
 				return;
 			}
 
 			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
 			if (!response.ok) throw new Error('Failed to fetch configurations');
 			const data = await response.json();
-			sortedConfigurations = data.map(mapToConfiguration).sort($order.handler);
-			configurationOptions = sortedConfigurations.map((configuration) => {
-				return { label: configuration.configurationID, value: configuration.configurationID };
-			});
+			const configurations = await Promise.all(data.map(ConfigurationMetadata.fromJSON));
+			sortedConfigurations = configurations.sort($configurationOrder.handler);
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert('Failed to load configurations. Please try again later.');
@@ -414,8 +380,8 @@
 				pulseID: metadata.pulse.pulseID,
 				pulseLocation: `pulses/${metadata.pulse.pulseID}.json`,
 				pulseStatus: metadata.status,
-				experimentID: metadata.experimentID,
-				configurationID: metadata.configurationID
+				experimentUUID: metadata.experimentUUID,
+				configurationUUID: metadata.configurationUUID
 			};
 
 			const saveMetadata = {
@@ -520,7 +486,22 @@
 			data={sortedData}
 			columns={[
 				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
-				{ name: 'experimentID', align: 'left', header: 'Experiment ID' },
+				{name: 'experimentUUID', align: 'left', header: 'Experiment Name',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const experiment = sortedExperiments.find((exp) => exp.experimentUUID === value);
+						return experiment ? experiment.experimentName : '';
+					}
+				},
+				{ name: 'configurationUUID', align: 'left', header: 'Configuration Name',
+					// @ts-expect-error
+					format: (value) => {
+						if (!value) return '';
+						const configuration = sortedConfigurations.find((conf) => conf.configurationUUID === value);
+						return configuration ? configuration.configurationName : '';
+					}
+				},
 				{
 					name: 'pulse.pulseStart',
 					align: 'left',
@@ -571,20 +552,20 @@
 				<SelectField
 					options={experimentOptions}
 					label="Experiment"
-					value={draft.experimentID}
+					value={draft.experimentUUID}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.experimentID = e.detail.value;
+						draft.experimentUUID = e.detail.value;
 						refresh();
 					}}
 				/>
 				<SelectField
 					options={configurationOptions}
 					label="Configuration"
-					value={draft.configurationID}
+					value={draft.configurationUUID}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.configurationID = e.detail.value;
+						draft.configurationUUID = e.detail.value;
 						refresh();
 					}}
 				/>

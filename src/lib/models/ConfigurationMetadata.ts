@@ -1,35 +1,38 @@
-import { PairMetadata } from './PairMetadata';
+import { CombinationMetadata } from './CombinationMetadata';
 import { getJsonContent } from "$lib/jsonUtils";
 
 export class ConfigurationMetadata {
 	configurationUUID: string;
     configurationName: string;
-    equipmentPairs: PairMetadata[];
+    equipmentCombinations: CombinationMetadata[];
+    configurationDescription: string;
 
 	constructor() {
 		this.configurationUUID = '';
 		this.configurationName = '';
-		this.equipmentPairs = [];
+		this.equipmentCombinations = [];
+		this.configurationDescription = '';
 	}
 
     static async fromJSON(json: any): Promise<ConfigurationMetadata> {
         const config = new ConfigurationMetadata();
         config.configurationUUID = json.configurationUUID || '';
         config.configurationName = json.configurationName || '';
-        
-        if (json.equipmentPairs && Array.isArray(json.equipmentPairs)) {
-            const pairPromises = json.equipmentPairs.map(async (pairUUID: string) => {
+        config.configurationDescription = json.configurationDescription || '';
+
+        if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
+            const combinationPromises = json.equipmentCombinations.map(async (combinationUUID: string) => {
                 try {
-                    const pairData = await getJsonContent(`pairs/${pairUUID}.json`);
-                    return await PairMetadata.fromJSON(pairData);
+                    const combinationData = await getJsonContent(`combinations/${combinationUUID}.json`);
+                    return await CombinationMetadata.fromJSON(combinationData);
                 } catch (error) {
-                    console.error(`Failed to load pair ${pairUUID}:`, error);
+                    console.error(`Failed to load combination ${combinationUUID}:`, error);
                     return null;
                 }
             });
-            
-            const pairs = await Promise.all(pairPromises);
-            config.equipmentPairs = pairs.filter(pair => pair !== null) as PairMetadata[];
+
+            const combinations = await Promise.all(combinationPromises);
+            config.equipmentCombinations = combinations.filter(combination => combination !== null) as CombinationMetadata[];
         }
         
         return config;
@@ -39,7 +42,8 @@ export class ConfigurationMetadata {
         return {
             configurationUUID: config.configurationUUID,
             configurationName: config.configurationName,
-            equipmentPairs: config.equipmentPairs.map(pair => pair.pairUUID)
+            equipmentCombinations: config.equipmentCombinations.map(combination => combination.combinationUUID),
+            configurationDescription: config.configurationDescription
         };
     }
 }

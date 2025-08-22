@@ -1,22 +1,22 @@
 import { EquipmentMetadata } from './EquipmentMetadata';
 import { getJsonContent } from "$lib/jsonUtils";
 
-export class PairMetadata {
-    pairUUID: string;
-    pairName: string;
+export class CombinationMetadata {
+    combinationUUID: string;
+    combinationName: string;
     equipment: EquipmentMetadata[];
 
     constructor() {
-        this.pairUUID = '';
-        this.pairName = '';
+        this.combinationUUID = '';
+        this.combinationName = '';
         this.equipment = [];
     }
 
-    static async fromJSON(json: any): Promise<PairMetadata> {
-        const pair = new PairMetadata();
-        pair.pairUUID = json.pairUUID || '';
-        pair.pairName = json.pairName || '';
-        
+    static async fromJSON(json: any): Promise<CombinationMetadata> {
+        const combination = new CombinationMetadata();
+        combination.combinationUUID = json.combinationUUID || '';
+        combination.combinationName = json.combinationName || '';
+
         if (json.equipment && Array.isArray(json.equipment)) {
             const equipmentPromises = json.equipment.map(async (equipmentUUID: string) => {
                 try {
@@ -29,17 +29,17 @@ export class PairMetadata {
             });
             
             const equipment = await Promise.all(equipmentPromises);
-            pair.equipment = equipment.filter(eq => eq !== null) as EquipmentMetadata[];
+            combination.equipment = equipment.filter(eq => eq !== null) as EquipmentMetadata[];
         }
-        
-        return pair;
+
+        return combination;
     }
 
-    static toJSON(pair: PairMetadata): any {
+    static toJSON(combination: CombinationMetadata): any {
         return {
-            pairUUID: pair.pairUUID,
-            pairName: pair.pairName,
-            equipment: pair.equipment.map(eq => eq.equipmentUUID)
+            combinationUUID: combination.combinationUUID,
+            combinationName: combination.combinationName,
+            equipment: combination.equipment.map(eq => eq.equipmentUUID)
         };
     }
 }

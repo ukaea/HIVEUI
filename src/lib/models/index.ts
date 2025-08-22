@@ -4,5 +4,5 @@ export { PersonMetadata } from './PersonMetadata';
 export { HeatingTypeMetadata } from './HeatingTypeMetadata';
 export { CustomerMetadata } from './CustomerMetadata';
 export { ConfigurationMetadata } from './ConfigurationMetadata';
-export { PairMetadata } from './PairMetadata';
+export { CombinationMetadata } from './CombinationMetadata';
 export { EquipmentMetadata } from './EquipmentMetadata';
