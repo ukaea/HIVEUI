@@ -632,11 +632,15 @@
 
 	:global(.configurationInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 
 	:global(.combinationInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>
