@@ -3,37 +3,43 @@ import { HeatingTypeMetadata } from '$lib/models';
 import { getJsonContent } from "$lib/jsonUtils";
 
 export class ExperimentMetadata {
+    campaignUUID: string;
+    campaignTitle: string;
     experimentUUID: string;
-    experimentName: string;
-    coilUUID: string;
-    coilName: string;
-    customer: CustomerMetadata;
-    leadInvestigator: PersonMetadata;
+    experimentTitle: string;
     experimentStart: Date;
     experimentEnd: Date;
     heatingType: HeatingTypeMetadata;
     sampleCooling: boolean;
+    leadInvestigator: PersonMetadata;
+    customer: CustomerMetadata;
+    coilUUID: string;
+    coilName: string;
     configurations: ConfigurationMetadata[];
 
     constructor() {
+        this.campaignUUID = '';
+        this.campaignTitle = '';
         this.experimentUUID = '';
-        this.experimentName = '';
-        this.coilUUID = '';
-        this.coilName = '';
-        this.customer = new CustomerMetadata();
-        this.leadInvestigator = new PersonMetadata();
+        this.experimentTitle = '';
         this.experimentStart = new Date();
         this.experimentEnd = new Date();
         this.heatingType = HeatingTypeMetadata.INDUCTION;
         this.sampleCooling = false;
+        this.leadInvestigator = new PersonMetadata();
+        this.customer = new CustomerMetadata();
+        this.coilUUID = '';
+        this.coilName = '';
         this.configurations = [];
     }
 
     static async fromJSON(json: any): Promise<ExperimentMetadata> {
         const metadata = new ExperimentMetadata();
         
+        metadata.campaignUUID = json.campaignUUID || '';
+        metadata.campaignTitle = json.campaignTitle || '';
         metadata.experimentUUID = json.experimentUUID || '';
-        metadata.experimentName = json.experimentName || '';
+        metadata.experimentTitle = json.experimentTitle || json.experimentName || '';
         metadata.coilUUID = json.coilUUID || '';
         metadata.coilName = json.coilName || '';
         
@@ -71,16 +77,18 @@ export class ExperimentMetadata {
 
     static toJSON(experiment: ExperimentMetadata): any {
         return {
+            campaignUUID: experiment.campaignUUID,
+            campaignTitle: experiment.campaignTitle,
             experimentUUID: experiment.experimentUUID,
-            experimentName: experiment.experimentName,
-            coilUUID: experiment.coilUUID,
-            coilName: experiment.coilName,
-            leadInvestigator: PersonMetadata.toJSON(experiment.leadInvestigator),
-            customer: CustomerMetadata.toJSON(experiment.customer),
+            experimentTitle: experiment.experimentTitle,
             experimentStart: experiment.experimentStart.toISOString(),
             experimentEnd: experiment.experimentEnd.toISOString(),
             heatingType: experiment.heatingType,
             sampleCooling: experiment.sampleCooling,
+            leadInvestigator: PersonMetadata.toJSON(experiment.leadInvestigator),
+            customer: CustomerMetadata.toJSON(experiment.customer),
+            coilUUID: experiment.coilUUID,
+            coilName: experiment.coilName,
             configurations: experiment.configurations.map(config => config.configurationUUID)
         };
     }
