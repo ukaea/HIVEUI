@@ -130,7 +130,7 @@
 	let sortedConfigurations: ConfigurationMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
-	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
+	const experimentOrder = tableOrderStore({ initialBy: 'experimentTitle', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
 	order.subscribe((value) => {
@@ -173,7 +173,7 @@
 				sortedExperiments = experiments.sort($experimentOrder.handler);
 
 				experimentOptions = sortedExperiments.map((experiment) => ({
-					label: experiment.experimentName,
+					label: experiment.experimentTitle,
 					value: experiment.experimentUUID
 				}));
 				return;
@@ -491,7 +491,7 @@
 					format: (value) => {
 						if (!value) return '';
 						const experiment = sortedExperiments.find((exp) => exp.experimentUUID === value);
-						return experiment ? experiment.experimentName : '';
+						return experiment ? experiment.experimentTitle : '';
 					}
 				},
 				{ name: 'configurationUUID', align: 'left', header: 'Configuration Name',

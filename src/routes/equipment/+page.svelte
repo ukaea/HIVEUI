@@ -1,276 +1,65 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
 	import { tableOrderStore } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
+	import {
+		ThermocoupleMetadata,
+		CameraMetadata,
+		LensMetadata,
+		DicMetadata,
+		FlowmeterMetadata,
+		PyrometerMetadata,
+		IrCameraMetadata
+	} from '$lib/models';
 
-	// class Port {
-	// 	portID: string;
-	// 	portDescription: string;
-	// 	portSizeStandard: string;
+	let sortedData: any[] = [];
+	let selectedMetadata: any = null;
+	let selectedEquipmentType = 'thermocouple';
+	let isNewEntry = false;
+	let open = false;
+	let localOnly = false;
 
-	// 	constructor() {
-	// 		this.portID = '';
-	// 		this.portDescription = '';
-	// 		this.portSizeStandard = '';
-	// 	}
-	// }
+	const equipmentOrder = tableOrderStore({ initialBy: 'equipmentName', initialDirection: 'asc' });
 
-	class Thermocouple {
-		status: string;
-		attachment: string;
-		tcType: string;
-		location: string;
-		areaType: string;
-		circleDiameter: string;
-		noiseFloor: string;
+	const equipmentTypes = [
+		{ label: 'Thermocouple', value: 'thermocouple' },
+		{ label: 'Camera', value: 'camera' },
+		{ label: 'Lens', value: 'lens' },
+		{ label: 'DIC', value: 'dic' },
+		{ label: 'Flowmeter', value: 'flowmeter' },
+		{ label: 'Pyrometer', value: 'pyrometer' },
+		{ label: 'IR Camera', value: 'ir-camera' }
+	];
 
-		constructor() {
-			this.status = '';
-			this.attachment = '';
-			this.tcType = '';
-			this.location = '';
-			this.areaType = '';
-			this.circleDiameter = '';
-			this.noiseFloor = '';
-		}
-	}
-
-	class DICConfig {
-		setupInformation: DICSetupInformation;
-		softwareInformation: DICSoftwareInformation;
-		additionalInformation: DICAdditionalInformation;
-		cameraSetup: DICCameraSetup;
-
-		constructor() {
-			this.setupInformation = new DICSetupInformation();
-			this.softwareInformation = new DICSoftwareInformation();
-			this.additionalInformation = new DICAdditionalInformation();
-			this.cameraSetup = new DICCameraSetup();
-		}
-	}
-
-	class DICSetupInformation {
-		configuration: string;
-		stereoAngle: string;
-		standOffDistance: string;
-		imagedSurfaceOnSpecimen?: string;
-
-		constructor() {
-			this.configuration = '';
-			this.stereoAngle = '';
-			this.standOffDistance = '';
-			this.imagedSurfaceOnSpecimen = '';
-		}
-	}
-
-	class DICSoftwareInformation {
-		softwareName: string;
-		softwareVersion: string;
-
-		constructor() {
-			this.softwareName = '';
-			this.softwareVersion = '';
-		}
-	}
-
-	class DICAdditionalInformation {
-		patternTechnique: string;
-		patternBackground: string;
-		patternSpeckle: string;
-		approxFeatureSize?: string;
-		calTargetMake?: string;
-		calTargetDims?: string;
-		calTargetSpacing?: string;
-
-		constructor() {
-			this.patternTechnique = '';
-			this.patternBackground = '';
-			this.patternSpeckle = '';
-		}
-	}
-
-	class DICCameraSetup {
-		comment: string;
-		cameras: string[];
-
-		constructor() {
-			this.comment = '';
-			this.cameras = [];
-		}
-	}
-
-	class CameraInformation {
-		make: string;
-		model: string;
-		serialNumber?: string;
-		resolutionX: string;
-		resolutionY: string;
-
-		constructor() {
-			this.make = '';
-			this.model = '';
-			this.serialNumber = '';
-			this.resolutionX = '';
-			this.resolutionY = '';
-		}
-	}
-
-	class LensInformation {
-		make: string;
-		model: string;
-		serialNumber?: string;
-		focalLength: string;
-		aperture: string;
-		fieldOfViewX?: string;
-		fieldOfViewY?: string;
-
-		constructor() {
-			this.make = '';
-			this.model = '';
-			this.serialNumber = '';
-			this.focalLength = '';
-			this.aperture = '';
-			this.fieldOfViewX = '';
-			this.fieldOfViewY = '';
-		}
-	}
-
-	class CaptureSettings {
-		imageAcquisitionRate: string;
-		imageNoise: string;
-		imageScale?: string;
-
-		constructor() {
-			this.imageAcquisitionRate = '';
-			this.imageNoise = '';
-			this.imageScale = '';
-		}
-	}
-
-	class Camera {
-		cameraInformation: CameraInformation;
-		lensInformation: LensInformation;
-		captureSettings: CaptureSettings;
-
-		constructor() {
-			this.cameraInformation = new CameraInformation();
-			this.lensInformation = new LensInformation();
-			this.captureSettings = new CaptureSettings();
-		}
-	}
-
-	class Coil {
-		coilID: string;
-		coilType: string;
-		NumberofTurns: string;
-		CoilOrientation: string;
-		Manufacturer: string;
-		TubeDiameter: string;
-		Nickname: string;
-		Inductance: string;
-		OperationFreq: string;
-
-		constructor() {
-			this.coilID = '';
-			this.coilType = '';
-			this.NumberofTurns = '';
-			this.CoilOrientation = '';
-			this.Manufacturer = '';
-			this.TubeDiameter = '';
-			this.Nickname = '';
-			this.Inductance = '';
-			this.OperationFreq = '';
-		}
-	}
-
-	class DiagnosticMetadata {
-		diagnosticID: string;
-		diagnostic?: any; // Optional field to be set by subclasses
-		diagnosticType?: string;
-
-		constructor() {
-			this.diagnosticID = '';
-		}
-	}
-
-	class ThermocoupleMetadata extends DiagnosticMetadata {
-		diagnostic: Thermocouple;
-
-		constructor() {
-			super();
-			this.diagnostic = new Thermocouple();
-			this.diagnosticType = 'Thermocouple';
-		}
-	}
-
-	class CameraMetadata extends DiagnosticMetadata {
-		diagnostic: Camera;
-
-		constructor() {
-			super();
-			this.diagnostic = new Camera();
-			this.diagnosticType = 'Camera';
-		}
-	}
-
-	class DICMetadata extends DiagnosticMetadata {
-		diagnostic: DICConfig;
-
-		constructor() {
-			super();
-			this.diagnostic = new DICConfig();
-			this.diagnosticType = 'DIC';
-		}
-	}
-
-	class CoilMetadata extends DiagnosticMetadata {
-		diagnostic: Coil;
-
-		constructor() {
-			super();
-			this.diagnostic = new Coil();
-			this.diagnosticType = 'Coil';
-		}
-	}
-
-	let sortedData: DiagnosticMetadata[] = [];
-	const order = tableOrderStore({ initialBy: 'diagnosticID', initialDirection: 'asc' });
-
-	order.subscribe(() => {
-		sortedData = sortedData.sort($order.handler);
+	equipmentOrder.subscribe(() => {
+		sortedData = sortedData.sort($equipmentOrder.handler);
 	});
 
-	let open = false;
-	let selectedMetadata: DiagnosticMetadata | null = null;
-	let isNewEntry = false;
-
-	let openThermocouple = false;
-	let isNewThermocouple = false;
-
-	let openCamera = false;
-	let isNewCamera = false;
-
-	let openDIC = false;
-	let isNewDIC = false;
-
-	let openCoil = false;
-	let isNewCoil = false;
-
-	let localOnly = false;
-	function mapJSONToDiagnostic(apiResponse: any): DiagnosticMetadata {
-		const metadata = new DiagnosticMetadata();
-		// Assume all fields are valid
-		return Object.assign(metadata, apiResponse);
+	function createNewEquipment(type: string) {
+		switch(type) {
+			case 'thermocouple':
+				return JSON.parse(JSON.stringify(new ThermocoupleMetadata()));
+			case 'camera':
+				return JSON.parse(JSON.stringify(new CameraMetadata()));
+			case 'lens':
+				return JSON.parse(JSON.stringify(new LensMetadata()));
+			case 'dic':
+				return JSON.parse(JSON.stringify(new DicMetadata()));
+			case 'flowmeter':
+				return JSON.parse(JSON.stringify(new FlowmeterMetadata()));
+			case 'pyrometer':
+				return JSON.parse(JSON.stringify(new PyrometerMetadata()));
+			case 'ir-camera':
+				return JSON.parse(JSON.stringify(new IrCameraMetadata()));
+			default:
+				return JSON.parse(JSON.stringify(new ThermocoupleMetadata()));
+		}
 	}
 
-	function mapDiagnosticToJSON(metadata: DiagnosticMetadata): any {
-		return { ...metadata };
-	}
-
-	async function fetchDiagnostics() {
+	async function fetchEquipment() {
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
@@ -278,25 +67,68 @@
 			}
 
 			if (localOnly) {
-				const files = await getJsonFiles('diagnostics');
-				const data = await Promise.all(files.map((filename: string) => getJsonContent('diagnostics/' + filename)));
-				sortedData = data.map(mapJSONToDiagnostic).sort($order.handler);
+				const files = await getJsonFiles('equipment');
+				const equipmentData = await Promise.all(files.map((filename: string) => getJsonContent('equipment/' + filename)));
+
+				// Transform equipment data to include display properties
+				const equipment = equipmentData.map((data: any) => {
+					const equipmentType = data.equipmentType || 'unknown';
+					let name = '';
+					let make = '';
+					let model = '';
+
+					// Extract display information based on equipment type
+					if (data.deviceInformation) {
+						make = data.deviceInformation.make || '';
+						model = data.deviceInformation.model || '';
+						name = `${make} ${model}`.trim();
+					} else if (equipmentType === 'thermocouple') {
+						name = `${data.tcType || 'Thermocouple'} - ${data.location || 'Unknown Location'}`;
+						make = data.tcType || '';
+						model = data.attachment || '';
+					}
+
+					return {
+						...data,
+						type: equipmentType,
+						name: name || `${equipmentType} - ${data.equipmentUUID || 'No UUID'}`,
+						make: make,
+						model: model
+					};
+				});
+
+				sortedData = equipment.sort($equipmentOrder.handler);
 				return;
 			}
 
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/instruments`, { headers: { Authorization: `Bearer ${accessToken}` } });
+			// For API mode, fetch from endpoint
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment`, {
+				headers: { Authorization: `Bearer ${accessToken}` }
+			});
 
-			if (!response.ok) throw new Error('Failed to fetch instruments');
+			if (!response.ok) throw new Error('Failed to fetch equipment');
 			const data = await response.json();
-			sortedData = data.map(mapJSONToDiagnostic).sort($order.handler);
+			sortedData = data.sort($equipmentOrder.handler);
 		} catch (error) {
-			console.error('Error fetching instruments:', error);
-			alert('Failed to load instruments. Please try again later.');
+			console.error('Error fetching equipment:', error);
+			alert('Failed to load equipment. Please try again later.');
 		}
 	}
 
-	async function handleMetadataSubmit(event: CustomEvent<DiagnosticMetadata>): Promise<void> {
-		const rawMetadata = event.detail;
+	async function handleMetadataSubmit() {
+		const rawMetadata = selectedMetadata;
+		if (!rawMetadata) {
+			alert('No equipment metadata to save.');
+			return;
+		}
+
+		// Generate UUID if it's a new entry
+		if (isNewEntry) {
+			rawMetadata.equipmentUUID = crypto.randomUUID();
+		}
+
+		console.log('Submitting equipment metadata:', rawMetadata);
+
 		try {
 			await handleFileSubmission(rawMetadata);
 		} catch (error) {
@@ -305,35 +137,70 @@
 
 		if (localOnly) {
 			handleModalClose();
-			await fetchDiagnostics(); // Refresh the data
+			await fetchEquipment();
 			return;
 		}
 
 		try {
 			await handleAPISubmission(rawMetadata, isNewEntry);
 			handleModalClose();
-			await fetchDiagnostics(); // Refresh the data
+			await fetchEquipment();
 		} catch (error) {
 			console.error('API submission failed:', error);
 		}
 	}
 
-	async function handleFileSubmission(rawMetadata: DiagnosticMetadata): Promise<void> {
+	async function handleFileSubmission(rawMetadata: any): Promise<void> {
 		try {
-			const diagnosticID = rawMetadata.diagnosticID;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/diagnostics`;
-			const fileName = `${diagnosticID}.json`;
+			const equipmentUUID = rawMetadata.equipmentUUID || crypto.randomUUID();
+			rawMetadata.equipmentUUID = equipmentUUID;
 
-			const saveMetadata = {
-				targetPath: `${filePath}/${fileName}`,
-				metadata: rawMetadata
-			};
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/equipment/`;
+			const fileName = `${equipmentUUID}.json`;
+			// Convert back to the appropriate class for proper JSON serialization
+			let cleanedMetadata;
+			switch(selectedEquipmentType) {
+				case 'thermocouple':
+					const thermocouple = ThermocoupleMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = ThermocoupleMetadata.toJSON(thermocouple);
+					break;
+				case 'camera':
+					const camera = CameraMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = CameraMetadata.toJSON(camera);
+					break;
+				case 'lens':
+					const lens = LensMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = LensMetadata.toJSON(lens);
+					break;
+				case 'dic':
+					const dic = DicMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = DicMetadata.toJSON(dic);
+					break;
+				case 'flowmeter':
+					const flowmeter = FlowmeterMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = FlowmeterMetadata.toJSON(flowmeter);
+					break;
+				case 'pyrometer':
+					const pyrometer = PyrometerMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = PyrometerMetadata.toJSON(pyrometer);
+					break;
+				case 'ir-camera':
+					const irCamera = IrCameraMetadata.fromJSON(rawMetadata);
+					cleanedMetadata = IrCameraMetadata.toJSON(irCamera);
+					break;
+				default:
+					cleanedMetadata = rawMetadata;
+			}
+
+			// Add equipment type and UUID to the metadata
+			cleanedMetadata.equipmentType = selectedEquipmentType;
+			cleanedMetadata.equipmentUUID = equipmentUUID;
+
+			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
 
 			const fileResponse = await fetch('/api/save-json', {
 				method: 'POST',
-				headers: {
-					'Content-Type': 'application/json'
-				},
+				headers: { 'Content-Type': 'application/json' },
 				body: JSON.stringify(saveMetadata)
 			});
 
@@ -342,26 +209,23 @@
 				throw new Error(`Failed to save metadata file: ${errorData.message}`);
 			}
 
-			console.log('Metadata file saved successfully');
-			alert('Metadata file saved successfully');
-		} catch (error) {
+			console.log('Equipment metadata file saved successfully');
+			alert('Equipment metadata file saved successfully');
+		} catch (error: any) {
 			console.error('Error saving metadata file:', error);
 			alert(`Failed to save metadata file: ${error.message}`);
 			throw error;
 		}
 	}
 
-	async function handleAPISubmission(rawMetadata: DiagnosticMetadata, isNewEntry: boolean): Promise<void> {
+	async function handleAPISubmission(rawMetadata: any, isNewEntry: boolean): Promise<void> {
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
 
-			const mappedMetadata = mapDiagnosticToJSON(rawMetadata);
-			console.log('Mapped metadata:', mappedMetadata);
-
-			const url = `${PUBLIC_METACAT_URL}/api/v1/instruments?schema=any`;
+			const url = `${PUBLIC_METACAT_URL}/api/v1/equipment?schema=any`;
 			const method = isNewEntry ? 'POST' : 'POST';
 			const endpointResponse = await fetch(url, {
 				method: method,
@@ -369,155 +233,79 @@
 					'Content-Type': 'application/json',
 					Authorization: `Bearer ${accessToken}`
 				},
-				body: JSON.stringify(mappedMetadata)
+				body: JSON.stringify(rawMetadata)
 			});
 
-			if (!endpointResponse.ok) throw new Error('Failed to save diagnostic to endpoint');
+			if (!endpointResponse.ok) throw new Error('Failed to save equipment to endpoint');
 
-			console.log('Diagnostic submitted to API successfully');
-			alert(isNewEntry ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
-
-			await fetchDiagnostics(); // Refresh the data
-		} catch (error) {
-			console.error('Error submitting diagnostic to API:', error);
-			alert(`Failed to submit diagnostic to API: ${error.message}`);
-			throw error; // Re-throw the error if you want calling code to handle it
+			console.log('Equipment submitted to API successfully');
+			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
+		} catch (error: any) {
+			console.error('Error submitting equipment to API:', error);
+			alert(`Failed to submit equipment to API: ${error.message}`);
+			throw error;
 		}
 	}
 
-	function handleRowClick(row: DiagnosticMetadata): void {
+	function handleRowClick(row: any): void {
+		selectedMetadata = JSON.parse(JSON.stringify(row));
+		selectedEquipmentType = row.type || 'thermocouple';
 		isNewEntry = false;
-		switch (row.diagnosticType) {
-			case 'Thermocouple':
-				selectedMetadata = new ThermocoupleMetadata();
-				selectedMetadata = Object.assign(selectedMetadata, row);
-				// Convert to plain object for Immer
-				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
-				openThermocouple = true;
-				break;
-			case 'Camera':
-				selectedMetadata = new CameraMetadata();
-				selectedMetadata = Object.assign(selectedMetadata, row);
-				// Convert to plain object for Immer
-				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
-				openCamera = true;
-				break;
-			case 'DIC':
-				selectedMetadata = new DICMetadata();
-				selectedMetadata = Object.assign(selectedMetadata, row);
-				// Convert to plain object for Immer
-				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
-				openDIC = true;
-				break;
-			case 'Coil':
-				selectedMetadata = new CoilMetadata();
-				selectedMetadata = Object.assign(selectedMetadata, row);
-				// Convert to plain object for Immer
-				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
-				openCoil = true;
-				break;
-			default:
-				selectedMetadata = new DiagnosticMetadata();
-				selectedMetadata = Object.assign(selectedMetadata, row);
-				// Convert to plain object for Immer
-				selectedMetadata = JSON.parse(JSON.stringify(selectedMetadata));
-				open = true;
-				break;
-		}
+		open = true;
 	}
 
-	function handleNewThermocouple(): void {
-		selectedMetadata = { ...new ThermocoupleMetadata() };
-		isNewThermocouple = true;
-		openThermocouple = true;
-	}
-
-	function handleNewCamera(): void {
-		let newCamera = { ...new CameraMetadata() };
-		newCamera.diagnostic.cameraInformation = { ...new CameraInformation() };
-		newCamera.diagnostic.lensInformation = { ...new LensInformation() };
-		newCamera.diagnostic.captureSettings = { ...new CaptureSettings() };
-
-		selectedMetadata = { ...newCamera };
-		isNewCamera = true;
-		openCamera = true;
-	}
-
-	function handleNewDIC(): void {
-		selectedMetadata = { ...new DICMetadata() };
-		isNewDIC = true;
-		openDIC = true;
-	}
-
-	function handleNewCoil(): void {
-		selectedMetadata = { ...new CoilMetadata() };
-		isNewCoil = true;
-		openCoil = true;
-	}
-
-	function handleThermocoupleClose(): void {
-		openThermocouple = false;
-		selectedMetadata = null;
-		isNewThermocouple = false;
-	}
-
-	function handleCameraClose(): void {
-		openCamera = false;
-		selectedMetadata = null;
-		isNewCamera = false;
-	}
-
-	function handleDICClose(): void {
-		openDIC = false;
-		selectedMetadata = null;
-		isNewDIC = false;
-	}
-
-	function handleCoilClose(): void {
-		openCoil = false;
-		selectedMetadata = null;
-		isNewCoil = false;
+	function handleNewEntry(): void {
+		selectedMetadata = createNewEquipment(selectedEquipmentType);
+		isNewEntry = true;
+		open = true;
 	}
 
 	function handleModalClose() {
 		open = false;
 		selectedMetadata = null;
 		isNewEntry = false;
+	}
 
-		handleThermocoupleClose();
-		handleCameraClose();
-		handleDICClose();
-		handleCoilClose();
+	function handleFormCancel() {
+		handleModalClose();
 	}
 
 	function handleDelete(): void {
 		if (!selectedMetadata) return;
 
-		if (confirm(`Are you sure you want to delete the diagnostic with ID: ${selectedMetadata.diagnosticID}?`)) {
+		const equipmentUUID = selectedMetadata.equipmentUUID;
+		if (confirm(`Are you sure you want to delete this equipment with UUID: ${equipmentUUID}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/diagnostics/${selectedMetadata.diagnosticID}.json`;
-				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
-					.then((response) => {
-						if (!response.ok) throw new Error('Failed to delete local file');
-						alert('Diagnostic deleted successfully');
-						fetchDiagnostics();
-					})
-					.catch((error) => {
-						console.error('Error deleting local file:', error);
-						alert(`Failed to delete diagnostic: ${error.message}`);
-					});
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/equipment/${equipmentUUID}.json`;
+				fetch('/api/delete-json', {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ targetPath: filePath })
+				})
+				.then((response) => {
+					if (!response.ok) throw new Error('Failed to delete local file');
+					alert('Equipment deleted successfully');
+					fetchEquipment();
+				})
+				.catch((error) => {
+					console.error('Error deleting local file:', error);
+					alert(`Failed to delete equipment: ${error.message}`);
+				});
 			} else {
 				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/instruments/${selectedMetadata.diagnosticID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
-					.then((response) => {
-						if (!response.ok) throw new Error('Failed to delete instrument from API');
-						alert('Instrument deleted successfully');
-						fetchDiagnostics();
-					})
-					.catch((error) => {
-						console.error('Error deleting instrument from API:', error);
-						alert(`Failed to delete instrument: ${error.message}`);
-					});
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment/${equipmentUUID}`, {
+					method: 'DELETE',
+					headers: { Authorization: `Bearer ${accessToken}` }
+				})
+				.then((response) => {
+					if (!response.ok) throw new Error('Failed to delete equipment from API');
+					alert('Equipment deleted successfully');
+					fetchEquipment();
+				})
+				.catch((error) => {
+					console.error('Error deleting equipment from API:', error);
+					alert(`Failed to delete equipment: ${error.message}`);
+				});
 			}
 			handleModalClose();
 		}
@@ -527,48 +315,460 @@
 		if (PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
-		fetchDiagnostics();
+		fetchEquipment();
 	});
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
-		<h2 class="text-2xl font-bold">Diagnostic Metadata</h2>
-		<div class="grid grid-rows-2 grid-flow-col gap-2">
-			<Button on:click={handleNewThermocouple} variant="fill">New Thermocouple</Button>
-			<Button on:click={handleNewCamera} variant="fill">New Camera</Button>
-			<Button on:click={handleNewDIC} variant="fill">New DIC</Button>
-			<Button on:click={handleNewCoil} variant="fill">New Coil</Button>
+		<h2 class="text-2xl font-bold">Equipment</h2>
+		<div class="flex gap-2 items-center">
+			<SelectField
+				label="Equipment Type"
+				value={selectedEquipmentType}
+				options={equipmentTypes}
+				on:change={(e) => {
+					selectedEquipmentType = e.detail.value;
+				}}
+			/>
+			<Button on:click={handleNewEntry} variant="fill">New Equipment</Button>
 		</div>
 	</div>
 	<div class="table-container">
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'diagnosticID', align: 'left', header: 'Diagnostic ID' },
-				{ name: 'diagnosticType', align: 'left', header: 'Diagnostic Type' },
+				{ name: 'type', align: 'left', header: 'Type' },
+				{ name: 'name', align: 'left', header: 'Name' },
+				{ name: 'make', align: 'left', header: 'Make' },
+				{ name: 'model', align: 'left', header: 'Model' }
 			]}
-			{order}
+			order={equipmentOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
 		/>
 	</div>
 </div>
 
-<Dialog {open} on:close={handleModalClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Diagnostic' : 'Edit Diagnostic Metadata'}</div>
+<Dialog {open} on:close={handleModalClose} class="equipmentInputDialog">
+	<div slot="title">{isNewEntry ? 'Create New Equipment' : 'Edit Equipment'}</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-2 gap-4">
-				<TextField
-					label="Diagnostic ID"
-					value={draft.diagnosticID}
-					on:change={(e) => {
-						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
+		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
+
+			{#if selectedEquipmentType === 'thermocouple'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">Thermocouple Information</h4>
+					<TextField
+						label="Status"
+						value={draft.status}
+						on:change={(e) => {
+							draft.status = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Attachment"
+						value={draft.attachment}
+						on:change={(e) => {
+							draft.attachment = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Thermocouple Type"
+						value={draft.tcType}
+						on:change={(e) => {
+							draft.tcType = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Location"
+						value={draft.location}
+						on:change={(e) => {
+							draft.location = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Area Type"
+						value={draft.areaType}
+						on:change={(e) => {
+							draft.areaType = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Circle Diameter"
+						value={draft.circleDiameter}
+						on:change={(e) => {
+							draft.circleDiameter = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Noise Floor"
+						value={draft.noiseFloor}
+						on:change={(e) => {
+							draft.noiseFloor = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+			{:else if selectedEquipmentType === 'camera'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">Camera Information</h4>
+					<TextField
+						label="Make"
+						value={draft.deviceInformation.make}
+						on:change={(e) => {
+							draft.deviceInformation.make = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Model"
+						value={draft.deviceInformation.model}
+						on:change={(e) => {
+							draft.deviceInformation.model = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Serial Number"
+						value={draft.deviceInformation.serialNumber}
+						on:change={(e) => {
+							draft.deviceInformation.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Resolution</h4>
+					<TextField
+						label="Resolution X (pixels)"
+						type="number"
+						value={draft.deviceInformation.resolution.x}
+						on:change={(e) => {
+							draft.deviceInformation.resolution.x = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Resolution Y (pixels)"
+						type="number"
+						value={draft.deviceInformation.resolution.y}
+						on:change={(e) => {
+							draft.deviceInformation.resolution.y = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+				</div>
+			{:else if selectedEquipmentType === 'lens'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">Lens Information</h4>
+					<TextField
+						label="Make"
+						value={draft.deviceInformation.make}
+						on:change={(e) => {
+							draft.deviceInformation.make = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Model"
+						value={draft.deviceInformation.model}
+						on:change={(e) => {
+							draft.deviceInformation.model = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Serial Number"
+						value={draft.deviceInformation.serialNumber}
+						on:change={(e) => {
+							draft.deviceInformation.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Focal Length"
+						value={draft.deviceInformation.focalLength}
+						on:change={(e) => {
+							draft.deviceInformation.focalLength = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Aperture"
+						value={draft.deviceInformation.aperture}
+						on:change={(e) => {
+							draft.deviceInformation.aperture = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Field of View X"
+						value={draft.deviceInformation.fieldOfViewX}
+						on:change={(e) => {
+							draft.deviceInformation.fieldOfViewX = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Field of View Y"
+						value={draft.deviceInformation.fieldOfViewY}
+						on:change={(e) => {
+							draft.deviceInformation.fieldOfViewY = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+			{:else if selectedEquipmentType === 'flowmeter'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">Flowmeter Information</h4>
+					<TextField
+						label="Make"
+						value={draft.deviceInformation.make}
+						on:change={(e) => {
+							draft.deviceInformation.make = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Model"
+						value={draft.deviceInformation.model}
+						on:change={(e) => {
+							draft.deviceInformation.model = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Serial Number"
+						value={draft.deviceInformation.serialNumber}
+						on:change={(e) => {
+							draft.deviceInformation.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Flowmeter Type"
+						value={draft.deviceInformation.flowmeterType}
+						on:change={(e) => {
+							draft.deviceInformation.flowmeterType = e.detail.value;
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Flow Range (L/min)</h4>
+					<TextField
+						label="Minimum Flow"
+						type="number"
+						value={draft.deviceInformation.flowRange.minimum}
+						on:change={(e) => {
+							draft.deviceInformation.flowRange.minimum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Maximum Flow"
+						type="number"
+						value={draft.deviceInformation.flowRange.maximum}
+						on:change={(e) => {
+							draft.deviceInformation.flowRange.maximum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+				</div>
+			{:else if selectedEquipmentType === 'pyrometer'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">Pyrometer Information</h4>
+					<TextField
+						label="Make"
+						value={draft.deviceInformation.make}
+						on:change={(e) => {
+							draft.deviceInformation.make = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Model"
+						value={draft.deviceInformation.model}
+						on:change={(e) => {
+							draft.deviceInformation.model = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Serial Number"
+						value={draft.deviceInformation.serialNumber}
+						on:change={(e) => {
+							draft.deviceInformation.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
+					<TextField
+						label="Minimum Wavelength"
+						type="number"
+						value={draft.deviceInformation.spectralRange.minimum}
+						on:change={(e) => {
+							draft.deviceInformation.spectralRange.minimum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Maximum Wavelength"
+						type="number"
+						value={draft.deviceInformation.spectralRange.maximum}
+						on:change={(e) => {
+							draft.deviceInformation.spectralRange.maximum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
+					<TextField
+						label="Minimum Temperature"
+						type="number"
+						value={draft.deviceInformation.temperatureRange.minimum}
+						on:change={(e) => {
+							draft.deviceInformation.temperatureRange.minimum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Maximum Temperature"
+						type="number"
+						value={draft.deviceInformation.temperatureRange.maximum}
+						on:change={(e) => {
+							draft.deviceInformation.temperatureRange.maximum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Device Settings</h4>
+					<TextField
+						label="Emissivity"
+						type="number"
+						step="0.01"
+						value={draft.deviceSettings.emissivity}
+						on:change={(e) => {
+							draft.deviceSettings.emissivity = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Framerate (Hz)"
+						type="number"
+						value={draft.deviceSettings.framerate}
+						on:change={(e) => {
+							draft.deviceSettings.framerate = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+				</div>
+			{:else if selectedEquipmentType === 'ir-camera'}
+				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">IR Camera Information</h4>
+					<TextField
+						label="Make"
+						value={draft.deviceInformation.make}
+						on:change={(e) => {
+							draft.deviceInformation.make = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Model"
+						value={draft.deviceInformation.model}
+						on:change={(e) => {
+							draft.deviceInformation.model = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Serial Number"
+						value={draft.deviceInformation.serialNumber}
+						on:change={(e) => {
+							draft.deviceInformation.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Resolution</h4>
+					<TextField
+						label="Resolution X (pixels)"
+						type="number"
+						value={draft.deviceInformation.resolution.x}
+						on:change={(e) => {
+							draft.deviceInformation.resolution.x = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Resolution Y (pixels)"
+						type="number"
+						value={draft.deviceInformation.resolution.y}
+						on:change={(e) => {
+							draft.deviceInformation.resolution.y = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
+					<TextField
+						label="Minimum Wavelength"
+						type="number"
+						value={draft.deviceInformation.spectralRange.minimum}
+						on:change={(e) => {
+							draft.deviceInformation.spectralRange.minimum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Maximum Wavelength"
+						type="number"
+						value={draft.deviceInformation.spectralRange.maximum}
+						on:change={(e) => {
+							draft.deviceInformation.spectralRange.maximum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
+					<TextField
+						label="Minimum Temperature"
+						type="number"
+						value={draft.deviceInformation.temperatureRange.minimum}
+						on:change={(e) => {
+							draft.deviceInformation.temperatureRange.minimum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Maximum Temperature"
+						type="number"
+						value={draft.deviceInformation.temperatureRange.maximum}
+						on:change={(e) => {
+							draft.deviceInformation.temperatureRange.maximum = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<h4 class="col-span-2 mt-4">Device Settings</h4>
+					<TextField
+						label="Emissivity"
+						type="number"
+						step="0.01"
+						value={draft.deviceSettings.emissivity}
+						on:change={(e) => {
+							draft.deviceSettings.emissivity = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Framerate (Hz)"
+						type="number"
+						value={draft.deviceSettings.framerate}
+						on:change={(e) => {
+							draft.deviceSettings.framerate = Number(e.detail.value);
+							refresh();
+						}}
+					/>
+				</div>
+			{/if}
 
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
 				{#if !isNewEntry}
@@ -577,580 +777,20 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
-				</div>
-			</div>
-		</Form>
-	</div>
-</Dialog>
-
-<Dialog open={openThermocouple} on:close={handleThermocoupleClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewThermocouple ? 'Create New Thermocouple' : 'Edit Thermocouple Metadata'}</div>
-	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
-				<TextField
-					label="Diagnostic ID"
-					value={draft.diagnosticID}
-					on:change={(e) => {
-						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Thermocouple (TC)</h3>
-				<TextField
-					label="Attachment"
-					value={draft.diagnostic.attachment}
-					on:change={(e) => {
-						draft.diagnostic.attachment = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="TC Type"
-					value={draft.diagnostic.tcType}
-					on:change={(e) => {
-						draft.diagnostic.tcType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Location"
-					value={draft.diagnostic.location}
-					on:change={(e) => {
-						draft.diagnostic.location = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Circle Diameter"
-					value={draft.diagnostic.circleDiameter}
-					on:change={(e) => {
-						draft.diagnostic.circleDiameter = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Noise Floor"
-					value={draft.diagnostic.noiseFloor}
-					on:change={(e) => {
-						draft.diagnostic.noiseFloor = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="flex gap-2 mt-4 {!isNewThermocouple ? 'justify-between' : 'justify-end'}">
-				{#if !isNewThermocouple}
-					<div>
-						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
-					</div>
-				{/if}
-				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
-				</div>
-			</div>
-		</Form>
-	</div>
-</Dialog>
-
-<Dialog open={openCamera} on:close={handleCameraClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Camera' : 'Edit Camera Metadata'}</div>
-	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
-				<TextField
-					label="Diagnostic ID"
-					value={draft.diagnosticID}
-					on:change={(e) => {
-						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Camera Information</h3>
-				<TextField
-					label="Make"
-					value={draft.diagnostic?.cameraInformation?.make ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.make = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Model"
-					value={draft.diagnostic?.cameraInformation?.model ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.model = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Serial Number"
-					value={draft.diagnostic?.cameraInformation?.serialNumber ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.serialNumber = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Resolution X"
-					value={draft.diagnostic?.cameraInformation?.resolutionX ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.resolutionX = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Resolution Y"
-					value={draft.diagnostic?.cameraInformation?.resolutionY ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraInformation) draft.diagnostic.cameraInformation = {};
-						draft.diagnostic.cameraInformation.resolutionY = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Lens Information</h3>
-				<TextField
-					label="Make"
-					value={draft.diagnostic?.lensInformation?.make ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.make = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Model"
-					value={draft.diagnostic?.lensInformation?.model ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.model = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Serial Number"
-					value={draft.diagnostic?.lensInformation?.serialNumber ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.serialNumber = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Focal Length"
-					value={draft.diagnostic?.lensInformation?.focalLength ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.focalLength = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Aperture"
-					value={draft.diagnostic?.lensInformation?.aperture ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.aperture = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Field of View X"
-					value={draft.diagnostic?.lensInformation?.fieldOfViewX ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.fieldOfViewX = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Field of View Y"
-					value={draft.diagnostic?.lensInformation?.fieldOfViewY ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.lensInformation) draft.diagnostic.lensInformation = {};
-						draft.diagnostic.lensInformation.fieldOfViewY = e.detail.value;
-						refresh();
-					}}
-				/>
-				<h3 class="col-span-3 font-bold mt-4">Capture Settings</h3>
-				<TextField
-					label="Image Acquisition Rate"
-					value={draft.diagnostic?.captureSettings?.imageAcquisitionRate ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageAcquisitionRate = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Image Noise"
-					value={draft.diagnostic?.captureSettings?.imageNoise ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageNoise = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Image Scale"
-					value={draft.diagnostic?.captureSettings?.imageScale ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.captureSettings) draft.diagnostic.captureSettings = {};
-						draft.diagnostic.captureSettings.imageScale = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="flex gap-2 mt-4 {!isNewCamera ? 'justify-between' : 'justify-end'}">
-				{#if !isNewCamera}
-					<div>
-						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
-					</div>
-				{/if}
-				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
-				</div>
-			</div>
-		</Form>
-	</div>
-</Dialog>
-
-<Dialog open={openDIC} on:close={handleDICClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New DIC' : 'Edit DIC Metadata'}</div>
-	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-3 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
-				<TextField
-					label="Diagnostic ID"
-					value={draft.diagnosticID}
-					on:change={(e) => {
-						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>
-				
-				<h3 class="col-span-3 font-bold mt-4">Setup Information</h3>
-				<TextField
-					label="Configuration"
-					value={draft.diagnostic?.setupInformation?.configuration ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.setupInformation) draft.diagnostic.setupInformation = {};
-						draft.diagnostic.setupInformation.configuration = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Stereo Angle"
-					value={draft.diagnostic?.setupInformation?.stereoAngle ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.setupInformation) draft.diagnostic.setupInformation = {};
-						draft.diagnostic.setupInformation.stereoAngle = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Stand Off Distance"
-					value={draft.diagnostic?.setupInformation?.standOffDistance ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.setupInformation) draft.diagnostic.setupInformation = {};
-						draft.diagnostic.setupInformation.standOffDistance = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Imaged Surface On Specimen"
-					value={draft.diagnostic?.setupInformation?.imagedSurfaceOnSpecimen ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.setupInformation) draft.diagnostic.setupInformation = {};
-						draft.diagnostic.setupInformation.imagedSurfaceOnSpecimen = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Software Information</h3>
-				<TextField
-					label="Software Name"
-					value={draft.diagnostic?.softwareInformation?.softwareName ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.softwareInformation) draft.diagnostic.softwareInformation = {};
-						draft.diagnostic.softwareInformation.softwareName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Software Version"
-					value={draft.diagnostic?.softwareInformation?.softwareVersion ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.softwareInformation) draft.diagnostic.softwareInformation = {};
-						draft.diagnostic.softwareInformation.softwareVersion = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Additional Information</h3>
-				<TextField
-					label="Pattern Technique"
-					value={draft.diagnostic?.additionalInformation?.patternTechnique ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.patternTechnique = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Pattern Background"
-					value={draft.diagnostic?.additionalInformation?.patternBackground ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.patternBackground = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Pattern Speckle"
-					value={draft.diagnostic?.additionalInformation?.patternSpeckle ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.patternSpeckle = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Approx Feature Size"
-					value={draft.diagnostic?.additionalInformation?.approxFeatureSize ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.approxFeatureSize = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Cal Target Make"
-					value={draft.diagnostic?.additionalInformation?.calTargetMake ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.calTargetMake = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Cal Target Dims"
-					value={draft.diagnostic?.additionalInformation?.calTargetDims ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.calTargetDims = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Cal Target Spacing"
-					value={draft.diagnostic?.additionalInformation?.calTargetSpacing ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.additionalInformation) draft.diagnostic.additionalInformation = {};
-						draft.diagnostic.additionalInformation.calTargetSpacing = e.detail.value;
-						refresh();
-					}}
-				/>
-
-				<h3 class="col-span-3 font-bold mt-4">Camera Setup</h3>
-				<TextField
-					label="Comment"
-					value={draft.diagnostic?.cameraSetup?.comment ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraSetup) draft.diagnostic.cameraSetup = {};
-						draft.diagnostic.cameraSetup.comment = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Camera IDs (comma-separated)"
-					value={draft.diagnostic?.cameraSetup?.cameras?.join(', ') ?? ''}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.cameraSetup) draft.diagnostic.cameraSetup = {};
-						draft.diagnostic.cameraSetup.cameras = e.detail.value.split(',').map((id) => id.trim());
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="flex gap-2 mt-4 {!isNewDIC ? 'justify-between' : 'justify-end'}">
-				{#if !isNewDIC}
-					<div>
-						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
-					</div>
-				{/if}
-				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleModalClose}>Cancel</Button>
-				</div>
-			</div>
-		</Form>
-	</div>
-</Dialog>
-
-<Dialog open={openCoil} on:close={handleCoilClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Coil' : 'Edit Coil Metadata'}</div>
-	<div class="p-4">
-		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
-			<div class="p-4 grid grid-cols-2 gap-4">
-				<h3 class="col-span-3 font-bold mt-4">Diagnostic Information</h3>
-				<TextField
-					label="Diagnostic ID"
-					value={draft.diagnosticID}
-					on:change={(e) => {
-						draft.diagnosticID = e.detail.value;
-						refresh();
-					}}
-				/>				
-
-				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
-				<div class="col-span-1">
-					<TextField
-						label="Coil ID"
-						value={draft.diagnostic?.coilID ?? ''}
-						on:change={(e) => {
-							if (!draft.diagnostic) draft.diagnostic = {};
-							if (!draft.diagnostic.coilID) draft.diagnostic.coilID = {};
-							draft.diagnostic.coilID = e.detail.value;
-							refresh();
+					<Button
+						on:click={() => {
+							selectedMetadata = current;
+							handleMetadataSubmit();
 						}}
-					/>
-				</div>
-				<TextField
-					label="Coil Type"
-					value={draft.diagnostic.coilType}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.coilType) draft.diagnostic.coilType = {};
-						draft.diagnostic.coilType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Number of Turns"
-					value={draft.diagnostic.NumberofTurns}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.NumberofTurns) draft.diagnostic.NumberofTurns = {};
-						draft.diagnostic.NumberofTurns = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Coil Orientation"
-					value={draft.diagnostic.CoilOrientation}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.CoilOrientation) draft.diagnostic.CoilOrientation = {};
-						draft.diagnostic.CoilOrientation = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Manufacturer"
-					value={draft.diagnostic.Manufacturer}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.Manufacturer) draft.diagnostic.Manufacturer = {};
-						draft.diagnostic.Manufacturer = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Tube Diameter"
-					value={draft.diagnostic.TubeDiameter}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.TubeDiameter) draft.diagnostic.TubeDiameter = {};
-						draft.diagnostic.TubeDiameter = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Nickname"
-					value={draft.diagnostic.Nickname}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.Nickname) draft.diagnostic.Nickname = {};
-						draft.diagnostic.Nickname = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Inductance (µH)"
-					value={draft.diagnostic.Inductance}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.Inductance) draft.diagnostic.Inductance = {};
-						draft.diagnostic.Inductance = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Approx Operating Freq with 6µF capacitor bank (kHz)"
-					value={draft.diagnostic.OperationFreq}
-					on:change={(e) => {
-						if (!draft.diagnostic) draft.diagnostic = {};
-						if (!draft.diagnostic.OperationFreq) draft.diagnostic.OperationFreq = {};
-						draft.diagnostic.OperationFreq = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-			<div class="flex gap-2 mt-4 {!isNewCoil ? 'justify-between' : 'justify-end'}">
-				{#if !isNewCoil}
-					<div>
-						<Button on:click={handleDelete} variant="outline" color="danger">Delete</Button>
-					</div>
-				{/if}
-				<div class="flex gap-2">
-					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={handleCoilClose}>Cancel</Button>
+						variant="fill">Save</Button
+					>
+					<Button
+						on:click={() => {
+							revertAll();
+							handleFormCancel();
+						}}
+						style={{ marginLeft: 'auto' }}>Cancel</Button
+					>
 				</div>
 			</div>
 		</Form>
@@ -1167,7 +807,10 @@
 		overflow-x: auto;
 	}
 
-	:global(.diagnosticInputDialog) {
+	:global(.equipmentInputDialog) {
 		max-height: 90vh;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>
