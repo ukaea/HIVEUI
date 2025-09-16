@@ -7,6 +7,12 @@
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
 	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
+	import { triggerDAG } from '$lib/triggerPipeline';
+	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
+
+	async function handleTrigger() {
+		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
+	}
 
 	class CoilInformation {
 		currentType: string;
@@ -130,7 +136,7 @@
 	let sortedConfigurations: ConfigurationMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
-	const experimentOrder = tableOrderStore({ initialBy: 'experimentTitle', initialDirection: 'asc' });
+	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
 	order.subscribe((value) => {
@@ -369,6 +375,8 @@
 		}, 3000);
 
 		await fetchPulses();
+
+		await handleTrigger();
 	}
 
 	async function handleFlagFile(metadata: CompiledPulseMetadata) {
@@ -750,7 +758,7 @@
 			<div class="flex justify-between mt-4 relative">
 				<div class="flex gap-2">
 					{#if !isCompletingPulse}
-						<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
+						<Button variant="outline" color="success" on:click={handleCompletePulse}>Pulse Completed</Button>
 					{:else}
 						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
 						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>

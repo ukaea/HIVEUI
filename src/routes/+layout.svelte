@@ -34,7 +34,7 @@
 			</a>
 		</svelte:fragment>
 		<div slot="actions" class="flex items-center justify-end w-full">
-			<Button variant="fill" on:click={handleTrigger} class="mr-4">Trigger Pipeline</Button>
+		<!-- 	<Button variant="fill" on:click={handleTrigger} class="mr-4">Trigger Pipeline</Button>  -->
 			<User data={{ user: data?.session?.user ?? undefined, status: Boolean(data?.session) }} />
 		</div>
 	</AppBar>
