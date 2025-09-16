@@ -474,69 +474,6 @@
 				/>
 			</div>
 
-			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Configurations</h4>
-				<div class="space-y-3">
-					{#each draft.configurations as config, index (config.configurationUUID)}
-						<div class="flex gap-2">
-							<TextField
-								label="Configuration Name"
-								value={config.configurationName}
-								on:change={(e) => {
-									config.configurationName = e.detail.value;
-									refresh();
-								}}
-							/>
-							<TextField
-								label="Configuration UUID"
-								value={config.configurationUUID}
-								on:change={(e) => {
-									config.configurationUUID = e.detail.value;
-									refresh();
-								}}
-							/>
-							<Button
-								on:click={() => {
-									draft.configurations = draft.configurations.filter((_, i) => i !== index);
-									current = draft;
-									refresh();
-								}}
-								variant="outline"
-								color="danger">Delete</Button
-							>
-						</div>
-					{/each}
-					<div class="flex gap-2">
-						<SelectField
-							label="Add Configuration"
-							value={selectedConfiguration?.configurationUUID || ''}
-							options={allConfigurations.map((config) => ({ label: config.configurationName, value: config.configurationUUID }))}
-							on:change={(e) => {
-								selectedConfiguration = allConfigurations.find((config) => config.configurationUUID === e.detail.value) || null;
-							}}
-						/>
-						<Button
-							on:click={() => {
-								if (selectedConfiguration) {
-									// Check if configuration is already added
-									if (!draft.configurations.some((config) => config.configurationUUID === selectedConfiguration.configurationUUID)) {
-										draft.configurations = [...draft.configurations, selectedConfiguration];
-									} else {
-										alert('Configuration already added to this experiment.');
-									}
-
-									selectedConfiguration = null;
-									current = draft;
-									refresh();
-								}
-							}}
-							variant="fill"
-							color="primary">Add</Button
-						>
-					</div>
-				</div>
-			</div>
-
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
 				{#if !isNewEntry}
 					<div>
