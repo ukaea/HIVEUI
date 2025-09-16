@@ -17,7 +17,7 @@
 
 	let sortedData: any[] = [];
 	let selectedMetadata: any = null;
-	let selectedEquipmentType = 'thermocouple';
+	let selectedEquipmentType = '';
 	let isNewEntry = false;
 	let open = false;
 	let localOnly = false;
@@ -399,7 +399,7 @@
 						}}
 					/>
 					<TextField
-						label="Circle Diameter"
+						label="Circle Diameter (mm)"
 						value={draft.circleDiameter}
 						on:change={(e) => {
 							draft.circleDiameter = e.detail.value;
@@ -407,7 +407,7 @@
 						}}
 					/>
 					<TextField
-						label="Noise Floor"
+						label="Noise Floor (%)"
 						value={draft.noiseFloor}
 						on:change={(e) => {
 							draft.noiseFloor = e.detail.value;
@@ -442,9 +442,9 @@
 							refresh();
 						}}
 					/>
-					<h4 class="col-span-2 mt-4">Resolution</h4>
+					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
-						label="Resolution X (pixels)"
+						label="Resolution X"
 						type="number"
 						value={draft.deviceInformation.resolution.x}
 						on:change={(e) => {
@@ -453,7 +453,7 @@
 						}}
 					/>
 					<TextField
-						label="Resolution Y (pixels)"
+						label="Resolution Y"
 						type="number"
 						value={draft.deviceInformation.resolution.y}
 						on:change={(e) => {
@@ -490,7 +490,7 @@
 						}}
 					/>
 					<TextField
-						label="Focal Length"
+						label="Focal Length (mm)"
 						value={draft.deviceInformation.focalLength}
 						on:change={(e) => {
 							draft.deviceInformation.focalLength = e.detail.value;
@@ -505,6 +505,7 @@
 							refresh();
 						}}
 					/>
+					<h4 class="col-span-2 mt-4">Field of View (px)</h4>
 					<TextField
 						label="Field of View X"
 						value={draft.deviceInformation.fieldOfViewX}
@@ -690,9 +691,9 @@
 							refresh();
 						}}
 					/>
-					<h4 class="col-span-2 mt-4">Resolution</h4>
+					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
-						label="Resolution X (pixels)"
+						label="Resolution X"
 						type="number"
 						value={draft.deviceInformation.resolution.x}
 						on:change={(e) => {
@@ -701,7 +702,7 @@
 						}}
 					/>
 					<TextField
-						label="Resolution Y (pixels)"
+						label="Resolution Y"
 						type="number"
 						value={draft.deviceInformation.resolution.y}
 						on:change={(e) => {
