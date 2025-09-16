@@ -381,7 +381,7 @@
 		<h2 class="text-2xl font-bold">Configurations</h2>
 		<div>
 			<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
-			<Button on:click={handleNewCombination} variant="fill">New Combination</Button>
+			<Button on:click={handleNewCombination} variant="fill">New Diagnostic</Button>
 		</div>
 	</div>
 	<div class="table-container">
@@ -439,12 +439,12 @@
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment Combinations</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Equipment Diagnostic</h4>
 				<div class="space-y-3">
 					{#each draft.equipmentCombinations as combination, index (combination.combinationUUID)}
 						<div class="flex gap-2">
 							<TextField
-								label="Combination Name"
+								label="Diagnostic Name"
 								value={combination.combinationName}
 								on:change={(e) => {
 									combination.combinationName = e.detail.value;
@@ -452,7 +452,7 @@
 								}}
 							/>
 							<TextField
-								label="Combination UUID"
+								label="Diagnostic UUID"
 								value={combination.combinationUUID}
 								on:change={(e) => {
 									combination.combinationUUID = e.detail.value;
