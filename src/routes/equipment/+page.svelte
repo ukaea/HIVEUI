@@ -359,14 +359,6 @@
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">Thermocouple Information</h4>
 					<TextField
-						label="Status"
-						value={draft.status}
-						on:change={(e) => {
-							draft.status = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
 						label="Attachment"
 						value={draft.attachment}
 						on:change={(e) => {
@@ -379,22 +371,6 @@
 						value={draft.tcType}
 						on:change={(e) => {
 							draft.tcType = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Location"
-						value={draft.location}
-						on:change={(e) => {
-							draft.location = e.detail.value;
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Area Type"
-						value={draft.areaType}
-						on:change={(e) => {
-							draft.areaType = e.detail.value;
 							refresh();
 						}}
 					/>
