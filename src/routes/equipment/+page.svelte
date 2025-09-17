@@ -323,6 +323,7 @@
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Equipment</h2>
 		<div class="flex gap-2 items-center">
+		<div class="font-bold">
 			<SelectField
 				label="Equipment Type"
 				value={selectedEquipmentType}
@@ -331,6 +332,7 @@
 					selectedEquipmentType = e.detail.value;
 				}}
 			/>
+		</div> 
 			<Button on:click={handleNewEntry} variant="fill">New Equipment</Button>
 		</div>
 	</div>

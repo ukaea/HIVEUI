@@ -324,6 +324,7 @@
 						draft.experimentUUID = e.detail.value;
 						refresh();
 					}}
+					disabled
 				/>
 				<TextField
 					label="Coil Name"

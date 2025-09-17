@@ -425,6 +425,7 @@
 						draft.configurationUUID = e.detail.value;
 						refresh();
 					}}
+					disabled
 				/>
 				<div class="col-span-2">
 					<TextField
