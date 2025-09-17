@@ -550,7 +550,7 @@
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
-					label="Pulse ID"
+					label="Pulse UUID"
 					value={draft.pulse.pulseID}
 					on:change={(e) => {
 						draft.pulse.pulseID = e.detail.value;
