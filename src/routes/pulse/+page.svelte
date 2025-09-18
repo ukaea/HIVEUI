@@ -35,6 +35,9 @@
 		}
 	}
 
+
+
+
 	class CoolantPressure {
 		in: string;
 		out: string;
@@ -49,13 +52,13 @@
 
 	class CoolantInformation {
 		coolantType: string;
-		coolantFlow: CoolantFlow;
-		coolantTemperature: CoolantTemperature;
+		coolantFlow: string;
+		coolantTemperature: string;
 		coolantPressure: CoolantPressure;
 		constructor() {
 			this.coolantType = '';
-			this.coolantFlow = new CoolantFlow();
-			this.coolantTemperature = new CoolantTemperature();
+			this.coolantFlow = '';
+			this.coolantTemperature = '';
 			this.coolantPressure = new CoolantPressure();
 		}
 	}
@@ -707,17 +710,17 @@
 				/>
 				<TextField
 					label="Target Coolant Flow"
-					value={draft.pulse.coolantInformation.coolantFlow.setpoint}
+					value={draft.pulse.coolantInformation.coolantFlow}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantFlow.setpoint = e.detail.value;
+						draft.pulse.coolantInformation.coolantFlow = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
-					value={draft.pulse.coolantInformation.coolantTemperature.setpoint}
+					value={draft.pulse.coolantInformation.coolantTemperature}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.setpoint = e.detail.value;
+						draft.pulse.coolantInformation.coolantTemperature = e.detail.value;
 						refresh();
 					}}
 				/>
