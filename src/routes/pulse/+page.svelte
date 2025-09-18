@@ -65,8 +65,6 @@
 
 	class PulseMetadata {
 		pulseID: string;
-		operator1: PersonMetadata;
-		operator2: PersonMetadata;
 		pulseStart: Date;
 		pulseDuration: string;
 		dataCaptureStart: Date;
@@ -76,8 +74,6 @@
 		coolantInformation: CoolantInformation;
 		constructor() {
 			this.pulseID = '';
-			this.operator1 = new PersonMetadata();
-			this.operator2 = new PersonMetadata();
 			this.pulseStart = new Date();
 			this.pulseDuration = '';
 			this.dataCaptureStart = new Date();
@@ -90,14 +86,18 @@
 
 	// Includes the experiment and configurations
 	class CompiledPulseMetadata {
-		pulse: PulseMetadata;
+		pulseInformation: PulseMetadata;
 		experimentUUID: string;
 		configurationUUID: string;
+		operator1: PersonMetadata;
+		operator2: PersonMetadata;
 		status: string;
 		constructor() {
-			this.pulse = new PulseMetadata();
+			this.pulseInformation = new PulseMetadata();
 			this.experimentUUID = '';
 			this.configurationUUID = '';
+			this.operator1 = new PersonMetadata();
+			this.operator2 = new PersonMetadata();
 			this.status = '';
 		}
 	}
@@ -106,7 +106,7 @@
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
 
-	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+	const order = tableOrderStore({ initialBy: 'pulseInformation.pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
@@ -124,11 +124,11 @@
 		const mapped =  Object.assign(metadata, apiResponse);
 
 		// Ensure pulseStart and dataCaptureStart are Date objects
-		if (mapped.pulse.pulseStart) {
-			mapped.pulse.pulseStart = new Date(mapped.pulse.pulseStart);
+		if (mapped.pulseInformation.pulseStart) {
+			mapped.pulseInformation.pulseStart = new Date(mapped.pulseInformation.pulseStart);
 		}
-		if (mapped.pulse.dataCaptureStart) {
-			mapped.pulse.dataCaptureStart = new Date(mapped.pulse.dataCaptureStart);
+		if (mapped.pulseInformation.dataCaptureStart) {
+			mapped.pulseInformation.dataCaptureStart = new Date(mapped.pulseInformation.dataCaptureStart);
 		}
 
 		console.log('Mapped Pulse:', mapped);
@@ -249,7 +249,7 @@
 				throw new Error('No access token available');
 			}
 
-			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulse.pulseID}`;
+			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseInformation.pulseID}`;
 
 			const response = await fetch(url, {
 				method: isNewEntry ? 'POST' : 'PUT',
@@ -272,7 +272,7 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const pulseID = metadata.pulse.pulseID;
+			const pulseID = metadata.pulseInformation.pulseID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
 			const fileName = `${pulseID}.json`;
 
@@ -356,8 +356,8 @@
 			const fileName = `currentPulse.json`;
 
 			const flagData = {
-				pulseID: metadata.pulse.pulseID,
-				pulseLocation: `pulses/${metadata.pulse.pulseID}.json`,
+				pulseID: metadata.pulseInformation.pulseID,
+				pulseLocation: `pulses/${metadata.pulseInformation.pulseID}.json`,
 				pulseStatus: metadata.status,
 				experimentUUID: metadata.experimentUUID,
 				configurationUUID: metadata.configurationUUID
@@ -389,9 +389,9 @@
 	function handleDelete(): void {
 		if (!selectedMetadata) return;
 
-		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulse.pulseID}?`)) {
+		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulseInformation.pulseID}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulse.pulseID}.json`;
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseInformation.pulseID}.json`;
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
@@ -404,7 +404,7 @@
 					});
 			} else {
 				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulse.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseInformation.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
 						alert('Pulse deleted successfully');
@@ -464,7 +464,7 @@
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
+				{ name: 'pulseInformation.pulseID', align: 'left', header: 'Pulse ID' },
 				{name: 'experimentUUID', align: 'left', header: 'Experiment Name',
 					// @ts-expect-error
 					format: (value) => {
@@ -482,7 +482,7 @@
 					}
 				},
 				{
-					name: 'pulse.pulseStart',
+					name: 'pulseInformation.pulseStart',
 					align: 'left',
 					header: 'Pulse Start',
 					// @ts-expect-error
@@ -499,7 +499,7 @@
 						}) + ')';
 					}
 				},
-				{ name: 'pulse.pulseQuality', align: 'left', header: 'Pulse Quality' },
+				{ name: 'pulseInformation.pulseQuality', align: 'left', header: 'Pulse Quality' },
 				{ name: 'status', align: 'left', header: 'Status' }
 			]}
 			{order}
@@ -522,9 +522,9 @@
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
 					label="Pulse UUID"
-					value={draft.pulse.pulseID}
+					value={draft.pulseInformation.pulseID}
 					on:change={(e) => {
-						draft.pulse.pulseID = e.detail.value;
+						draft.pulseInformation.pulseID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -552,9 +552,9 @@
 					label="Pulse Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulse.pulseStart}
+					value={draft.pulseInformation.pulseStart}
 					on:change={(e) => {
-						draft.pulse.pulseStart = e.detail.value;
+						draft.pulseInformation.pulseStart = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -562,17 +562,17 @@
 					label="Data Capture Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulse.dataCaptureStart}
+					value={draft.pulseInformation.dataCaptureStart}
 					on:change={(e) => {
-						draft.pulse.dataCaptureStart = e.detail.value;
+						draft.pulseInformation.dataCaptureStart = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Pulse Duration"
-					value={draft.pulse.pulseDuration}
+					value={draft.pulseInformation.pulseDuration}
 					on:change={(e) => {
-						draft.pulse.pulseDuration = e.detail.value;
+						draft.pulseInformation.pulseDuration = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -580,25 +580,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.operator1.firstName}
+					value={draft.operator1.firstName}
 					on:change={(e) => {
-						draft.pulse.operator1.firstName = e.detail.value;
+						draft.operator1.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.operator1.lastName}
+					value={draft.operator1.lastName}
 					on:change={(e) => {
-						draft.pulse.operator1.lastName = e.detail.value;
+						draft.operator1.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.operator1.email}
+					value={draft.operator1.email}
 					on:change={(e) => {
-						draft.pulse.operator1.email = e.detail.value;
+						draft.operator1.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -606,25 +606,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.operator2.firstName}
+					value={draft.operator2.firstName}
 					on:change={(e) => {
-						draft.pulse.operator2.firstName = e.detail.value;
+						draft.operator2.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.operator2.lastName}
+					value={draft.operator2.lastName}
 					on:change={(e) => {
-						draft.pulse.operator2.lastName = e.detail.value;
+						draft.operator2.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.operator2.email}
+					value={draft.operator2.email}
 					on:change={(e) => {
-						draft.pulse.operator2.email = e.detail.value;
+						draft.operator2.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -633,9 +633,9 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.pulse.operatorComment}
+						value={draft.pulseInformation.operatorComment}
 						on:change={(e) => {
-							draft.pulse.operatorComment = e.detail.value;
+							draft.pulseInformation.operatorComment = e.detail.value;
 							refresh();
 						}}
 						multiline
@@ -644,10 +644,10 @@
 				<SelectField
 					options={pulseQualityOptions}
 					label="Pulse Quality"
-					value={draft.pulse.pulseQuality}
+					value={draft.pulseInformation.pulseQuality}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.pulseQuality = e.detail.value;
+						draft.pulseInformation.pulseQuality = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -656,10 +656,10 @@
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"
-					value={draft.pulse.coilInformation.currentType}
+					value={draft.pulseInformation.coilInformation.currentType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.coilInformation.currentType = e.detail.value;
+						draft.pulseInformation.coilInformation.currentType = e.detail.value;
 						if (e.detail.value === 'AC') {
 							inputPowerToggle = true;
 						} else {
@@ -671,27 +671,27 @@
 
 				<TextField
 					label="Input Power"
-					value={draft.pulse.coilInformation.inputPower}
+					value={draft.pulseInformation.coilInformation.inputPower}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputPower = e.detail.value;
+						draft.pulseInformation.coilInformation.inputPower = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Current"
-					value={draft.pulse.coilInformation.inputCurrent}
+					value={draft.pulseInformation.coilInformation.inputCurrent}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputCurrent = e.detail.value;
+						draft.pulseInformation.coilInformation.inputCurrent = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Voltage"
-					value={draft.pulse.coilInformation.inputVoltage}
+					value={draft.pulseInformation.coilInformation.inputVoltage}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputVoltage = e.detail.value;
+						draft.pulseInformation.coilInformation.inputVoltage = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
@@ -701,26 +701,26 @@
 				<SelectField
 					options={coolantTypeOptions}
 					label="Coolant Type"
-					value={draft.pulse.coolantInformation.coolantType}
+					value={draft.pulseInformation.coolantInformation.coolantType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantType = e.detail.value;
+						draft.pulseInformation.coolantInformation.coolantType = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Flow"
-					value={draft.pulse.coolantInformation.coolantFlow}
+					value={draft.pulseInformation.coolantInformation.coolantFlow}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantFlow = e.detail.value;
+						draft.pulseInformation.coolantInformation.coolantFlow = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
-					value={draft.pulse.coolantInformation.coolantTemperature}
+					value={draft.pulseInformation.coolantInformation.coolantTemperature}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantTemperature = e.detail.value;
+						draft.pulseInformation.coolantInformation.coolantTemperature = e.detail.value;
 						refresh();
 					}}
 				/>
