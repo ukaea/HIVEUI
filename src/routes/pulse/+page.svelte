@@ -35,38 +35,6 @@
 		}
 	}
 
-	class CoolantFlow {
-		rate: string; // FlowRate type
-		setpoint: string;
-		value: string;
-		variance: string;
-
-		constructor() {
-			this.rate = '';
-			this.setpoint = '';
-			this.value = '';
-			this.variance = '';
-		}
-	}
-
-	class CoolantTemperature {
-		setpoint: string;
-		in: string;
-		inVariance: string;
-		out: string;
-		outVariance: string;
-		delta: string;
-
-		constructor() {
-			this.setpoint = '';
-			this.in = '';
-			this.inVariance = '';
-			this.out = '';
-			this.outVariance = '';
-			this.delta = '';
-		}
-	}
-
 	class CoolantPressure {
 		in: string;
 		out: string;
@@ -94,8 +62,8 @@
 
 	class PulseMetadata {
 		pulseID: string;
-		firstOperator: PersonMetadata;
-		secondOperator: PersonMetadata;
+		operator1: PersonMetadata;
+		operator2: PersonMetadata;
 		pulseStart: Date;
 		pulseDuration: string;
 		dataCaptureStart: Date;
@@ -105,8 +73,8 @@
 		coolantInformation: CoolantInformation;
 		constructor() {
 			this.pulseID = '';
-			this.firstOperator = new PersonMetadata();
-			this.secondOperator = new PersonMetadata();
+			this.operator1 = new PersonMetadata();
+			this.operator2 = new PersonMetadata();
 			this.pulseStart = new Date();
 			this.pulseDuration = '';
 			this.dataCaptureStart = new Date();
@@ -609,25 +577,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.firstOperator.firstName}
+					value={draft.pulse.operator1.firstName}
 					on:change={(e) => {
-						draft.pulse.firstOperator.firstName = e.detail.value;
+						draft.pulse.operator1.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.firstOperator.lastName}
+					value={draft.pulse.operator1.lastName}
 					on:change={(e) => {
-						draft.pulse.firstOperator.lastName = e.detail.value;
+						draft.pulse.operator1.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.firstOperator.email}
+					value={draft.pulse.operator1.email}
 					on:change={(e) => {
-						draft.pulse.firstOperator.email = e.detail.value;
+						draft.pulse.operator1.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -635,25 +603,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.secondOperator.firstName}
+					value={draft.pulse.operator2.firstName}
 					on:change={(e) => {
-						draft.pulse.secondOperator.firstName = e.detail.value;
+						draft.pulse.operator2.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.secondOperator.lastName}
+					value={draft.pulse.operator2.lastName}
 					on:change={(e) => {
-						draft.pulse.secondOperator.lastName = e.detail.value;
+						draft.pulse.operator2.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.secondOperator.email}
+					value={draft.pulse.operator2.email}
 					on:change={(e) => {
-						draft.pulse.secondOperator.email = e.detail.value;
+						draft.pulse.operator2.email = e.detail.value;
 						refresh();
 					}}
 				/>
