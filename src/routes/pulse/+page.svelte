@@ -63,42 +63,38 @@
 		}
 	}
 
-	class PulseMetadata {
-		pulseID: string;
-		pulseStart: Date;
-		pulseDuration: string;
-		dataCaptureStart: Date;
-		operatorComment: string;
-		pulseQuality: string;
-		coilInformation: CoilInformation;
-		coolantInformation: CoolantInformation;
-		constructor() {
-			this.pulseID = '';
-			this.pulseStart = new Date();
-			this.pulseDuration = '';
-			this.dataCaptureStart = new Date();
-			this.operatorComment = '';
-			this.pulseQuality = '';
-			this.coilInformation = new CoilInformation();
-			this.coolantInformation = new CoolantInformation();
-		}
-	}
-
 	// Includes the experiment and configurations
 	class CompiledPulseMetadata {
-		pulseInformation: PulseMetadata;
-		experimentUUID: string;
-		configurationUUID: string;
+		pulseID: string;
+		dataCaptureStart: Date;
+		pulseStart: Date;
+		pulseEnd: string;
+		pulseDuration: string;
 		operator1: PersonMetadata;
 		operator2: PersonMetadata;
+		coilInformation: CoilInformation;
+		coolantInformation: CoolantInformation;
+		operatorComment: string;
+		pulseQuality: string;
+		pulseUUID: string;
+		experimentUUID: string;
+		configurationUUID: string;
 		status: string;
 		constructor() {
-			this.pulseInformation = new PulseMetadata();
-			this.experimentUUID = '';
-			this.configurationUUID = '';
+			this.pulseID = '';
+			this.dataCaptureStart = new Date();
+			this.pulseStart = new Date();
+			this.pulseEnd = new Date();
+			this.pulseDuration = '';
 			this.operator1 = new PersonMetadata();
 			this.operator2 = new PersonMetadata();
-			this.status = '';
+			this.coilInformation = new CoilInformation();
+			this.coolantInformation = new CoolantInformation();
+			this.operatorComment = '';
+			this.pulseQuality = '';
+			this.pulseUUID = '';
+			this.experimentUUID = '';
+			this.configurationUUID = '';
 		}
 	}
 
@@ -106,7 +102,7 @@
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
 
-	const order = tableOrderStore({ initialBy: 'pulseInformation.pulseID', initialDirection: 'asc' });
+	const order = tableOrderStore({ initialBy: 'pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
@@ -124,11 +120,11 @@
 		const mapped =  Object.assign(metadata, apiResponse);
 
 		// Ensure pulseStart and dataCaptureStart are Date objects
-		if (mapped.pulseInformation.pulseStart) {
-			mapped.pulseInformation.pulseStart = new Date(mapped.pulseInformation.pulseStart);
+		if (mapped.pulseStart) {
+			mapped.pulseStart = new Date(mapped.pulseStart);
 		}
-		if (mapped.pulseInformation.dataCaptureStart) {
-			mapped.pulseInformation.dataCaptureStart = new Date(mapped.pulseInformation.dataCaptureStart);
+		if (mapped.dataCaptureStart) {
+			mapped.dataCaptureStart = new Date(mapped.dataCaptureStart);
 		}
 
 		console.log('Mapped Pulse:', mapped);
@@ -249,7 +245,7 @@
 				throw new Error('No access token available');
 			}
 
-			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseInformation.pulseID}`;
+			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseID}`;
 
 			const response = await fetch(url, {
 				method: isNewEntry ? 'POST' : 'PUT',
@@ -272,7 +268,7 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const pulseID = metadata.pulseInformation.pulseID;
+			const pulseID = metadata.pulseID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
 			const fileName = `${pulseID}.json`;
 
@@ -356,8 +352,8 @@
 			const fileName = `currentPulse.json`;
 
 			const flagData = {
-				pulseID: metadata.pulseInformation.pulseID,
-				pulseLocation: `pulses/${metadata.pulseInformation.pulseID}.json`,
+				pulseID: metadata.pulseID,
+				pulseLocation: `pulses/${metadata.pulseID}.json`,
 				pulseStatus: metadata.status,
 				experimentUUID: metadata.experimentUUID,
 				configurationUUID: metadata.configurationUUID
@@ -389,9 +385,9 @@
 	function handleDelete(): void {
 		if (!selectedMetadata) return;
 
-		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulseInformation.pulseID}?`)) {
+		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulseID}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseInformation.pulseID}.json`;
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseID}.json`;
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
@@ -404,7 +400,7 @@
 					});
 			} else {
 				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseInformation.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
 						alert('Pulse deleted successfully');
@@ -464,7 +460,7 @@
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'pulseInformation.pulseID', align: 'left', header: 'Pulse ID' },
+				{ name: 'pulseID', align: 'left', header: 'Pulse ID' },
 				{name: 'experimentUUID', align: 'left', header: 'Experiment Name',
 					// @ts-expect-error
 					format: (value) => {
@@ -482,7 +478,7 @@
 					}
 				},
 				{
-					name: 'pulseInformation.pulseStart',
+					name: 'pulseStart',
 					align: 'left',
 					header: 'Pulse Start',
 					// @ts-expect-error
@@ -499,7 +495,7 @@
 						}) + ')';
 					}
 				},
-				{ name: 'pulseInformation.pulseQuality', align: 'left', header: 'Pulse Quality' },
+				{ name: 'pulseQuality', align: 'left', header: 'Pulse Quality' },
 				{ name: 'status', align: 'left', header: 'Status' }
 			]}
 			{order}
@@ -522,9 +518,9 @@
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
 					label="Pulse UUID"
-					value={draft.pulseInformation.pulseID}
+					value={draft.pulseID}
 					on:change={(e) => {
-						draft.pulseInformation.pulseID = e.detail.value;
+						draft.pulseID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -552,9 +548,9 @@
 					label="Pulse Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulseInformation.pulseStart}
+					value={draft.pulseStart}
 					on:change={(e) => {
-						draft.pulseInformation.pulseStart = e.detail.value;
+						draft.pulseStart = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -562,17 +558,17 @@
 					label="Data Capture Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulseInformation.dataCaptureStart}
+					value={draft.dataCaptureStart}
 					on:change={(e) => {
-						draft.pulseInformation.dataCaptureStart = e.detail.value;
+						draft.dataCaptureStart = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Pulse Duration"
-					value={draft.pulseInformation.pulseDuration}
+					value={draft.pulseDuration}
 					on:change={(e) => {
-						draft.pulseInformation.pulseDuration = e.detail.value;
+						draft.pulseDuration = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -633,9 +629,9 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.pulseInformation.operatorComment}
+						value={draft.operatorComment}
 						on:change={(e) => {
-							draft.pulseInformation.operatorComment = e.detail.value;
+							draft.operatorComment = e.detail.value;
 							refresh();
 						}}
 						multiline
@@ -644,10 +640,10 @@
 				<SelectField
 					options={pulseQualityOptions}
 					label="Pulse Quality"
-					value={draft.pulseInformation.pulseQuality}
+					value={draft.pulseQuality}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulseInformation.pulseQuality = e.detail.value;
+						draft.pulseQuality = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -656,10 +652,10 @@
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"
-					value={draft.pulseInformation.coilInformation.currentType}
+					value={draft.coilInformation.currentType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulseInformation.coilInformation.currentType = e.detail.value;
+						draft.coilInformation.currentType = e.detail.value;
 						if (e.detail.value === 'AC') {
 							inputPowerToggle = true;
 						} else {
@@ -671,27 +667,27 @@
 
 				<TextField
 					label="Input Power"
-					value={draft.pulseInformation.coilInformation.inputPower}
+					value={draft.coilInformation.inputPower}
 					on:change={(e) => {
-						draft.pulseInformation.coilInformation.inputPower = e.detail.value;
+						draft.coilInformation.inputPower = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Current"
-					value={draft.pulseInformation.coilInformation.inputCurrent}
+					value={draft.coilInformation.inputCurrent}
 					on:change={(e) => {
-						draft.pulseInformation.coilInformation.inputCurrent = e.detail.value;
+						draft.coilInformation.inputCurrent = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Voltage"
-					value={draft.pulseInformation.coilInformation.inputVoltage}
+					value={draft.coilInformation.inputVoltage}
 					on:change={(e) => {
-						draft.pulseInformation.coilInformation.inputVoltage = e.detail.value;
+						draft.coilInformation.inputVoltage = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
@@ -701,26 +697,26 @@
 				<SelectField
 					options={coolantTypeOptions}
 					label="Coolant Type"
-					value={draft.pulseInformation.coolantInformation.coolantType}
+					value={draft.coolantInformation.coolantType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulseInformation.coolantInformation.coolantType = e.detail.value;
+						draft.coolantInformation.coolantType = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Flow"
-					value={draft.pulseInformation.coolantInformation.coolantFlow}
+					value={draft.coolantInformation.coolantFlow}
 					on:change={(e) => {
-						draft.pulseInformation.coolantInformation.coolantFlow = e.detail.value;
+						draft.coolantInformation.coolantFlow = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
-					value={draft.pulseInformation.coolantInformation.coolantTemperature}
+					value={draft.coolantInformation.coolantTemperature}
 					on:change={(e) => {
-						draft.pulseInformation.coolantInformation.coolantTemperature = e.detail.value;
+						draft.coolantInformation.coolantTemperature = e.detail.value;
 						refresh();
 					}}
 				/>
