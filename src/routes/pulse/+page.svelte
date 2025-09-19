@@ -52,14 +52,30 @@
 
 	class CoolantInformation {
 		coolantType: string;
-		coolantFlow: string;
-		coolantTemperature: string;
-		coolantPressure: CoolantPressure;
+		targetCoolantFlow: string;
+		targetCoolantTemperature: string;
+		measuredCoolantFlow: string;
+		coolantFlowVariance:string;
+		coolantPressureIn: string;
+		coolantPressureOut: string;
+		deltaPressure: string;
+		coolantTemperatureIn: string;
+		coolantTemperatureOut: string;
+		coolantTemperatureOutVariance: string;
+		deltaTemperature: string;
 		constructor() {
 			this.coolantType = '';
-			this.coolantFlow = '';
-			this.coolantTemperature = '';
-			this.coolantPressure = new CoolantPressure();
+			this.targetCoolantFlow = '';
+			this.targetCoolantTemperature = '';
+			this.measuredCoolantFlow = '';
+			this.coolantFlowVariance = '';
+			this.coolantPressureIn = '';
+			this.coolantPressureOut = '';
+			this.deltaPressure = '';
+			this.coolantTemperatureIn = '';
+			this.coolantTemperatureOut = '';
+			this.coolantTemperatureOutVariance = '';
+			this.deltaTemperature = '';
 		}
 	}
 
@@ -706,17 +722,17 @@
 				/>
 				<TextField
 					label="Target Coolant Flow"
-					value={draft.coolantInformation.coolantFlow}
+					value={draft.coolantInformation.targetCoolantFlow}
 					on:change={(e) => {
-						draft.coolantInformation.coolantFlow = e.detail.value;
+						draft.coolantInformation.targetCoolantFlow = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
-					value={draft.coolantInformation.coolantTemperature}
+					value={draft.coolantInformation.targetCoolantTemperature}
 					on:change={(e) => {
-						draft.coolantInformation.coolantTemperature = e.detail.value;
+						draft.coolantInformation.targetCoolantTemperature = e.detail.value;
 						refresh();
 					}}
 				/>
