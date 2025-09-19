@@ -35,7 +35,15 @@
 		}
 	}
 
+	class ThermocoupleInformation {
+		thermocoupleID: string;
+		maxValue: string;
 
+		constructor(){
+			this.thermocoupleID = '';
+			this.maxValue = '';
+		}
+	}
 
 
 	class CoolantPressure {
@@ -60,6 +68,7 @@
 		coolantPressureOut: string;
 		deltaPressure: string;
 		coolantTemperatureIn: string;
+		coolantTemperatureInVariance: string;
 		coolantTemperatureOut: string;
 		coolantTemperatureOutVariance: string;
 		deltaTemperature: string;
@@ -73,6 +82,7 @@
 			this.coolantPressureOut = '';
 			this.deltaPressure = '';
 			this.coolantTemperatureIn = '';
+			this.coolantTemperatureInVariance = '';
 			this.coolantTemperatureOut = '';
 			this.coolantTemperatureOutVariance = '';
 			this.deltaTemperature = '';
@@ -90,6 +100,7 @@
 		operator2: PersonMetadata;
 		coilInformation: CoilInformation;
 		coolantInformation: CoolantInformation;
+		thermocoupleInformation: ThermocoupleInformation;
 		comment: string;
 		pulseQuality: string;
 		pulseUUID: string;
@@ -106,11 +117,13 @@
 			this.operator2 = new PersonMetadata();
 			this.coilInformation = new CoilInformation();
 			this.coolantInformation = new CoolantInformation();
-			this.Comment = '';
+			this.thermocoupleInformation = new ThermocoupleInformation();
+			this.comment = '';
 			this.pulseQuality = '';
 			this.pulseUUID = '';
 			this.experimentUUID = '';
 			this.configurationUUID = '';
+			this.status = '';
 		}
 	}
 
