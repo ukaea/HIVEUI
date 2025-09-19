@@ -90,7 +90,7 @@
 		operator2: PersonMetadata;
 		coilInformation: CoilInformation;
 		coolantInformation: CoolantInformation;
-		operatorComment: string;
+		comment: string;
 		pulseQuality: string;
 		pulseUUID: string;
 		experimentUUID: string;
@@ -106,7 +106,7 @@
 			this.operator2 = new PersonMetadata();
 			this.coilInformation = new CoilInformation();
 			this.coolantInformation = new CoolantInformation();
-			this.operatorComment = '';
+			this.Comment = '';
 			this.pulseQuality = '';
 			this.pulseUUID = '';
 			this.experimentUUID = '';
@@ -645,9 +645,9 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.operatorComment}
+						value={draft.comment}
 						on:change={(e) => {
-							draft.operatorComment = e.detail.value;
+							draft.comment = e.detail.value;
 							refresh();
 						}}
 						multiline
