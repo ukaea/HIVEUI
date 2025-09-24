@@ -103,7 +103,6 @@
 		thermocoupleInformation: ThermocoupleInformation;
 		comment: string;
 		pulseQuality: string;
-		pulseUUID: string;
 		experimentUUID: string;
 		configurationUUID: string;
 		status: string;
@@ -120,7 +119,6 @@
 			this.thermocoupleInformation = new ThermocoupleInformation();
 			this.comment = '';
 			this.pulseQuality = '';
-			this.pulseUUID = '';
 			this.experimentUUID = '';
 			this.configurationUUID = '';
 			this.status = '';
