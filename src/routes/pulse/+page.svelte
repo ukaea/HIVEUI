@@ -130,6 +130,7 @@
 	let sortedData: CompiledPulseMetadata[] = [];
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
+	let sortedPostProcessData: CompiledPulseMetadata[] = [];
 
 	const order = tableOrderStore({ initialBy: 'pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
@@ -239,6 +240,30 @@
 		}
 	}
 
+	async function fetchPostProcessData() {
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			if (localOnly) {
+				const postProcessFiles = await getJsonFiles('pulses');
+				const postProcessData = await Promise.all(postProcessFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
+				sortedPostProcessData = postProcessData.map(mapToPulse).sort($order.handler);
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch configurations');
+			const data = await response.json();
+			sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
+		} catch (error) {
+			console.error('Error fetching postprocess data:', error);
+			alert('Failed to load postprocess data. Please try again later.');
+		}
+	}
+
 	async function handleMetadataSubmit(event: CustomEvent<CompiledPulseMetadata>) {
 		const metadata = event.detail;
 
@@ -329,6 +354,27 @@
 		}
 	}
 
+	async function getPostProcessFile(metaData: CompiledPulseMetadata): Promise<any> {
+
+		const pulseID = metaData.pulseID;
+		const filepath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulse/postprocess/`;
+		const filename = `${pulseID}.json`;
+		try {
+			const fileResponse = await fetch(`${filepath}/${filename}`)
+
+			if (!fileResponse.ok) {
+				const errorData = await fileResponse.json()
+				throw new Error(`Failed to save metadata file: ${errorData.message}`);
+			}
+
+			const result = await fileResponse.json();
+			return result;
+		} catch (error) {
+			console.error('Error saving metadata file:', error,message);
+			throw error;
+		}
+	}
+
 	function handleRowClick(row: CompiledPulseMetadata): void {
 		selectedMetadata = { ...row };
 		isNewEntry = false;
@@ -357,6 +403,26 @@
 
 	function handleCancelComplete() {
 		isCompletingPulse = false;
+	}
+
+	async function runPostProcess(event: CustomEvent<CompiledPulseMetadata>) {
+		const pulseID = metaData.pulseID
+	}
+
+	async function handlePostProcess(commitFn) {
+		if (!selectedMetadata) {
+			console.error('Error deleting local file:', error);
+			alert(`Failed to delete pulse: ${error.message}`);
+			return;
+		}
+		shouldCloseDialog = false;
+
+		commitFn();
+
+		await runPostProcess();
+
+		await fetchPostProcessData()
+
 	}
 
 	async function handleConfirmComplete() {
@@ -778,7 +844,7 @@
 						</div>
 					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={() => commit} variant="fill"> Run Post Processing </Button>
+					<Button on:click={() => handlePostProcess(commit)} variant="fill"> Run Post Processing </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
 			</div>
