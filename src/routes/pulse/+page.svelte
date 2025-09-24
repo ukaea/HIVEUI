@@ -143,6 +143,7 @@
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
 	let localOnly = false;
+	let shouldCloseDialog = true;
 
 	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
 		const metadata = new CompiledPulseMetadata();
@@ -252,9 +253,13 @@
 			console.error('File submission failed:', error);
 		}
 
-		if (localOnly) {
+		if (localOnly && shouldCloseDialog) {
 			handleModalClose();
 			await fetchPulses(); // Refresh the data
+			return;
+		} else if (localOnly) {
+			await fetchPulses();
+			shouldCloseDialog = true;
 			return;
 		}
 
@@ -773,6 +778,7 @@
 						</div>
 					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={() => commit} variant="fill"> Run Post Processing </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
 			</div>
