@@ -14,7 +14,7 @@
 		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
 	}
 
-	class CoilInformation {
+	class HeatingInformation {
 		currentType: string;
 		inputPower: string;
 		inputCurrent: string;
@@ -98,7 +98,7 @@
 		pulseDuration: string;
 		operator1: PersonMetadata;
 		operator2: PersonMetadata;
-		coilInformation: CoilInformation;
+		heatingInformation: HeatingInformation;
 		coolantInformation: CoolantInformation;
 		thermocoupleInformation: ThermocoupleInformation;
 		comment: string;
@@ -115,7 +115,7 @@
 			this.pulseDuration = '';
 			this.operator1 = new PersonMetadata();
 			this.operator2 = new PersonMetadata();
-			this.coilInformation = new CoilInformation();
+			this.heatingInformation = new HeatingInformation();
 			this.coolantInformation = new CoolantInformation();
 			this.thermocoupleInformation = new ThermocoupleInformation();
 			this.comment = '';
@@ -752,10 +752,10 @@
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"
-					value={draft.coilInformation.currentType}
+					value={draft.heatingInformation.currentType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.coilInformation.currentType = e.detail.value;
+						draft.heatingInformation.currentType = e.detail.value;
 						if (e.detail.value === 'AC') {
 							inputPowerToggle = true;
 						} else {
@@ -767,27 +767,27 @@
 
 				<TextField
 					label="Input Power"
-					value={draft.coilInformation.inputPower}
+					value={draft.heatingInformation.inputPower}
 					on:change={(e) => {
-						draft.coilInformation.inputPower = e.detail.value;
+						draft.heatingInformation.inputPower = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Current"
-					value={draft.coilInformation.inputCurrent}
+					value={draft.heatingInformation.inputCurrent}
 					on:change={(e) => {
-						draft.coilInformation.inputCurrent = e.detail.value;
+						draft.heatingInformation.inputCurrent = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Voltage"
-					value={draft.coilInformation.inputVoltage}
+					value={draft.heatingInformation.inputVoltage}
 					on:change={(e) => {
-						draft.coilInformation.inputVoltage = e.detail.value;
+						draft.heatingInformation.inputVoltage = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
