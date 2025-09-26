@@ -1,6 +1,14 @@
-export async function getJsonFiles(directory: string) {
+
+export async function getJsonFiles(directory: string, filename?: string) {
 	try {
-		const response = await fetch(`/api/get-json-list?path=${encodeURIComponent(directory)}`);
+		let url: string;
+		if (filename) {
+			const fullPath = `${directory}/${filename}`
+			url = `/api/get-json-file?path=${encodeURIComponent(fullPath)}`
+		} else {
+			url = `/api/get-json-list?path=${encodeURIComponent(directory)}`
+		}
+		const response = await fetch(url);
 		if (!response.ok) {
 			throw new Error(`Failed to fetch file list: ${response.statusText}`);
 		}
@@ -10,7 +18,7 @@ export async function getJsonFiles(directory: string) {
 			throw new Error(data.message || 'Failed to fetch file list');
 		}
 
-		return data.files;
+		return filename? data.file : data.files;
 	} catch (error) {
 		console.error('Error fetching file list:', error);
 		throw error;
