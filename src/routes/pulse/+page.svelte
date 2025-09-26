@@ -14,6 +14,17 @@
 		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
 	}
 
+	const handleDisplayElement = (elementId, postProcessData, displayType = "block") => {
+		const target = document.getElementById(elementId)
+
+		if (!target) {
+			console.error(`Element with ID '${elementId}' not found`);
+			return;
+		}
+
+		target.style.display = postProcessData ? displayType : 'none';
+	}
+
 	class HeatingInformation {
 		currentType: string;
 		inputPower: string;
@@ -239,6 +250,9 @@
 	}
 
 	async function fetchPostProcessData() {
+		if (!selectedMetadata) {
+			return;
+		}
 		try {
 			const accessToken = $page.data.session?.sessionToken;
 			if (!accessToken) {
@@ -246,8 +260,8 @@
 			}
 
 			if (localOnly) {
-				const postProcessFiles = await getJsonFiles('pulses');
-				const postProcessData = await Promise.all(postProcessFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
+				const postProcessFiles = await getJsonFiles('pulses', selectedMetadata.pulseID);
+				const postProcessData = await getJsonContent('pulses/' + postProcessFiles);
 				sortedPostProcessData = postProcessData.map(mapToPulse).sort($order.handler);
 			}
 
