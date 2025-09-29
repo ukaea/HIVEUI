@@ -1,6 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { readdir } from 'fs/promises';
+import { readdir, stat } from 'fs/promises';
 import { join, resolve, normalize } from 'path';
 import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 
@@ -31,7 +31,16 @@ export const GET: RequestHandler = async ({ url }) => {
 
     const files = await readdir(targetDirectory);
 
-    const jsonFiles = files.filter(file => file.endsWith('.json'));
+    const jsonFiles = [];
+    for (const file of files) {
+      if (file.endsWith('.json')) {
+        const filePath = join(targetDirectory, file);
+        const fileStats = await stat(filePath);
+        if (fileStats.isFile()) {
+          jsonFiles.push(file);
+        }
+      }
+    }
 
     return json({ 
       success: true,
