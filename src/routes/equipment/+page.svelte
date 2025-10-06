@@ -333,7 +333,7 @@
 				}}
 			/>
 		</div> 
-			<Button on:click={handleNewEntry} variant="fill">New Equipment</Button>
+			<Button on:click={handleNewEntry} variant="fill" disabled={!selectedEquipmentType}>New Equipment</Button>
 		</div>
 	</div>
 	<div class="table-container">
