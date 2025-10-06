@@ -187,6 +187,7 @@ export class CompiledPulseMetadata {
     experimentUUID: string;
     configurationUUID: string;
     status: string;
+    
     constructor() {
         this.pulseID = '';
         this.dataCaptureStart = new Date();

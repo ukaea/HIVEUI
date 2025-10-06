@@ -6,8 +6,8 @@
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
 	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
-	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
-	import { CompiledPulseMetadata } from '$lib/models';
+	import {  CompiledPulseMetadata, ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
+
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
 
@@ -508,7 +508,7 @@
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
-					label="Pulse UUID"
+					label="Pulse ID"
 					value={draft.pulseID}
 					on:change={(e) => {
 						draft.pulseID = e.detail.value;
