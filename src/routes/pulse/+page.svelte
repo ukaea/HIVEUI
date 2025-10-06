@@ -26,10 +26,121 @@
 		target.style.display = postProcessData ? displayType : 'none';
 	}
 
+	class HeatingInformation {
+		currentType: string;
+		inputPower: string;
+		inputCurrent: string;
+		inputVoltage: string;
+		outputFrequency: string;
+		measuredPower: string;
+		outputCurrent: string;
+		outputVoltage: string;
+		constructor() {
+			this.currentType = '';
+			this.inputPower = '';
+			this.inputCurrent = '';
+			this.inputVoltage = '';
+			this.outputFrequency = '';
+			this.measuredPower = '';
+			this.outputCurrent = '';
+			this.outputVoltage = '';
+		}
+	}
+
+	class ThermocoupleInformation {
+		thermocoupleID: string;
+		maxValue: string;
+
+		constructor(){
+			this.thermocoupleID = '';
+			this.maxValue = '';
+		}
+	}
+
+
+	class CoolantPressure {
+		in: string;
+		out: string;
+		delta: string;
+
+		constructor() {
+			this.in = '';
+			this.out = '';
+			this.delta = '';
+		}
+	}
+
+	class CoolantInformation {
+		coolantType: string;
+		targetCoolantFlow: string;
+		targetCoolantTemperature: string;
+		measuredCoolantFlow: string;
+		coolantFlowVariance:string;
+		coolantPressureIn: string;
+		coolantPressureOut: string;
+		deltaPressure: string;
+		coolantTemperatureIn: string;
+		coolantTemperatureInVariance: string;
+		coolantTemperatureOut: string;
+		coolantTemperatureOutVariance: string;
+		deltaTemperature: string;
+		constructor() {
+			this.coolantType = '';
+			this.targetCoolantFlow = '';
+			this.targetCoolantTemperature = '';
+			this.measuredCoolantFlow = '';
+			this.coolantFlowVariance = '';
+			this.coolantPressureIn = '';
+			this.coolantPressureOut = '';
+			this.deltaPressure = '';
+			this.coolantTemperatureIn = '';
+			this.coolantTemperatureInVariance = '';
+			this.coolantTemperatureOut = '';
+			this.coolantTemperatureOutVariance = '';
+			this.deltaTemperature = '';
+		}
+	}
+
+	// Includes the experiment and configurations
+	class PostProcessMetadata {
+		pulseID: string;
+		dataCaptureStart: Date;
+		pulseStart: Date;
+		pulseEnd: string;
+		pulseDuration: string;
+		operator1: PersonMetadata;
+		operator2: PersonMetadata;
+		heatingInformation: HeatingInformation;
+		coolantInformation: CoolantInformation;
+		thermocoupleInformation: ThermocoupleInformation;
+		comment: string;
+		pulseQuality: string;
+		experimentUUID: string;
+		configurationUUID: string;
+		status: string;
+		constructor() {
+			this.pulseID = '';
+			this.dataCaptureStart = new Date();
+			this.pulseStart = new Date();
+			this.pulseEnd = new Date();
+			this.pulseDuration = '';
+			this.operator1 = new PersonMetadata();
+			this.operator2 = new PersonMetadata();
+			this.heatingInformation = new HeatingInformation();
+			this.coolantInformation = new CoolantInformation();
+			this.thermocoupleInformation = new ThermocoupleInformation();
+			this.comment = '';
+			this.pulseQuality = '';
+			this.experimentUUID = '';
+			this.configurationUUID = '';
+			this.status = '';
+		}
+	}
+
 	let sortedData: CompiledPulseMetadata[] = [];
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
-	let sortedPostProcessData: CompiledPulseMetadata | null = null;
+	let sortedPostProcessData: PostProcessMetadata | null = null;
 
 	const order = tableOrderStore({ initialBy: 'pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
@@ -152,9 +263,7 @@
 			if (localOnly) {
 				const postProcessFile = await getJsonFile('pulses', pulseID);
 
-				const postProcessData = await getJsonContent('pulses/' + postProcessFile);
-
-				sortedPostProcessData = mapToPulse(postProcessData).sort($order.handler);
+				sortedPostProcessData = await getJsonContent(`pulses/${postProcessFile}`);
 			}
 
 			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -503,7 +612,22 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			{#if sortedPostProcessData}
-				{draft.inputVoltage = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.heatingInformation.outputFrequency = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.heatingInformation.measuredPower = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.heatingInformation.outputCurrent = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.heatingInformation.outputVoltage = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.measuredCoolantFlow = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantFlowVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantPressureIn = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantPressureOut = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.deltaPressure = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureIn = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.coolantInformation.coolantTemperatureInVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureOut = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureOutVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.deltaTemperature = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.thermocoupleInformation.thermocoupleID = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.thermocoupleInformation.maxValue = sortedPostProcessData.heatingInformation.inputPower}
 			{/if}
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
@@ -639,7 +763,7 @@
 					}}
 				/>
 
-				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
+				<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"
@@ -687,8 +811,23 @@
 					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
 					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
 						<TextField
-							label="Measured Voltage"
-							value={draft.inputVoltage}
+							label="Output Frequency"
+							value={draft.heatingInformation.outputFrequency}
+							disabled
+						/>
+						<TextField
+							label="Measured Power"
+							value={draft.heatingInformation.measuredPower}
+							disabled
+						/>
+						<TextField
+							label="Output Current"
+							value={draft.heatingInformation.outputCurrent}
+							disabled
+						/>
+						<TextField
+							label="Output Voltage"
+							value={draft.heatingInformation.outputVoltage}
 							disabled
 						/>
 					</div>
@@ -720,6 +859,71 @@
 						refresh();
 					}}
 				/>
+				{#if sortedPostProcessData}
+					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
+					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+						<TextField
+							label="Measured Coolant Flow"
+							value={draft.coolantInformation.measuredCoolantFlow}
+							disabled
+						/>
+						<TextField
+							label="Coolant Flow Variance"
+							value={draft.coolantInformation.coolantFlowVariance}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure In"
+							value={draft.coolantInformation.coolantPressureIn}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure Out"
+							value={draft.coolantInformation.coolantPressureOut}
+							disabled
+						/>
+						<TextField
+							label="Delta Pressure"
+							value={draft.coolantInformation.deltaPressure}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In"
+							value={draft.coolantInformation.coolantTemperatureIn}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In Variance"
+							value={draft.coolantInformation.coolantTemperatureInVariance}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out"
+							value={draft.coolantInformation.coolantTemperatureOut}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out Variance"
+							value={draft.coolantInformation.coolantTemperatureOutVariance}
+							disabled
+						/>
+						<TextField
+							label="Delta Temperature"
+							value={draft.coolantInformation.deltaPressure}
+							disabled
+						/>
+						<TextField
+							label="Thermocouple ID"
+							value={draft.thermocoupleInformation.thermocoupleID}
+							disabled
+						/>
+						<TextField
+							label="Max Value"
+							value={draft.thermocoupleInformation.maxValue}
+							disabled
+						/>
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex justify-between mt-4 relative">
