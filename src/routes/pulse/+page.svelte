@@ -7,6 +7,7 @@
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
 	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
 	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
+	import { CompiledPulseMetadata } from '$lib/models';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
 
@@ -23,117 +24,6 @@
 		}
 
 		target.style.display = postProcessData ? displayType : 'none';
-	}
-
-	class HeatingInformation {
-		currentType: string;
-		inputPower: string;
-		inputCurrent: string;
-		inputVoltage: string;
-		outputFrequency: string;
-		measuredPower: string;
-		outputCurrent: string;
-		outputVoltage: string;
-		constructor() {
-			this.currentType = '';
-			this.inputPower = '';
-			this.inputCurrent = '';
-			this.inputVoltage = '';
-			this.outputFrequency = '';
-			this.measuredPower = '';
-			this.outputCurrent = '';
-			this.outputVoltage = '';
-		}
-	}
-
-	class ThermocoupleInformation {
-		thermocoupleID: string;
-		maxValue: string;
-
-		constructor(){
-			this.thermocoupleID = '';
-			this.maxValue = '';
-		}
-	}
-
-
-	class CoolantPressure {
-		in: string;
-		out: string;
-		delta: string;
-
-		constructor() {
-			this.in = '';
-			this.out = '';
-			this.delta = '';
-		}
-	}
-
-	class CoolantInformation {
-		coolantType: string;
-		targetCoolantFlow: string;
-		targetCoolantTemperature: string;
-		measuredCoolantFlow: string;
-		coolantFlowVariance:string;
-		coolantPressureIn: string;
-		coolantPressureOut: string;
-		deltaPressure: string;
-		coolantTemperatureIn: string;
-		coolantTemperatureInVariance: string;
-		coolantTemperatureOut: string;
-		coolantTemperatureOutVariance: string;
-		deltaTemperature: string;
-		constructor() {
-			this.coolantType = '';
-			this.targetCoolantFlow = '';
-			this.targetCoolantTemperature = '';
-			this.measuredCoolantFlow = '';
-			this.coolantFlowVariance = '';
-			this.coolantPressureIn = '';
-			this.coolantPressureOut = '';
-			this.deltaPressure = '';
-			this.coolantTemperatureIn = '';
-			this.coolantTemperatureInVariance = '';
-			this.coolantTemperatureOut = '';
-			this.coolantTemperatureOutVariance = '';
-			this.deltaTemperature = '';
-		}
-	}
-
-	// Includes the experiment and configurations
-	class CompiledPulseMetadata {
-		pulseID: string;
-		dataCaptureStart: Date;
-		pulseStart: Date;
-		pulseEnd: string;
-		pulseDuration: string;
-		operator1: PersonMetadata;
-		operator2: PersonMetadata;
-		heatingInformation: HeatingInformation;
-		coolantInformation: CoolantInformation;
-		thermocoupleInformation: ThermocoupleInformation;
-		comment: string;
-		pulseQuality: string;
-		experimentUUID: string;
-		configurationUUID: string;
-		status: string;
-		constructor() {
-			this.pulseID = '';
-			this.dataCaptureStart = new Date();
-			this.pulseStart = new Date();
-			this.pulseEnd = new Date();
-			this.pulseDuration = '';
-			this.operator1 = new PersonMetadata();
-			this.operator2 = new PersonMetadata();
-			this.heatingInformation = new HeatingInformation();
-			this.coolantInformation = new CoolantInformation();
-			this.thermocoupleInformation = new ThermocoupleInformation();
-			this.comment = '';
-			this.pulseQuality = '';
-			this.experimentUUID = '';
-			this.configurationUUID = '';
-			this.status = '';
-		}
 	}
 
 	let sortedData: CompiledPulseMetadata[] = [];
@@ -341,9 +231,9 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const pulseID = metadata.pulseID;
+			const ID = metadata.pulseID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
-			const fileName = `${pulseID}.json`;
+			const fileName = `${ID}.json`;
 
 			const saveMetadata = {
 				targetPath: `${filePath}/${fileName}`,
@@ -400,7 +290,7 @@
 	}
 
 	async function runPostProcess(pulseID) {
-		const pulseID = pulseID
+		const ID = pulseID
 	}
 
 	async function handlePostProcess(commitFn, pulseID) {
