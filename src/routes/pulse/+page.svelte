@@ -5,7 +5,7 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
-	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
+	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
 	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
@@ -31,7 +31,7 @@
 		inputCurrent: string;
 		inputVoltage: string;
 		outputFrequency: string;
-		outputPower: string;
+		measuredPower: string;
 		outputCurrent: string;
 		outputVoltage: string;
 		constructor() {
@@ -40,7 +40,7 @@
 			this.inputCurrent = '';
 			this.inputVoltage = '';
 			this.outputFrequency = '';
-			this.outputPower = '';
+			this.measuredPower = '';
 			this.outputCurrent = '';
 			this.outputVoltage = '';
 		}
@@ -139,7 +139,7 @@
 	let sortedData: CompiledPulseMetadata[] = [];
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
-	let sortedPostProcessData: CompiledPulseMetadata[] = [];
+	let sortedPostProcessData: CompiledPulseMetadata | null = null;
 
 	const order = tableOrderStore({ initialBy: 'pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
@@ -249,8 +249,8 @@
 		}
 	}
 
-	async function fetchPostProcessData() {
-		if (!selectedMetadata) {
+	async function fetchPostProcessData(pulseID) {
+		if (!pulseID) {
 			return;
 		}
 		try {
@@ -260,9 +260,11 @@
 			}
 
 			if (localOnly) {
-				const postProcessFiles = await getJsonFiles('pulses', selectedMetadata.pulseID);
-				const postProcessData = await getJsonContent('pulses/' + postProcessFiles);
-				sortedPostProcessData = postProcessData.map(mapToPulse).sort($order.handler);
+				const postProcessFile = await getJsonFile('pulses', pulseID);
+
+				const postProcessData = await getJsonContent('pulses/' + postProcessFile);
+
+				sortedPostProcessData = mapToPulse(postProcessData).sort($order.handler);
 			}
 
 			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
@@ -366,26 +368,6 @@
 		}
 	}
 
-	async function getPostProcessFile(metaData: CompiledPulseMetadata): Promise<any> {
-
-		const pulseID = metaData.pulseID;
-		const filepath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulse/postprocess/`;
-		const filename = `${pulseID}.json`;
-		try {
-			const fileResponse = await fetch(`${filepath}/${filename}`)
-
-			if (!fileResponse.ok) {
-				const errorData = await fileResponse.json()
-				throw new Error(`Failed to save metadata file: ${errorData.message}`);
-			}
-
-			const result = await fileResponse.json();
-			return result;
-		} catch (error) {
-			console.error('Error saving metadata file:', error,message);
-			throw error;
-		}
-	}
 
 	function handleRowClick(row: CompiledPulseMetadata): void {
 		selectedMetadata = { ...row };
@@ -417,24 +399,28 @@
 		isCompletingPulse = false;
 	}
 
-	async function runPostProcess(event: CustomEvent<CompiledPulseMetadata>) {
-		const pulseID = metaData.pulseID
+	async function runPostProcess(pulseID) {
+		const pulseID = pulseID
 	}
 
-	async function handlePostProcess(commitFn) {
-		if (!selectedMetadata) {
-			console.error('Error deleting local file:', error);
-			alert(`Failed to delete pulse: ${error.message}`);
+	async function handlePostProcess(commitFn, pulseID) {
+		if (!pulseID) {
+			console.error("Pulse ID not provided")
+			alert(`Failed to run post processing: No ID provided`);
 			return;
 		}
 		shouldCloseDialog = false;
 
-		commitFn();
+		try {
+			await commitFn();
 
-		await runPostProcess();
+			await runPostProcess(pulseID)
 
-		await fetchPostProcessData()
-
+			await fetchPostProcessData(pulseID)
+		} catch (error) {
+			console.error("Error running post processing:", error);
+			alert(`Post processing failed: ${error.message}`);
+		}
 	}
 
 	async function handleConfirmComplete() {
@@ -626,6 +612,9 @@
 	</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			{#if sortedPostProcessData}
+				{draft.inputVoltage = sortedPostProcessData.heatingInformation.inputPower} 
+			{/if}
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
@@ -804,7 +793,16 @@
 					}}
 					disabled={inputPowerToggle}
 				/>
-
+				{#if sortedPostProcessData}
+					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
+					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+						<TextField
+							label="Measured Voltage"
+							value={draft.inputVoltage}
+							disabled
+						/>
+					</div>
+				{/if}
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
 				<SelectField
 					options={coolantTypeOptions}
@@ -837,7 +835,7 @@
 			<div class="flex justify-between mt-4 relative">
 				<div class="flex gap-2">
 					{#if !isCompletingPulse}
-						<Button variant="outline" color="success" on:click={handleCompletePulse}>Pulse Completed</Button>
+						<Button variant="outline" color="success" on:click={handleCompletePulse}>Ingest</Button>
 					{:else}
 						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
 						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>
@@ -856,7 +854,7 @@
 						</div>
 					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={() => handlePostProcess(commit)} variant="fill"> Run Post Processing </Button>
+					<Button on:click={(event) => handlePostProcess(commit, draft.pulseID)} variant="fill"> Pulse Completed </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
 			</div>
