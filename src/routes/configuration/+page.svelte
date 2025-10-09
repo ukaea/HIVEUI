@@ -5,7 +5,7 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
+	import { ConfigurationMetadata, CombinationMetadata } from '$lib/models';
 
 	let sortedData: ConfigurationMetadata[] = [];
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
@@ -14,9 +14,9 @@
 		sortedData = sortedData.sort($configurationOrder.handler);
 	});
 
-	let allEquipment: EquipmentMetadata[] = [];
+	let allEquipment: any[] = [];
 	let allCombinations: CombinationMetadata[] = [];
-	let selectedEquipment: EquipmentMetadata | null = null;
+	let selectedEquipment: any = null;
 	let selectedCombination: CombinationMetadata | null = null;
 
 	// Main configuration dialog
@@ -95,7 +95,31 @@
 			if (localOnly) {
 				const files = await getJsonFiles('equipment');
 				const equipmentData = await Promise.all(files.map((filename: string) => getJsonContent('equipment/' + filename)));
-				allEquipment = await Promise.all(equipmentData.map(EquipmentMetadata.fromJSON));
+
+				allEquipment = equipmentData.map((data: any) => {
+					const equipmentType = data.equipmentType || 'unknown';
+					let name = '';
+					let make = '';
+					let model = '';
+
+					if (data.deviceInformation) {
+						make = data.deviceInformation.make || '';
+						model = data.deviceInformation.model || '';
+						name = `${make} ${model}`.trim();
+					} else if (equipmentType === 'thermocouple') {
+						name = `${data.tcType || 'Thermocouple'} - ${data.location || 'Unknown Location'}`;
+						make = data.tcType || '';
+						model = data.attachment || '';
+					}
+
+					return {
+						...data,
+						equipmentName: name || `${equipmentType} - ${data.equipmentUUID || 'No UUID'}`,
+						equipmentType: equipmentType,
+						make: make,
+						model: model
+					};
+				});
 				return;
 			}
 
@@ -103,7 +127,7 @@
 
 			if (!response.ok) throw new Error('Failed to fetch equipment');
 			const data = await response.json();
-			allEquipment = data.map(EquipmentMetadata.fromJSON);
+			allEquipment = data;
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert('Failed to load equipment. Please try again later.');
@@ -285,13 +309,13 @@
 	}
 
 	function handleRowClick(row: ConfigurationMetadata): void {
-		selectedMetadata = { ...row };
+		selectedMetadata = JSON.parse(JSON.stringify(row));
 		isNewEntry = false;
 		open = true;
 	}
 
 	function handleNewEntry(): void {
-		selectedMetadata = { ...new ConfigurationMetadata() };
+		selectedMetadata = JSON.parse(JSON.stringify(new ConfigurationMetadata()));
 		isNewEntry = true;
 		open = true;
 	}
@@ -303,16 +327,16 @@
 	}
 
 	function handleNewCombination(): void {
-		newCombination = { ...new CombinationMetadata() };
+		newCombination = JSON.parse(JSON.stringify(new CombinationMetadata()));
 		isNewCombination = true;
-		selectedEquipment = [];
+		selectedEquipment = null;
 		combinationDialogOpen = true;
 	}
 
 	function handleCombinationDialogClose() {
 		combinationDialogOpen = false;
 		newCombination = null;
-		selectedEquipment = [];
+		selectedEquipment = null;
 		isNewCombination = false;
 	}
 
@@ -324,7 +348,7 @@
 		handleCombinationDialogClose();
 	}
 
-	function addEquipmentToCombination(equipment: EquipmentMetadata) {
+	function addEquipmentToCombination(equipment: any) {
 		if (newCombination && !newCombination.equipment.some((eq) => eq.equipmentUUID === equipment.equipmentUUID)) {
 			newCombination.equipment = [...newCombination.equipment, equipment];
 		}
@@ -357,7 +381,7 @@
 		<h2 class="text-2xl font-bold">Configurations</h2>
 		<div>
 			<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
-			<Button on:click={handleNewCombination} variant="fill">New Combination</Button>
+			<Button on:click={handleNewCombination} variant="fill">New Diagnostic</Button>
 		</div>
 	</div>
 	<div class="table-container">
@@ -401,6 +425,7 @@
 						draft.configurationUUID = e.detail.value;
 						refresh();
 					}}
+					disabled
 				/>
 				<div class="col-span-2">
 					<TextField
@@ -415,12 +440,12 @@
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment Combinations</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Equipment Diagnostic</h4>
 				<div class="space-y-3">
 					{#each draft.equipmentCombinations as combination, index (combination.combinationUUID)}
 						<div class="flex gap-2">
 							<TextField
-								label="Combination Name"
+								label="Diagnostic Name"
 								value={combination.combinationName}
 								on:change={(e) => {
 									combination.combinationName = e.detail.value;
@@ -428,7 +453,7 @@
 								}}
 							/>
 							<TextField
-								label="Combination UUID"
+								label="Diagnostic UUID"
 								value={combination.combinationUUID}
 								on:change={(e) => {
 									combination.combinationUUID = e.detail.value;
@@ -632,11 +657,15 @@
 
 	:global(.configurationInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 
 	:global(.combinationInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>

@@ -5,16 +5,34 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
-	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
+	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
+	import {  CompiledPulseMetadata, ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
 
-	class CoilInformation {
+	import { triggerDAG } from '$lib/triggerPipeline';
+	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
+
+	async function handleTrigger() {
+		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
+	}
+
+	const handleDisplayElement = (elementId, postProcessData, displayType = "block") => {
+		const target = document.getElementById(elementId)
+
+		if (!target) {
+			console.error(`Element with ID '${elementId}' not found`);
+			return;
+		}
+
+		target.style.display = postProcessData ? displayType : 'none';
+	}
+
+	class HeatingInformation {
 		currentType: string;
 		inputPower: string;
 		inputCurrent: string;
 		inputVoltage: string;
 		outputFrequency: string;
-		outputPower: string;
+		measuredPower: string;
 		outputCurrent: string;
 		outputVoltage: string;
 		constructor() {
@@ -23,43 +41,22 @@
 			this.inputCurrent = '';
 			this.inputVoltage = '';
 			this.outputFrequency = '';
-			this.outputPower = '';
+			this.measuredPower = '';
 			this.outputCurrent = '';
 			this.outputVoltage = '';
 		}
 	}
 
-	class CoolantFlow {
-		rate: string; // FlowRate type
-		setpoint: string;
-		value: string;
-		variance: string;
+	class ThermocoupleInformation {
+		thermocoupleID: string;
+		maxValue: string;
 
-		constructor() {
-			this.rate = '';
-			this.setpoint = '';
-			this.value = '';
-			this.variance = '';
+		constructor(){
+			this.thermocoupleID = '';
+			this.maxValue = '';
 		}
 	}
 
-	class CoolantTemperature {
-		setpoint: string;
-		in: string;
-		inVariance: string;
-		out: string;
-		outVariance: string;
-		delta: string;
-
-		constructor() {
-			this.setpoint = '';
-			this.in = '';
-			this.inVariance = '';
-			this.out = '';
-			this.outVariance = '';
-			this.delta = '';
-		}
-	}
 
 	class CoolantPressure {
 		in: string;
@@ -75,50 +72,65 @@
 
 	class CoolantInformation {
 		coolantType: string;
-		coolantFlow: CoolantFlow;
-		coolantTemperature: CoolantTemperature;
-		coolantPressure: CoolantPressure;
+		targetCoolantFlow: string;
+		targetCoolantTemperature: string;
+		measuredCoolantFlow: string;
+		coolantFlowVariance:string;
+		coolantPressureIn: string;
+		coolantPressureOut: string;
+		deltaPressure: string;
+		coolantTemperatureIn: string;
+		coolantTemperatureInVariance: string;
+		coolantTemperatureOut: string;
+		coolantTemperatureOutVariance: string;
+		deltaTemperature: string;
 		constructor() {
 			this.coolantType = '';
-			this.coolantFlow = new CoolantFlow();
-			this.coolantTemperature = new CoolantTemperature();
-			this.coolantPressure = new CoolantPressure();
-		}
-	}
-
-	class PulseMetadata {
-		pulseID: string;
-		firstOperator: PersonMetadata;
-		secondOperator: PersonMetadata;
-		pulseStart: Date;
-		pulseDuration: string;
-		dataCaptureStart: Date;
-		operatorComment: string;
-		pulseQuality: string;
-		coilInformation: CoilInformation;
-		coolantInformation: CoolantInformation;
-		constructor() {
-			this.pulseID = '';
-			this.firstOperator = new PersonMetadata();
-			this.secondOperator = new PersonMetadata();
-			this.pulseStart = new Date();
-			this.pulseDuration = '';
-			this.dataCaptureStart = new Date();
-			this.operatorComment = '';
-			this.pulseQuality = '';
-			this.coilInformation = new CoilInformation();
-			this.coolantInformation = new CoolantInformation();
+			this.targetCoolantFlow = '';
+			this.targetCoolantTemperature = '';
+			this.measuredCoolantFlow = '';
+			this.coolantFlowVariance = '';
+			this.coolantPressureIn = '';
+			this.coolantPressureOut = '';
+			this.deltaPressure = '';
+			this.coolantTemperatureIn = '';
+			this.coolantTemperatureInVariance = '';
+			this.coolantTemperatureOut = '';
+			this.coolantTemperatureOutVariance = '';
+			this.deltaTemperature = '';
 		}
 	}
 
 	// Includes the experiment and configurations
-	class CompiledPulseMetadata {
-		pulse: PulseMetadata;
+	class PostProcessMetadata {
+		pulseID: string;
+		dataCaptureStart: Date;
+		pulseStart: Date;
+		pulseEnd: string;
+		pulseDuration: string;
+		operator1: PersonMetadata;
+		operator2: PersonMetadata;
+		heatingInformation: HeatingInformation;
+		coolantInformation: CoolantInformation;
+		thermocoupleInformation: ThermocoupleInformation;
+		comment: string;
+		pulseQuality: string;
 		experimentUUID: string;
 		configurationUUID: string;
 		status: string;
 		constructor() {
-			this.pulse = new PulseMetadata();
+			this.pulseID = '';
+			this.dataCaptureStart = new Date();
+			this.pulseStart = new Date();
+			this.pulseEnd = new Date();
+			this.pulseDuration = '';
+			this.operator1 = new PersonMetadata();
+			this.operator2 = new PersonMetadata();
+			this.heatingInformation = new HeatingInformation();
+			this.coolantInformation = new CoolantInformation();
+			this.thermocoupleInformation = new ThermocoupleInformation();
+			this.comment = '';
+			this.pulseQuality = '';
 			this.experimentUUID = '';
 			this.configurationUUID = '';
 			this.status = '';
@@ -128,8 +140,9 @@
 	let sortedData: CompiledPulseMetadata[] = [];
 	let sortedExperiments: ExperimentMetadata[] = [];
 	let sortedConfigurations: ConfigurationMetadata[] = [];
+	let sortedPostProcessData: PostProcessMetadata | null = null;
 
-	const order = tableOrderStore({ initialBy: 'pulse.pulseID', initialDirection: 'asc' });
+	const order = tableOrderStore({ initialBy: 'pulseID', initialDirection: 'asc' });
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
@@ -141,17 +154,18 @@
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
 	let localOnly = false;
+	let shouldCloseDialog = true;
 
 	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
 		const metadata = new CompiledPulseMetadata();
 		const mapped =  Object.assign(metadata, apiResponse);
 
 		// Ensure pulseStart and dataCaptureStart are Date objects
-		if (mapped.pulse.pulseStart) {
-			mapped.pulse.pulseStart = new Date(mapped.pulse.pulseStart);
+		if (mapped.pulseStart) {
+			mapped.pulseStart = new Date(mapped.pulseStart);
 		}
-		if (mapped.pulse.dataCaptureStart) {
-			mapped.pulse.dataCaptureStart = new Date(mapped.pulse.dataCaptureStart);
+		if (mapped.dataCaptureStart) {
+			mapped.dataCaptureStart = new Date(mapped.dataCaptureStart);
 		}
 
 		console.log('Mapped Pulse:', mapped);
@@ -173,7 +187,7 @@
 				sortedExperiments = experiments.sort($experimentOrder.handler);
 
 				experimentOptions = sortedExperiments.map((experiment) => ({
-					label: experiment.experimentName,
+					label: experiment.experimentTitle,
 					value: experiment.experimentUUID
 				}));
 				return;
@@ -236,6 +250,33 @@
 		}
 	}
 
+	async function fetchPostProcessData(pulseID) {
+		if (!pulseID) {
+			return;
+		}
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			if (localOnly) {
+				const postProcessFile = await getJsonFile('pulses', pulseID);
+
+				sortedPostProcessData = await getJsonContent(`pulses/${postProcessFile}`);
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch configurations');
+			const data = await response.json();
+			sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
+		} catch (error) {
+			console.error('Error fetching postprocess data:', error);
+			alert('Failed to load postprocess data. Please try again later.');
+		}
+	}
+
 	async function handleMetadataSubmit(event: CustomEvent<CompiledPulseMetadata>) {
 		const metadata = event.detail;
 
@@ -250,9 +291,13 @@
 			console.error('File submission failed:', error);
 		}
 
-		if (localOnly) {
+		if (localOnly && shouldCloseDialog) {
 			handleModalClose();
 			await fetchPulses(); // Refresh the data
+			return;
+		} else if (localOnly) {
+			await fetchPulses();
+			shouldCloseDialog = true;
 			return;
 		}
 
@@ -272,7 +317,7 @@
 				throw new Error('No access token available');
 			}
 
-			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulse.pulseID}`;
+			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseID}`;
 
 			const response = await fetch(url, {
 				method: isNewEntry ? 'POST' : 'PUT',
@@ -295,9 +340,9 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const pulseID = metadata.pulse.pulseID;
+			const ID = metadata.pulseID;
 			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
-			const fileName = `${pulseID}.json`;
+			const fileName = `${ID}.json`;
 
 			const saveMetadata = {
 				targetPath: `${filePath}/${fileName}`,
@@ -321,6 +366,7 @@
 			throw error;
 		}
 	}
+
 
 	function handleRowClick(row: CompiledPulseMetadata): void {
 		selectedMetadata = { ...row };
@@ -352,6 +398,30 @@
 		isCompletingPulse = false;
 	}
 
+	async function runPostProcess(pulseID) {
+		const ID = pulseID
+	}
+
+	async function handlePostProcess(commitFn, pulseID) {
+		if (!pulseID) {
+			console.error("Pulse ID not provided")
+			alert(`Failed to run post processing: No ID provided`);
+			return;
+		}
+		shouldCloseDialog = false;
+
+		try {
+			await commitFn();
+
+			await runPostProcess(pulseID)
+
+			await fetchPostProcessData(pulseID)
+		} catch (error) {
+			console.error("Error running post processing:", error);
+			alert(`Post processing failed: ${error.message}`);
+		}
+	}
+
 	async function handleConfirmComplete() {
 		if (!selectedMetadata) {
 			return;
@@ -369,6 +439,8 @@
 		}, 3000);
 
 		await fetchPulses();
+
+		await handleTrigger();
 	}
 
 	async function handleFlagFile(metadata: CompiledPulseMetadata) {
@@ -377,8 +449,8 @@
 			const fileName = `currentPulse.json`;
 
 			const flagData = {
-				pulseID: metadata.pulse.pulseID,
-				pulseLocation: `pulses/${metadata.pulse.pulseID}.json`,
+				pulseID: metadata.pulseID,
+				pulseLocation: `pulses/${metadata.pulseID}.json`,
 				pulseStatus: metadata.status,
 				experimentUUID: metadata.experimentUUID,
 				configurationUUID: metadata.configurationUUID
@@ -410,9 +482,9 @@
 	function handleDelete(): void {
 		if (!selectedMetadata) return;
 
-		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulse.pulseID}?`)) {
+		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulseID}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulse.pulseID}.json`;
+				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseID}.json`;
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
@@ -425,7 +497,7 @@
 					});
 			} else {
 				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulse.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
 						alert('Pulse deleted successfully');
@@ -485,13 +557,13 @@
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'pulse.pulseID', align: 'left', header: 'Pulse ID' },
+				{ name: 'pulseID', align: 'left', header: 'Pulse ID' },
 				{name: 'experimentUUID', align: 'left', header: 'Experiment Name',
 					// @ts-expect-error
 					format: (value) => {
 						if (!value) return '';
 						const experiment = sortedExperiments.find((exp) => exp.experimentUUID === value);
-						return experiment ? experiment.experimentName : '';
+						return experiment ? experiment.experimentTitle : '';
 					}
 				},
 				{ name: 'configurationUUID', align: 'left', header: 'Configuration Name',
@@ -503,7 +575,7 @@
 					}
 				},
 				{
-					name: 'pulse.pulseStart',
+					name: 'pulseStart',
 					align: 'left',
 					header: 'Pulse Start',
 					// @ts-expect-error
@@ -520,7 +592,7 @@
 						}) + ')';
 					}
 				},
-				{ name: 'pulse.pulseQuality', align: 'left', header: 'Pulse Quality' },
+				{ name: 'pulseQuality', align: 'left', header: 'Pulse Quality' },
 				{ name: 'status', align: 'left', header: 'Status' }
 			]}
 			{order}
@@ -539,13 +611,31 @@
 	</div>
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
+			{#if sortedPostProcessData}
+				{draft.heatingInformation.outputFrequency = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.heatingInformation.measuredPower = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.heatingInformation.outputCurrent = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.heatingInformation.outputVoltage = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.measuredCoolantFlow = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantFlowVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantPressureIn = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantPressureOut = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.deltaPressure = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureIn = sortedPostProcessData.heatingInformation.inputPower} 
+				{draft.coolantInformation.coolantTemperatureInVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureOut = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.coolantTemperatureOutVariance = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.coolantInformation.deltaTemperature = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.thermocoupleInformation.thermocoupleID = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.thermocoupleInformation.maxValue = sortedPostProcessData.heatingInformation.inputPower}
+			{/if}
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<TextField
 					label="Pulse ID"
-					value={draft.pulse.pulseID}
+					value={draft.pulseID}
 					on:change={(e) => {
-						draft.pulse.pulseID = e.detail.value;
+						draft.pulseID = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -573,9 +663,9 @@
 					label="Pulse Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulse.pulseStart}
+					value={draft.pulseStart}
 					on:change={(e) => {
-						draft.pulse.pulseStart = e.detail.value;
+						draft.pulseStart = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -583,17 +673,17 @@
 					label="Data Capture Start"
 					format="dd/MM/yyyy HH:mm"
 					picker
-					value={draft.pulse.dataCaptureStart}
+					value={draft.dataCaptureStart}
 					on:change={(e) => {
-						draft.pulse.dataCaptureStart = e.detail.value;
+						draft.dataCaptureStart = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Pulse Duration"
-					value={draft.pulse.pulseDuration}
+					value={draft.pulseDuration}
 					on:change={(e) => {
-						draft.pulse.pulseDuration = e.detail.value;
+						draft.pulseDuration = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -601,25 +691,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.firstOperator.firstName}
+					value={draft.operator1.firstName}
 					on:change={(e) => {
-						draft.pulse.firstOperator.firstName = e.detail.value;
+						draft.operator1.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.firstOperator.lastName}
+					value={draft.operator1.lastName}
 					on:change={(e) => {
-						draft.pulse.firstOperator.lastName = e.detail.value;
+						draft.operator1.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.firstOperator.email}
+					value={draft.operator1.email}
 					on:change={(e) => {
-						draft.pulse.firstOperator.email = e.detail.value;
+						draft.operator1.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -627,25 +717,25 @@
 				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
 				<TextField
 					label="First Name"
-					value={draft.pulse.secondOperator.firstName}
+					value={draft.operator2.firstName}
 					on:change={(e) => {
-						draft.pulse.secondOperator.firstName = e.detail.value;
+						draft.operator2.firstName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.pulse.secondOperator.lastName}
+					value={draft.operator2.lastName}
 					on:change={(e) => {
-						draft.pulse.secondOperator.lastName = e.detail.value;
+						draft.operator2.lastName = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Email"
-					value={draft.pulse.secondOperator.email}
+					value={draft.operator2.email}
 					on:change={(e) => {
-						draft.pulse.secondOperator.email = e.detail.value;
+						draft.operator2.email = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -654,9 +744,9 @@
 				<div class="col-span-3">
 					<TextField
 						label="Comment"
-						value={draft.pulse.operatorComment}
+						value={draft.comment}
 						on:change={(e) => {
-							draft.pulse.operatorComment = e.detail.value;
+							draft.comment = e.detail.value;
 							refresh();
 						}}
 						multiline
@@ -665,22 +755,22 @@
 				<SelectField
 					options={pulseQualityOptions}
 					label="Pulse Quality"
-					value={draft.pulse.pulseQuality}
+					value={draft.pulseQuality}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.pulseQuality = e.detail.value;
+						draft.pulseQuality = e.detail.value;
 						refresh();
 					}}
 				/>
 
-				<h3 class="col-span-3 font-bold mt-4">Coil Information</h3>
+				<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"
-					value={draft.pulse.coilInformation.currentType}
+					value={draft.heatingInformation.currentType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.coilInformation.currentType = e.detail.value;
+						draft.heatingInformation.currentType = e.detail.value;
 						if (e.detail.value === 'AC') {
 							inputPowerToggle = true;
 						} else {
@@ -692,65 +782,154 @@
 
 				<TextField
 					label="Input Power"
-					value={draft.pulse.coilInformation.inputPower}
+					value={draft.heatingInformation.inputPower}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputPower = e.detail.value;
+						draft.heatingInformation.inputPower = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Current"
-					value={draft.pulse.coilInformation.inputCurrent}
+					value={draft.heatingInformation.inputCurrent}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputCurrent = e.detail.value;
+						draft.heatingInformation.inputCurrent = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
 				<TextField
 					label="Input Voltage"
-					value={draft.pulse.coilInformation.inputVoltage}
+					value={draft.heatingInformation.inputVoltage}
 					on:change={(e) => {
-						draft.pulse.coilInformation.inputVoltage = e.detail.value;
+						draft.heatingInformation.inputVoltage = e.detail.value;
 						refresh();
 					}}
 					disabled={inputPowerToggle}
 				/>
-
+				{#if sortedPostProcessData}
+					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
+					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+						<TextField
+							label="Output Frequency"
+							value={draft.heatingInformation.outputFrequency}
+							disabled
+						/>
+						<TextField
+							label="Measured Power"
+							value={draft.heatingInformation.measuredPower}
+							disabled
+						/>
+						<TextField
+							label="Output Current"
+							value={draft.heatingInformation.outputCurrent}
+							disabled
+						/>
+						<TextField
+							label="Output Voltage"
+							value={draft.heatingInformation.outputVoltage}
+							disabled
+						/>
+					</div>
+				{/if}
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
 				<SelectField
 					options={coolantTypeOptions}
 					label="Coolant Type"
-					value={draft.pulse.coolantInformation.coolantType}
+					value={draft.coolantInformation.coolantType}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantType = e.detail.value;
+						draft.coolantInformation.coolantType = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Flow"
-					value={draft.pulse.coolantInformation.coolantFlow.setpoint}
+					value={draft.coolantInformation.targetCoolantFlow}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.coolantFlow.setpoint = e.detail.value;
+						draft.coolantInformation.targetCoolantFlow = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
-					value={draft.pulse.coolantInformation.coolantTemperature.setpoint}
+					value={draft.coolantInformation.targetCoolantTemperature}
 					on:change={(e) => {
-						draft.pulse.coolantInformation.setpoint = e.detail.value;
+						draft.coolantInformation.targetCoolantTemperature = e.detail.value;
 						refresh();
 					}}
 				/>
+				{#if sortedPostProcessData}
+					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
+					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+						<TextField
+							label="Measured Coolant Flow"
+							value={draft.coolantInformation.measuredCoolantFlow}
+							disabled
+						/>
+						<TextField
+							label="Coolant Flow Variance"
+							value={draft.coolantInformation.coolantFlowVariance}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure In"
+							value={draft.coolantInformation.coolantPressureIn}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure Out"
+							value={draft.coolantInformation.coolantPressureOut}
+							disabled
+						/>
+						<TextField
+							label="Delta Pressure"
+							value={draft.coolantInformation.deltaPressure}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In"
+							value={draft.coolantInformation.coolantTemperatureIn}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In Variance"
+							value={draft.coolantInformation.coolantTemperatureInVariance}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out"
+							value={draft.coolantInformation.coolantTemperatureOut}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out Variance"
+							value={draft.coolantInformation.coolantTemperatureOutVariance}
+							disabled
+						/>
+						<TextField
+							label="Delta Temperature"
+							value={draft.coolantInformation.deltaPressure}
+							disabled
+						/>
+						<TextField
+							label="Thermocouple ID"
+							value={draft.thermocoupleInformation.thermocoupleID}
+							disabled
+						/>
+						<TextField
+							label="Max Value"
+							value={draft.thermocoupleInformation.maxValue}
+							disabled
+						/>
+					</div>
+				{/if}
 			</div>
 
 			<div class="flex justify-between mt-4 relative">
 				<div class="flex gap-2">
 					{#if !isCompletingPulse}
-						<Button variant="outline" color="success" on:click={handleCompletePulse}>Complete Pulse</Button>
+						<Button variant="outline" color="success" on:click={handleCompletePulse}>Ingest</Button>
 					{:else}
 						<Button variant="outline" color="success" on:click={handleConfirmComplete} icon={mdiCheck}>Confirm</Button>
 						<Button variant="outline" color="danger" on:click={handleCancelComplete} icon={mdiWindowClose}>Cancel</Button>
@@ -769,6 +948,7 @@
 						</div>
 					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
+					<Button on:click={(event) => handlePostProcess(commit, draft.pulseID)} variant="fill"> Pulse Completed </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
 			</div>

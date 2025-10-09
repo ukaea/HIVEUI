@@ -5,14 +5,17 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { ExperimentMetadata, HeatingTypeMetadata, PersonMetadata, CustomerMetadata, ConfigurationMetadata } from '$lib/models';
+	import { ExperimentMetadata, HeatingTypeMetadata, PersonMetadata, CustomerMetadata, ConfigurationMetadata, CampaignMetadata } from '$lib/models';
 
 	let sortedData: ExperimentMetadata[] = [];
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let selectedConfiguration: ConfigurationMetadata | null = null;
+	let allCampaigns: CampaignMetadata[] = [];
+	let selectedCampaign: CampaignMetadata | null = null;
 
-	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
+	const experimentOrder = tableOrderStore({ initialBy: 'experimentTitle', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
+	const campaignOrder = tableOrderStore({ initialBy: 'campaignTitle', initialDirection: 'asc' });
 
 	experimentOrder.subscribe(() => {
 		sortedData = sortedData.sort($experimentOrder.handler);
@@ -20,6 +23,10 @@
 
 	configurationOrder.subscribe(() => {
 		allConfigurations = allConfigurations.sort($configurationOrder.handler);
+	});
+
+	campaignOrder.subscribe(() => {
+		allCampaigns = allCampaigns.sort($campaignOrder.handler);
 	});
 
 
@@ -195,6 +202,7 @@
 		}
 		fetchExperiments();
 		fetchConfigurations();
+		fetchCampaigns();
 	});
 
 	async function fetchConfigurations() {
@@ -222,6 +230,32 @@
 			alert('Failed to load experiments. Please try again later.');
 		}
 	}
+
+	async function fetchCampaigns() {
+		try {
+			const accessToken = $page.data.session?.sessionToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
+			if (localOnly) {
+				const files = await getJsonFiles('campaigns');
+				const campaignData = await Promise.all(files.map((filename: string) => getJsonContent('campaigns/' + filename)));
+				const campaigns = await Promise.all(campaignData.map(CampaignMetadata.fromJSON));
+				allCampaigns = campaigns.sort($campaignOrder.handler);
+				return;
+			}
+
+			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/campaigns`, { headers: { Authorization: `Bearer ${accessToken}` } });
+
+			if (!response.ok) throw new Error('Failed to fetch campaigns');
+			const data = await response.json();
+			allCampaigns = data.map(CampaignMetadata.fromJSON).sort($campaignOrder.handler);
+		} catch (error) {
+			console.error('Error fetching campaigns:', error);
+			alert('Failed to load campaigns. Please try again later.');
+		}
+	}
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -233,8 +267,8 @@
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'experimentName', align: 'left', header: 'Experiment Name' },
-				{ name: 'customer.organization', align: 'left', header: 'Customer' },
+				{ name: 'experimentTitle', align: 'left', header: 'Experiment Title' },
+				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
 				{ name: 'coilName', align: 'left', header: 'Coil Name' },
 				{ name: 'leadInvestigator.email', align: 'left', header: 'Lead Investigator' },
 				{ name: 'heatingType', align: 'left', header: 'Heating Type' },
@@ -274,79 +308,12 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<h4 class="col-span-2 mt-1">Customer Information</h4>
-				<div class="col-span-2">
-					<TextField
-						label="Organization Name"
-						value={draft.customer.organization}
-						on:change={(e) => {
-							draft.customer.organization = e.detail.value;
-							refresh();
-						}}
-					/>
-				</div>
-
-				<TextField
-					label="Contact First Name"
-					value={draft.customer.contactPerson.firstName}
-					on:change={(e) => {
-						draft.customer.contactPerson.firstName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Contact Last Name"
-					value={draft.customer.contactPerson.lastName}
-					on:change={(e) => {
-						draft.customer.contactPerson.lastName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Contact Email"
-					value={draft.customer.contactPerson.email}
-					on:change={(e) => {
-						draft.customer.contactPerson.email = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="p-4 grid grid-cols-2 gap-4">
-				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
-				<TextField
-					label="First Name"
-					value={draft.leadInvestigator.firstName}
-					on:change={(e) => {
-						draft.leadInvestigator.firstName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Last Name"
-					value={draft.leadInvestigator.lastName}
-					on:change={(e) => {
-						draft.leadInvestigator.lastName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Email"
-					value={draft.leadInvestigator.email}
-					on:change={(e) => {
-						draft.leadInvestigator.email = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField
-					label="Experiment Name"
-					value={draft.experimentName}
+					label="Experiment Title"
+					value={draft.experimentTitle}
 					on:change={(e) => {
-						draft.experimentName = e.detail.value;
+						draft.experimentTitle = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -357,6 +324,7 @@
 						draft.experimentUUID = e.detail.value;
 						refresh();
 					}}
+					disabled
 				/>
 				<TextField
 					label="Coil Name"
@@ -420,66 +388,91 @@
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Configurations</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Campaign Information</h4>
 				<div class="space-y-3">
-					{#each draft.configurations as config, index (config.configurationUUID)}
-						<div class="flex gap-2">
-							<TextField
-								label="Configuration Name"
-								value={config.configurationName}
-								on:change={(e) => {
-									config.configurationName = e.detail.value;
-									refresh();
-								}}
-							/>
-							<TextField
-								label="Configuration UUID"
-								value={config.configurationUUID}
-								on:change={(e) => {
-									config.configurationUUID = e.detail.value;
-									refresh();
-								}}
-							/>
-							<Button
-								on:click={() => {
-									draft.configurations = draft.configurations.filter((_, i) => i !== index);
-									current = draft;
-									refresh();
-								}}
-								variant="outline"
-								color="danger">Delete</Button
-							>
-						</div>
-					{/each}
 					<div class="flex gap-2">
 						<SelectField
-							label="Add Configuration"
-							value={selectedConfiguration?.configurationUUID || ''}
-							options={allConfigurations.map((config) => ({ label: config.configurationName, value: config.configurationUUID }))}
+							label="Select Campaign"
+							value={draft.campaignUUID}
+							options={allCampaigns.map((campaign) => ({ label: campaign.campaignTitle, value: campaign.campaignUUID }))}
 							on:change={(e) => {
-								selectedConfiguration = allConfigurations.find((config) => config.configurationUUID === e.detail.value) || null;
-							}}
-						/>
-						<Button
-							on:click={() => {
-								if (selectedConfiguration) {
-									// Check if configuration is already added
-									if (!draft.configurations.some((config) => config.configurationUUID === selectedConfiguration.configurationUUID)) {
-										draft.configurations = [...draft.configurations, selectedConfiguration];
-									} else {
-										alert('Configuration already added to this experiment.');
-									}
-
-									selectedConfiguration = null;
-									current = draft;
+								const selectedCampaignData = allCampaigns.find((campaign) => campaign.campaignUUID === e.detail.value);
+								if (selectedCampaignData) {
+									draft.campaignUUID = selectedCampaignData.campaignUUID;
+									draft.campaignTitle = selectedCampaignData.campaignTitle;
 									refresh();
 								}
 							}}
-							variant="fill"
-							color="primary">Add</Button
-						>
+						/>
 					</div>
 				</div>
+			</div>
+
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
+				<TextField
+					label="First Name"
+					value={draft.leadInvestigator.firstName}
+					on:change={(e) => {
+						draft.leadInvestigator.firstName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Last Name"
+					value={draft.leadInvestigator.lastName}
+					on:change={(e) => {
+						draft.leadInvestigator.lastName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Email"
+					value={draft.leadInvestigator.email}
+					on:change={(e) => {
+						draft.leadInvestigator.email = e.detail.value;
+						refresh();
+					}}
+				/>
+			</div>
+
+			<div class="p-4 grid grid-cols-2 gap-4">
+				<h4 class="col-span-2 mt-1">Customer Information</h4>
+				<div class="col-span-2">
+					<TextField
+						label="Organisation Name"
+						value={draft.customer.organisation}
+						on:change={(e) => {
+							draft.customer.organisation = e.detail.value;
+							refresh();
+						}}
+					/>
+				</div>
+
+				<TextField
+					label="Contact First Name"
+					value={draft.customer.contactPerson.firstName}
+					on:change={(e) => {
+						draft.customer.contactPerson.firstName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Contact Last Name"
+					value={draft.customer.contactPerson.lastName}
+					on:change={(e) => {
+						draft.customer.contactPerson.lastName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Contact Email"
+					value={draft.customer.contactPerson.email}
+					on:change={(e) => {
+						draft.customer.contactPerson.email = e.detail.value;
+						refresh();
+					}}
+				/>
 			</div>
 
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
@@ -520,6 +513,8 @@
 
 	:global(.experimentInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>

@@ -5,17 +5,14 @@
 	import { page } from '$app/stores';
 	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { CampaignMetadata, ExperimentMetadata, PersonMetadata } from '$lib/models';
+	import { CampaignMetadata } from '$lib/models';
 
 	let sortedData: CampaignMetadata[] = [];
-	const campaignOrder = tableOrderStore({ initialBy: 'campaignName', initialDirection: 'asc' });
+	const campaignOrder = tableOrderStore({ initialBy: 'campaignTitle', initialDirection: 'asc' });
 
 	campaignOrder.subscribe(() => {
 		sortedData = sortedData.sort($campaignOrder.handler);
 	});
-
-	let allExperiments: ExperimentMetadata[] = [];
-	let selectedExperiment: ExperimentMetadata | null = null;
 
 	let open = false;
 	let selectedMetadata: CampaignMetadata | null = null;
@@ -171,33 +168,7 @@
 	function handleModalClose() {
 		open = false;
 		selectedMetadata = null;
-		selectedExperiment = null;
 		isNewEntry = false;
-	}
-
-	async function fetchExperiments() {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('experiments');
-				const experimentData = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
-				allExperiments = await Promise.all(experimentData.map(ExperimentMetadata.fromJSON));
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/proposals`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch proposals');
-			const data = await response.json();
-			sortedData = data.map(CampaignMetadata.fromJSON).sort($campaignOrder.handler);
-		} catch (error) {
-			console.error('Error fetching proposals:', error);
-			alert('Failed to load proposals. Please try again later.');
-		}
 	}
 
 	function handleFormCancel() {
@@ -209,7 +180,6 @@
 			localOnly = true;
 		}
 		fetchCampaigns();
-		fetchExperiments();
 	});
 </script>
 
@@ -222,7 +192,7 @@
 		<Table
 			data={sortedData}
 			columns={[
-				{ name: 'campaignName', align: 'left', header: 'Campaign Name' },
+				{ name: 'campaignTitle', align: 'left', header: 'Campaign Title' },
 				{ name: 'campaignUUID', align: 'left', header: 'Campaign UUID' }
 			]}
 			order={campaignOrder}
@@ -239,10 +209,10 @@
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Campaign</h4>
 				<TextField
-					label="Campaign Name"
-					value={draft.campaignName}
+					label="Campaign Title"
+					value={draft.campaignTitle}
 					on:change={(e) => {
-						draft.campaignName = e.detail.value;
+						draft.campaignTitle = e.detail.value;
 						refresh();
 					}}
 				/>
@@ -254,69 +224,6 @@
 						refresh();
 					}}
 				/>
-			</div>
-
-			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Experiments</h4>
-				<div class="space-y-3">
-					{#each draft.experiments as experiment, index (experiment.experimentUUID)}
-						<div class="flex gap-2">
-							<TextField
-								label="Experiment Name"
-								value={experiment.experimentName}
-								on:change={(e) => {
-									experiment.experimentName = e.detail.value;
-									refresh();
-								}}
-							/>
-							<TextField
-								label="Experiment UUID"
-								value={experiment.experimentUUID}
-								on:change={(e) => {
-									experiment.experimentUUID = e.detail.value;
-									refresh();
-								}}
-							/>
-							<Button
-								on:click={() => {
-									draft.experiments = draft.experiments.filter((_, i) => i !== index);
-									current = draft;
-									refresh();
-								}}
-								variant="outline"
-								color="danger">Delete</Button
-							>
-						</div>
-					{/each}
-					<div class="flex gap-2">
-						<SelectField
-							label="Add Experiment"
-							value={selectedExperiment?.experimentUUID || ''}
-							options={allExperiments.map((exp) => ({ label: exp.experimentName, value: exp.experimentUUID }))}
-							on:change={(e) => {
-								selectedExperiment = allExperiments.find((exp) => exp.experimentUUID === e.detail.value) || null;
-							}}
-						/>
-						<Button
-							on:click={() => {
-								if (selectedExperiment) {
-									// Check if experiment is already added
-									if (!draft.experiments.some((exp) => exp.experimentUUID === selectedExperiment.experimentUUID)) {
-										draft.experiments = [...draft.experiments, selectedExperiment];
-									} else {
-										alert('Experiment already added to this campaign.');
-									}
-
-									selectedExperiment = null;
-									current = draft;
-									refresh();
-								}
-							}}
-							variant="fill"
-							color="primary">Add</Button
-						>
-					</div>
-				</div>
 			</div>
 
 			<div class="flex gap-2 mt-4 {!isNewEntry ? 'justify-between' : 'justify-end'}">
@@ -357,6 +264,8 @@
 
 	:global(.campaignInputDialog) {
 		max-height: 90vh;
-		overflow: hidden;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>

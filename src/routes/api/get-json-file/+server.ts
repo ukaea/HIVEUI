@@ -1,8 +1,8 @@
-import { json } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { readdir, stat } from 'fs/promises';
-import { join, resolve, normalize } from 'path';
 import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+import { json } from '@sveltejs/kit';
+import { existsSync } from 'fs';
+import path, { normalize, resolve } from 'path';
+import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -20,33 +20,28 @@ export const GET: RequestHandler = async ({ url }) => {
     }
 
     const sanitizedPath = normalize(targetPath).replace(/^(\.\.[\/\\])+/, '');
-    const targetDirectory = resolve(rootFolder, sanitizedPath);
+    const targetFile = resolve(rootFolder, sanitizedPath);
 
-    if (!targetDirectory.startsWith(rootFolder)) {
+    if (!targetFile.startsWith(rootFolder)) {
       return json({ 
         success: false, 
         message: 'Invalid directory path' 
       }, { status: 403 });
     }
-
-    const files = await readdir(targetDirectory);
-
-    const jsonFiles = [];
-    for (const file of files) {
-      if (file.endsWith('.json')) {
-        const filePath = join(targetDirectory, file);
-        const fileStats = await stat(filePath);
-        if (fileStats.isFile()) {
-          jsonFiles.push(file);
-        }
-      }
+    if (!targetFile.endsWith('.json')) {
+        console.error("file does not end with .json")
     }
 
-    return json({ 
-      success: true,
-      path: sanitizedPath,
-      files: jsonFiles
-    });
+    if (!existsSync(targetFile)){
+        console.log('Not a file', targetFile);
+    } 
+    
+    const filename = path.basename(targetFile);
+    return json({
+        success: true,
+        path: sanitizedPath,
+        filename: filename
+    })
 
   } catch (error) {
     console.error('Error reading directory:', error);
@@ -64,3 +59,4 @@ export const GET: RequestHandler = async ({ url }) => {
     }, { status: 500 });
   }
 };
+
