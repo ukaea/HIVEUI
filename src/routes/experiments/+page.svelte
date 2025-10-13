@@ -318,7 +318,7 @@
 					}}
 				/>
 				<TextField
-					label="Experiment UUID"
+					label="Experiment ID"
 					value={isNewEntry ? (draft.experimentUUID = crypto.randomUUID()) : draft.experimentUUID}
 					on:change={(e) => {
 						draft.experimentUUID = e.detail.value;
