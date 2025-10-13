@@ -28,7 +28,6 @@
 		{ label: 'Thermocouple', value: 'thermocouple' },
 		{ label: 'Camera', value: 'camera' },
 		{ label: 'Lens', value: 'lens' },
-		{ label: 'DIC', value: 'dic' },
 		{ label: 'Flowmeter', value: 'flowmeter' },
 		{ label: 'Pyrometer', value: 'pyrometer' },
 		{ label: 'IR Camera', value: 'ir-camera' }
