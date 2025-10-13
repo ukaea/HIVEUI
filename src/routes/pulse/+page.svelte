@@ -26,80 +26,6 @@
 		target.style.display = postProcessData ? displayType : 'none';
 	}
 
-	class HeatingInformation {
-		currentType: string;
-		inputPower: string;
-		inputCurrent: string;
-		inputVoltage: string;
-		outputFrequency: string;
-		measuredPower: string;
-		outputCurrent: string;
-		outputVoltage: string;
-		constructor() {
-			this.currentType = '';
-			this.inputPower = '';
-			this.inputCurrent = '';
-			this.inputVoltage = '';
-			this.outputFrequency = '';
-			this.measuredPower = '';
-			this.outputCurrent = '';
-			this.outputVoltage = '';
-		}
-	}
-
-	class ThermocoupleInformation {
-		thermocoupleID: string;
-		maxValue: string;
-
-		constructor(){
-			this.thermocoupleID = '';
-			this.maxValue = '';
-		}
-	}
-
-
-	class CoolantPressure {
-		in: string;
-		out: string;
-		delta: string;
-
-		constructor() {
-			this.in = '';
-			this.out = '';
-			this.delta = '';
-		}
-	}
-
-	class CoolantInformation {
-		coolantType: string;
-		targetCoolantFlow: string;
-		targetCoolantTemperature: string;
-		measuredCoolantFlow: string;
-		coolantFlowVariance:string;
-		coolantPressureIn: string;
-		coolantPressureOut: string;
-		deltaPressure: string;
-		coolantTemperatureIn: string;
-		coolantTemperatureInVariance: string;
-		coolantTemperatureOut: string;
-		coolantTemperatureOutVariance: string;
-		deltaTemperature: string;
-		constructor() {
-			this.coolantType = '';
-			this.targetCoolantFlow = '';
-			this.targetCoolantTemperature = '';
-			this.measuredCoolantFlow = '';
-			this.coolantFlowVariance = '';
-			this.coolantPressureIn = '';
-			this.coolantPressureOut = '';
-			this.deltaPressure = '';
-			this.coolantTemperatureIn = '';
-			this.coolantTemperatureInVariance = '';
-			this.coolantTemperatureOut = '';
-			this.coolantTemperatureOutVariance = '';
-			this.deltaTemperature = '';
-		}
-	}
 
 	// Includes the experiment and configurations
 	class PostProcessMetadata {
@@ -402,20 +328,23 @@
 		const ID = pulseID
 	}
 
-	async function handlePostProcess(commitFn, pulseID) {
-		if (!pulseID) {
+
+	async function handlePostProcess(commitFn, draft) {
+		if (!draft) {
 			console.error("Pulse ID not provided")
 			alert(`Failed to run post processing: No ID provided`);
 			return;
 		}
 		shouldCloseDialog = false;
+		let id = draft.pulseID
 
 		try {
 			await commitFn();
 
-			await runPostProcess(pulseID)
+			await runPostProcess(id)
 
-			await fetchPostProcessData(pulseID)
+			await fetchPostProcessData(id)
+
 		} catch (error) {
 			console.error("Error running post processing:", error);
 			alert(`Post processing failed: ${error.message}`);
@@ -612,22 +541,22 @@
 	<div class="p-4">
 		<Form initial={selectedMetadata} on:change={handleMetadataSubmit} let:commit let:draft let:refresh>
 			{#if sortedPostProcessData}
-				{draft.heatingInformation.outputFrequency = sortedPostProcessData.heatingInformation.inputPower} 
-				{draft.heatingInformation.measuredPower = sortedPostProcessData.heatingInformation.inputPower} 
-				{draft.heatingInformation.outputCurrent = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.heatingInformation.outputVoltage = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.measuredCoolantFlow = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantFlowVariance = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantPressureIn = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantPressureOut = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.deltaPressure = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantTemperatureIn = sortedPostProcessData.heatingInformation.inputPower} 
-				{draft.coolantInformation.coolantTemperatureInVariance = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantTemperatureOut = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.coolantTemperatureOutVariance = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.coolantInformation.deltaTemperature = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.thermocoupleInformation.thermocoupleID = sortedPostProcessData.heatingInformation.inputPower}
-				{draft.thermocoupleInformation.maxValue = sortedPostProcessData.heatingInformation.inputPower}
+				{draft.heatingInformation.outputFrequency = sortedPostProcessData.heatingInformation.inputPower, ""} 
+				{draft.heatingInformation.measuredPower = sortedPostProcessData.heatingInformation.inputPower, ""} 
+				{draft.heatingInformation.outputCurrent = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.heatingInformation.outputVoltage = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.measuredCoolantFlow = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantFlowVariance = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantPressureIn = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantPressureOut = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.deltaPressure = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantTemperatureIn = sortedPostProcessData.heatingInformation.inputPower, ""} 
+				{draft.coolantInformation.coolantTemperatureInVariance = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantTemperatureOut = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.coolantTemperatureOutVariance = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.coolantInformation.deltaTemperature = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.thermocoupleInformation.thermocoupleID = sortedPostProcessData.heatingInformation.inputPower, ""}
+				{draft.thermocoupleInformation.maxValue = sortedPostProcessData.heatingInformation.inputPower, ""}
 			{/if}
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
@@ -948,7 +877,7 @@
 						</div>
 					{/if}
 					<Button on:click={() => commit()} variant="fill">Save</Button>
-					<Button on:click={(event) => handlePostProcess(commit, draft.pulseID)} variant="fill"> Pulse Completed </Button>
+					<Button on:click={(event) => {handlePostProcess(commit, draft)}} variant="fill"> Pulse Completed </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
 				</div>
 			</div>
