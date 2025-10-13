@@ -549,6 +549,14 @@
 						refresh();
 					}}
 				/>
+				<TextField
+					label="Sample ID"
+					value={draft.sampleID}
+					on:change={(e) => {
+						draft.sampleID = e.detail.value;
+						refresh();
+					}}
+				/>
 				<SelectField
 					options={experimentOptions}
 					label="Experiment"
