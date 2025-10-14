@@ -80,6 +80,7 @@
 	let isNewEntry = false;
 	let localOnly = false;
 	let shouldCloseDialog = true;
+	let postProcessOpen = false;
 
 	function mapToPulse(apiResponse: any): CompiledPulseMetadata {
 		const metadata = new CompiledPulseMetadata();
@@ -334,15 +335,16 @@
 			alert(`Failed to run post processing: No ID provided`);
 			return;
 		}
-		shouldCloseDialog = false;
+		shouldCloseDialog = true;
 		let id = draft.pulseID
 
 		try {
 			await commitFn();
-
 			await runPostProcess(id)
 
 			await fetchPostProcessData(id)
+
+			postProcessOpen = true;
 
 		} catch (error) {
 			console.error("Error running post processing:", error);
@@ -725,43 +727,6 @@
 					}}
 					disabled={inputPowerToggle}
 				/>
-				{#if sortedPostProcessData}
-					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
-					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
-						<TextField
-							label="Output Frequency"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.heatingInformation.outputFrequency = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.heatingInformation.outputFrequency || ''}
-							disabled
-						/>
-						<TextField
-							label="Measured Power"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.measuredPower = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.measuredPower || ''}
-							disabled
-						/>
-						<TextField
-							label="Output Current"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.outputCurrent = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.outputCurrent || ''}
-							disabled
-						/>
-						<TextField
-							label="Output Voltage"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.outputVoltage = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.outputVoltage || ''}
-							disabled
-						/>
-					</div>
-				{/if}
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
 				<SelectField
 					options={coolantTypeOptions}
@@ -789,107 +754,6 @@
 						refresh();
 					}}
 				/>
-				{#if sortedPostProcessData}
-					<div id="pulsePostProcess" class="col-span-3 grid grid-cols-3 gap-4">  
-					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
-						<TextField
-							label="Measured Coolant Flow"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.measuredCoolantFlow = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.measuredCoolantFlow || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Flow Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantFlowVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantFlowVariance || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Pressure In"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantPressureIn = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantPressureIn || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Pressure Out"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantPressureOut = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantPressureOut || ''}
-							disabled
-						/>
-						<TextField
-							label="Delta Pressure"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.deltaPressure = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.deltaPressure || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Temperature In"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureIn = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureIn || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Temperature In Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureInVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureInVariance || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Temperature Out"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureOut = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureOut || ''}
-							disabled
-						/>
-						<TextField
-							label="Coolant Temperature Out Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureOutVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureOutVariance || ''}
-							disabled
-						/>
-						<TextField
-							label="Delta Temperature"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.deltaPressure = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.deltaPressure || ''}
-							disabled
-						/>
-						<TextField
-							label="Thermocouple ID"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.thermocoupleInformation.thermocoupleID = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.thermocoupleInformation.thermocoupleID || ''}
-							disabled
-						/>
-						<TextField
-							label="Max Value"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.thermocoupleInformation.maxValue = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.thermocoupleInformation.maxValue || ''}
-							disabled
-						/>
-					</div>
-				{/if}
 			</div>
 
 			<div class="flex justify-between mt-4 relative">
@@ -916,6 +780,105 @@
 					<Button on:click={() => commit()} variant="fill">Save</Button>
 					<Button on:click={(event) => {handlePostProcess(commit, draft)}} variant="fill"> Pulse Completed </Button>
 					<Button on:click={handleModalClose}>Cancel</Button>
+				</div>
+			</div>
+		</Form>
+	</div>
+</Dialog>
+
+
+
+<Dialog open={postProcessOpen}>
+	<div slot="title"> Post Processing Data</div>
+	<div class="p-4">
+		<Form>
+			<div class="p-4 grid grid-cols-3 gap-4">
+			<h3 class="col-span-3 font-bold mt-4">Post Processing Information</h3>
+						<TextField
+							label="Output Frequency"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Measured Power"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Output Current"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Output Voltage"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Measured Coolant Flow"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Flow Variance"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure In"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure Out"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Delta Pressure"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In Variance"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out Variance"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Delta Temperature"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Thermocouple ID"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+						<TextField
+							label="Max Value"
+							value={sortedPostProcessData?.heatingInformation.inputPower}
+							disabled
+						/>
+			</div>
+			<div class="flex justify-between mt-4 relative">
+				<div class="flex gap-2">
+					<Button variant="fill">Back</Button>
+					<Button variant="fill"> Combined Pulse Data </Button>
 				</div>
 			</div>
 		</Form>
