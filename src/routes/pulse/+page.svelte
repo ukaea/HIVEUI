@@ -577,34 +577,6 @@
 						refresh();
 					}}
 				/>
-				<DateField
-					label="Pulse Start"
-					format="dd/MM/yyyy HH:mm"
-					picker
-					value={draft.pulseStart}
-					on:change={(e) => {
-						draft.pulseStart = e.detail.value;
-						refresh();
-					}}
-				/>
-				<DateField
-					label="Data Capture Start"
-					format="dd/MM/yyyy HH:mm"
-					picker
-					value={draft.dataCaptureStart}
-					on:change={(e) => {
-						draft.dataCaptureStart = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Pulse Duration"
-					value={draft.pulseDuration}
-					on:change={(e) => {
-						draft.pulseDuration = e.detail.value;
-						refresh();
-					}}
-				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
 				<TextField
@@ -779,6 +751,41 @@
 											sortedPostProcessData.heatingInformation.inputPower) : '') :
 											draft?.heatingInformation.outputCurrent || ''}
 							disabled
+						/>
+						<DateField
+							label="Pulse Start"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseStart = 
+											sortedPostProcessData.pulseStart) : '') :
+											draft?.pulseStart || ''}
+						/>
+						<DateField
+							label="Data Capture Start"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.dataCaptureStart =
+											sortedPostProcessData.dataCaptureStart) : '') :
+											draft.dataCaptureStart || ''}
+						/>
+						<TextField
+							label="Pulse Duration"
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseDuration = 
+											sortedPostProcessData.pulseDuration) : '') : 
+											draft.pulseDuration || ''}
+
+						/>
+						<DateField
+							label="Pulse End"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseEnd =
+											sortedPostProcessData.pulseEnd) : '') :
+											draft.pulseEnd || ''}
 						/>
 						<TextField
 							label="Output Voltage"

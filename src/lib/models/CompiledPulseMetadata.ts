@@ -185,7 +185,7 @@ export class CompiledPulseMetadata {
     thermocoupleInformation: ThermocoupleInformation;
     comment: string;
     pulseQuality: string;
-    experimentUUID: string;
+    experimentNumber: string;
     configurationUUID: string;
     status: string;
     
