@@ -726,8 +726,48 @@
 				/>
 				</div>
 				{#if sortedPostProcessData}
-					<div class="col-span-3 grid grid-cols-3 gap-4">  
+					<div class="col-span-3 grid grid-cols-3 gap-4 bordered">  
 					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+						<DateField
+							label="Pulse Start"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseStart = 
+											sortedPostProcessData.pulseStart) : '') :
+											draft?.pulseStart || ''}
+							disabled
+						/>
+						<DateField
+							label="Data Capture Start"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.dataCaptureStart =
+											sortedPostProcessData.dataCaptureStart) : '') :
+											draft.dataCaptureStart || ''}
+							disabled
+						/>
+						<TextField
+							label="Pulse Duration"
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseDuration = 
+											sortedPostProcessData.pulseDuration) : '') : 
+											draft.pulseDuration || ''}
+							disabled
+						/>
+						<DateField
+							label="Pulse End"
+							format="dd/MM/yyyy HH:mm"
+							picker
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseEnd =
+											sortedPostProcessData.pulseEnd) : '') :
+											draft.pulseEnd || ''}
+							disabled
+						/>
+						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
 						<TextField
 							label="Output Frequency"
 							value={sortedPostProcessData ? (draft ? 
@@ -752,41 +792,6 @@
 											draft?.heatingInformation.outputCurrent || ''}
 							disabled
 						/>
-						<DateField
-							label="Pulse Start"
-							format="dd/MM/yyyy HH:mm"
-							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseStart = 
-											sortedPostProcessData.pulseStart) : '') :
-											draft?.pulseStart || ''}
-						/>
-						<DateField
-							label="Data Capture Start"
-							format="dd/MM/yyyy HH:mm"
-							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.dataCaptureStart =
-											sortedPostProcessData.dataCaptureStart) : '') :
-											draft.dataCaptureStart || ''}
-						/>
-						<TextField
-							label="Pulse Duration"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseDuration = 
-											sortedPostProcessData.pulseDuration) : '') : 
-											draft.pulseDuration || ''}
-
-						/>
-						<DateField
-							label="Pulse End"
-							format="dd/MM/yyyy HH:mm"
-							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseEnd =
-											sortedPostProcessData.pulseEnd) : '') :
-											draft.pulseEnd || ''}
-						/>
 						<TextField
 							label="Output Voltage"
 							value={sortedPostProcessData ? (draft ? 
@@ -795,6 +800,9 @@
 											draft?.heatingInformation.outputVoltage || ''}
 							disabled
 						/>
+						</div>
+						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
 						<TextField
 							label="Measured Coolant Flow"
 							value={sortedPostProcessData ? (draft ? 
@@ -875,6 +883,9 @@
 												draft?.coolantInformation.deltaPressure || ''}
 							disabled
 						/>
+						</div>
+						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
 						<TextField
 							label="Thermocouple ID"
 							value={sortedPostProcessData ? (draft ? 
@@ -891,6 +902,7 @@
 												draft?.thermocoupleInformation.maxValue || ''}
 							disabled
 						/>
+						</div>
 					</div>
 				{/if}
 			</div>
@@ -937,5 +949,14 @@
 
 	:global(.pulseInputDialog) {
 		max-height: 90vh;
+	}
+	.bordered {
+		border:1px solid grey; 
+		padding: 10px; 
+		border-radius: 5px;
+	}
+	.small-heading{
+		font-size: 12px;
+		font-weight: 600;
 	}
 </style>
