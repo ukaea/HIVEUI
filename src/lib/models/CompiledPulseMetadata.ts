@@ -173,7 +173,7 @@ export class CoolantInformation {
 	// Includes the experiment and configurations
 export class CompiledPulseMetadata {
     pulseNumber: string;
-    sampleID: string;
+    sampleNumber: string;
     dataCaptureStart: Date;
     pulseStart: Date;
     pulseEnd: Date;
@@ -191,7 +191,7 @@ export class CompiledPulseMetadata {
     
     constructor() {
         this.pulseNumber = '';
-        this.sampleID = '';
+        this.sampleNumber = '';
         this.dataCaptureStart = new Date();
         this.pulseStart = new Date();
         this.pulseEnd = new Date();
@@ -211,7 +211,7 @@ export class CompiledPulseMetadata {
     static fromJSON(json: any): CompiledPulseMetadata {
         const pulse = new CompiledPulseMetadata();
         pulse.pulseNumber = json.pulseNumber;
-        pulse.sampleID = json.sampleID;
+        pulse.sampleNumber = json.sampleNumber;
         pulse.dataCaptureStart = json.dataCaptureStart;
         pulse.pulseStart = json.pulseStart;
         pulse.pulseEnd = json.pulseEnd;
@@ -242,7 +242,7 @@ export class CompiledPulseMetadata {
     static toJSON(metaData: CompiledPulseMetadata): any {
         return{
             pulseNumber: metaData.pulseNumber,
-            sampleID: metaData.sampleID,
+            sampleNumber: metaData.sampleNumber,
             dataCaptureStart: metaData.dataCaptureStart,
             pulseStart: metaData.pulseStart,
             pulseEnd: metaData.pulseEnd,

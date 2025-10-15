@@ -553,9 +553,9 @@
 				/>
 				<TextField
 					label="Sample Number"
-					value={draft.sampleID}
+					value={draft.sampleNumber}
 					on:change={(e) => {
-						draft.sampleID = e.detail.value;
+						draft.sampleNumber = e.detail.value;
 						refresh();
 					}}
 				/>
