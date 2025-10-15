@@ -40,7 +40,7 @@
 		thermocoupleInformation: ThermocoupleInformation;
 		comment: string;
 		pulseQuality: string;
-		experimentUUID: string;
+		experimentNumber: string;
 		configurationUUID: string;
 		status: string;
 		constructor() {
@@ -56,7 +56,7 @@
 			this.thermocoupleInformation = new ThermocoupleInformation();
 			this.comment = '';
 			this.pulseQuality = '';
-			this.experimentUUID = '';
+			this.experimentNumber = '';
 			this.configurationUUID = '';
 			this.status = '';
 		}
@@ -113,7 +113,7 @@
 
 				experimentOptions = sortedExperiments.map((experiment) => ({
 					label: experiment.experimentTitle,
-					value: experiment.experimentUUID
+					value: experiment.experimentNumber
 				}));
 				return;
 			}
@@ -380,7 +380,7 @@
 				pulseNumber: metadata.pulseNumber,
 				pulseLocation: `pulses/${metadata.pulseNumber}.json`,
 				pulseStatus: metadata.status,
-				experimentUUID: metadata.experimentUUID,
+				experimentNumber: metadata.experimentNumber,
 				configurationUUID: metadata.configurationUUID
 			};
 
@@ -486,11 +486,11 @@
 			data={sortedData}
 			columns={[
 				{ name: 'pulseNumber', align: 'left', header: 'Pulse Number' },
-				{name: 'experimentUUID', align: 'left', header: 'Experiment Name',
+				{name: 'experimentNumber', align: 'left', header: 'Experiment Name',
 					// @ts-expect-error
 					format: (value) => {
 						if (!value) return '';
-						const experiment = sortedExperiments.find((exp) => exp.experimentUUID === value);
+						const experiment = sortedExperiments.find((exp) => exp.experimentNumber === value);
 						return experiment ? experiment.experimentTitle : '';
 					}
 				},
@@ -544,10 +544,10 @@
 				<SelectField
 					options={experimentOptions}
 					label="Experiment Number"
-					value={draft.experimentUUID}
+					value={draft.experimentNumber}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.experimentUUID = e.detail.value;
+						draft.experimentNumber = e.detail.value;
 						refresh();
 					}}
 				/>
