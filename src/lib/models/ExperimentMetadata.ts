@@ -1,10 +1,9 @@
 import { ConfigurationMetadata, CustomerMetadata, PersonMetadata } from '$lib/models';
 import { HeatingTypeMetadata } from '$lib/models';
 import { getJsonContent } from "$lib/jsonUtils";
+import type { MetadataModel } from '$lib/services/GenericDataService';
 
 export class ExperimentMetadata {
-    campaignUUID: string;
-    campaignTitle: string;
     experimentUUID: string;
     experimentTitle: string;
     experimentStart: Date;
@@ -18,8 +17,6 @@ export class ExperimentMetadata {
     configurations: ConfigurationMetadata[];
 
     constructor() {
-        this.campaignUUID = '';
-        this.campaignTitle = '';
         this.experimentUUID = '';
         this.experimentTitle = '';
         this.experimentStart = new Date();
@@ -36,8 +33,6 @@ export class ExperimentMetadata {
     static async fromJSON(json: any): Promise<ExperimentMetadata> {
         const metadata = new ExperimentMetadata();
         
-        metadata.campaignUUID = json.campaignUUID || '';
-        metadata.campaignTitle = json.campaignTitle || '';
         metadata.experimentUUID = json.experimentUUID || '';
         metadata.experimentTitle = json.experimentTitle || json.experimentName || '';
         metadata.coilUUID = json.coilUUID || '';
@@ -77,8 +72,6 @@ export class ExperimentMetadata {
 
     static toJSON(experiment: ExperimentMetadata): any {
         return {
-            campaignUUID: experiment.campaignUUID,
-            campaignTitle: experiment.campaignTitle,
             experimentUUID: experiment.experimentUUID,
             experimentTitle: experiment.experimentTitle,
             experimentStart: experiment.experimentStart.toISOString(),
@@ -93,3 +86,6 @@ export class ExperimentMetadata {
         };
     }
 }
+
+// Export the model class implementation for the GenericDataService
+export const ExperimentMetadataModel: MetadataModel<ExperimentMetadata> = ExperimentMetadata;

@@ -1,5 +1,4 @@
 export { CameraMetadata } from './CameraMetadata';
-export { CampaignMetadata } from './CampaignMetadata';
 export { CombinationMetadata } from './CombinationMetadata';
 export { CompiledPulseMetadata } from './CompiledPulseMetadata';
 export { ConfigurationMetadata } from './ConfigurationMetadata';

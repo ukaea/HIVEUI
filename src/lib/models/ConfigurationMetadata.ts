@@ -1,18 +1,21 @@
+// $lib/models/ConfigurationMetadata.ts
+
 import { CombinationMetadata } from './CombinationMetadata';
 import { getJsonContent } from "$lib/jsonUtils";
+import type { MetadataModel } from '$lib/services/GenericDataService';
 
 export class ConfigurationMetadata {
-	configurationUUID: string;
+    configurationUUID: string;
     configurationName: string;
     equipmentCombinations: CombinationMetadata[];
     configurationDescription: string;
 
-	constructor() {
-		this.configurationUUID = '';
-		this.configurationName = '';
-		this.equipmentCombinations = [];
-		this.configurationDescription = '';
-	}
+    constructor() {
+        this.configurationUUID = '';
+        this.configurationName = '';
+        this.equipmentCombinations = [];
+        this.configurationDescription = '';
+    }
 
     static async fromJSON(json: any): Promise<ConfigurationMetadata> {
         const config = new ConfigurationMetadata();
@@ -47,3 +50,6 @@ export class ConfigurationMetadata {
         };
     }
 }
+
+// Export the model class implementation for the GenericDataService
+export const ConfigurationMetadataModel: MetadataModel<ConfigurationMetadata> = ConfigurationMetadata;
