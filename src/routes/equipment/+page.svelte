@@ -77,9 +77,9 @@
 					let model = '';
 
 					// Extract display information based on equipment type
-					if (data.deviceInformation) {
-						make = data.deviceInformation.make || '';
-						model = data.deviceInformation.model || '';
+					if (data) {
+						make = data.make || '';
+						model = data.model || '';
 						name = `${make} ${model}`.trim();
 					} else if (equipmentType === 'thermocouple') {
 						name = `${data.tcType || 'Thermocouple'} - ${data.location || 'Unknown Location'}`;
@@ -397,25 +397,25 @@
 					<h4 class="col-span-2 mt-1">Camera Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -423,18 +423,18 @@
 					<TextField
 						label="Resolution X"
 						type="number"
-						value={draft.deviceInformation.resolution.x}
+						value={draft.resolution.x}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.x = Number(e.detail.value);
+							draft.resolution.x = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Resolution Y"
 						type="number"
-						value={draft.deviceInformation.resolution.y}
+						value={draft.resolution.y}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.y = Number(e.detail.value);
+							draft.resolution.y = Number(e.detail.value);
 							refresh();
 						}}
 					/>
@@ -444,7 +444,7 @@
 					<h4 class="col-span-2 mt-1">Lens Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
 							draft.deviceInformation.make = e.detail.value;
 							refresh();
