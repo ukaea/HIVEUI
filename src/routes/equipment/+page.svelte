@@ -513,33 +513,41 @@
 					<h4 class="col-span-2 mt-1">Flowmeter Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Asset ID"
+						value={draft.assetId}
+						on:change={(e) => {
+							draft.assetId = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Flowmeter Type"
-						value={draft.deviceInformation.flowmeterType}
+						value={draft.flowmeterType}
 						on:change={(e) => {
-							draft.deviceInformation.flowmeterType = e.detail.value;
+							draft.flowmeterType = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -547,18 +555,18 @@
 					<TextField
 						label="Minimum Flow"
 						type="number"
-						value={draft.deviceInformation.flowRange.minimum}
+						value={draft.flowRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.flowRange.minimum = Number(e.detail.value);
+							draft.flowRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Flow"
 						type="number"
-						value={draft.deviceInformation.flowRange.maximum}
+						value={draft.flowRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.flowRange.maximum = Number(e.detail.value);
+							draft.flowRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
