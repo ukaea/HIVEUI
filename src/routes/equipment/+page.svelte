@@ -636,26 +636,6 @@
 							refresh();
 						}}
 					/>
-					<h4 class="col-span-2 mt-4">Device Settings</h4>
-					<TextField
-						label="Emissivity"
-						type="number"
-						step="0.01"
-						value={draft.deviceSettings.emissivity}
-						on:change={(e) => {
-							draft.deviceSettings.emissivity = Number(e.detail.value);
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Framerate (Hz)"
-						type="number"
-						value={draft.deviceSettings.framerate}
-						on:change={(e) => {
-							draft.deviceSettings.framerate = Number(e.detail.value);
-							refresh();
-						}}
-					/>
 				</div>
 			{:else if selectedEquipmentType === 'ir-camera'}
 				<div class="p-4 grid grid-cols-2 gap-4">
