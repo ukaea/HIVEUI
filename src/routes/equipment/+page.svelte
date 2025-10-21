@@ -576,25 +576,25 @@
 					<h4 class="col-span-2 mt-1">Pyrometer Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -602,18 +602,18 @@
 					<TextField
 						label="Minimum Wavelength"
 						type="number"
-						value={draft.deviceInformation.spectralRange.minimum}
+						value={draft.spectralRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.minimum = Number(e.detail.value);
+							draft.spectralRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Wavelength"
 						type="number"
-						value={draft.deviceInformation.spectralRange.maximum}
+						value={draft.spectralRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.maximum = Number(e.detail.value);
+							draft.spectralRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
@@ -621,18 +621,18 @@
 					<TextField
 						label="Minimum Temperature"
 						type="number"
-						value={draft.deviceInformation.temperatureRange.minimum}
+						value={draft.temperatureRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.minimum = Number(e.detail.value);
+							draft.temperatureRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Temperature"
 						type="number"
-						value={draft.deviceInformation.temperatureRange.maximum}
+						value={draft.temperatureRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.maximum = Number(e.detail.value);
+							draft.temperatureRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
