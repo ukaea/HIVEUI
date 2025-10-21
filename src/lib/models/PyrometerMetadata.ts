@@ -46,7 +46,7 @@ export class TemperatureRange {
     }
 }
 
-export class PyrometerDeviceInformation {
+export class PyrometerMetadata {
     make: string;
     model: string;
     serialNumber: string;
@@ -61,8 +61,8 @@ export class PyrometerDeviceInformation {
         this.temperatureRange = new TemperatureRange();
     }
 
-    static fromJSON(json: any): PyrometerDeviceInformation {
-        const device = new PyrometerDeviceInformation();
+    static fromJSON(json: any): PyrometerMetadata {
+        const device = new PyrometerMetadata();
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
@@ -71,7 +71,7 @@ export class PyrometerDeviceInformation {
         return device;
     }
 
-    static toJSON(device: PyrometerDeviceInformation): any {
+    static toJSON(device: PyrometerMetadata): any {
         return {
             make: device.make,
             model: device.model,
@@ -82,7 +82,7 @@ export class PyrometerDeviceInformation {
     }
 }
 
-
+/** 
 export class PyrometerMetadata {
     deviceInformation: PyrometerDeviceInformation;
     deviceSettings: PyrometerDeviceSettings;
@@ -110,3 +110,4 @@ export class PyrometerMetadata {
         };
     }
 }
+    */
