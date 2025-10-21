@@ -50,6 +50,7 @@ export class PyrometerMetadata {
     make: string;
     model: string;
     serialNumber: string;
+    assetId: string;
     spectralRange: SpectralRange;
     temperatureRange: TemperatureRange;
 
@@ -57,6 +58,7 @@ export class PyrometerMetadata {
         this.make = '';
         this.model = '';
         this.serialNumber = '';
+        this.assetId = '';
         this.spectralRange = new SpectralRange();
         this.temperatureRange = new TemperatureRange();
     }
@@ -66,6 +68,7 @@ export class PyrometerMetadata {
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
+        device.assetId = json.assetId || '';
         device.spectralRange = json.spectralRange ? SpectralRange.fromJSON(json.spectralRange) : new SpectralRange();
         device.temperatureRange = json.temperatureRange ? TemperatureRange.fromJSON(json.temperatureRange) : new TemperatureRange();
         return device;
@@ -76,6 +79,7 @@ export class PyrometerMetadata {
             make: device.make,
             model: device.model,
             serialNumber: device.serialNumber,
+            assetId: device.assetId,
             spectralRange: SpectralRange.toJSON(device.spectralRange),
             temperatureRange: TemperatureRange.toJSON(device.temperatureRange)
         };
