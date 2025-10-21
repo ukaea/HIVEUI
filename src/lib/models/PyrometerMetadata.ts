@@ -82,29 +82,6 @@ export class PyrometerDeviceInformation {
     }
 }
 
-export class PyrometerDeviceSettings {
-    emissivity: number;
-    framerate: number;
-
-    constructor() {
-        this.emissivity = 0;
-        this.framerate = 0;
-    }
-
-    static fromJSON(json: any): PyrometerDeviceSettings {
-        const settings = new PyrometerDeviceSettings();
-        settings.emissivity = json.emissivity || 0;
-        settings.framerate = json.framerate || 0;
-        return settings;
-    }
-
-    static toJSON(settings: PyrometerDeviceSettings): any {
-        return {
-            emissivity: settings.emissivity,
-            framerate: settings.framerate
-        };
-    }
-}
 
 export class PyrometerMetadata {
     deviceInformation: PyrometerDeviceInformation;
