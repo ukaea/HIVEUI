@@ -598,6 +598,14 @@
 							refresh();
 						}}
 					/>
+					<TextField
+						label="Asset ID"
+						value={draft.assetId}
+						on:change={(e) => {
+							draft.assetId = e.detail.value;
+							refresh();
+						}}
+					/>
 					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
 					<TextField
 						label="Minimum Wavelength"
