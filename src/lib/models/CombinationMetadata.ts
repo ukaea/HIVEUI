@@ -1,5 +1,5 @@
-import { EquipmentMetadata } from './EquipmentMetadata';
 import { getJsonContent } from "$lib/jsonUtils";
+import { EquipmentMetadata } from './EquipmentMetadata';
 
 export class CombinationMetadata {
     combinationUUID: string;
@@ -18,12 +18,12 @@ export class CombinationMetadata {
         combination.combinationName = json.combinationName || '';
 
         if (json.equipment && Array.isArray(json.equipment)) {
-            const equipmentPromises = json.equipment.map(async (equipmentUUID: string) => {
+            const equipmentPromises = json.equipment.map(async (equipmentName: string) => {
                 try {
-                    const equipmentData = await getJsonContent(`equipment/${equipmentUUID}.json`);
+                    const equipmentData = await getJsonContent(`equipment/${equipmentName}.json`);
                     return EquipmentMetadata.fromJSON(equipmentData);
                 } catch (error) {
-                    console.error(`Failed to load equipment ${equipmentUUID}:`, error);
+                    console.error(`Failed to load equipment ${equipmentName}:`, error);
                     return null;
                 }
             });
@@ -39,7 +39,7 @@ export class CombinationMetadata {
         return {
             combinationUUID: combination.combinationUUID,
             combinationName: combination.combinationName,
-            equipment: combination.equipment.map(eq => eq.equipmentUUID)
+            equipment: combination.equipment.map(eq => eq.equipmentName)
         };
     }
 }
