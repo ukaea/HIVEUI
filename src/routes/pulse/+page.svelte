@@ -726,8 +726,9 @@
 				/>
 				</div>
 				{#if sortedPostProcessData}
-					<div class="col-span-3 grid grid-cols-3 gap-4 bordered">  
 					<h6 class="col-span-3 font-bold mt-4">Post Processing Information</h6>
+					<div class="col-span-3 grid grid-cols-3 gap-4 bordered"> 
+					<h6 class="col-span-3 font-bold mt-4 small-heading">Pulse Information</h6>
 						<DateField
 							label="Pulse Start"
 							format="dd/MM/yyyy HH:mm"
@@ -766,7 +767,7 @@
 											draft.pulseEnd || ''}
 							disabled
 						/>
-						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<div class="col-span-3 grid grid-cols-3 gap-4">
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
 						<TextField
 							label="Output Frequency"
@@ -801,7 +802,7 @@
 							disabled
 						/>
 						</div>
-						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<div class="col-span-3 grid grid-cols-3 gap-4">
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
 						<TextField
 							label="Measured Coolant Flow"
@@ -884,7 +885,7 @@
 							disabled
 						/>
 						</div>
-						<div class="col-span-3 grid grid-cols-3 gap-4 bordered">
+						<div class="col-span-3 grid grid-cols-3 gap-4">
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
 						<TextField
 							label="Thermocouple ID"
