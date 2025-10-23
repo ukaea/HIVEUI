@@ -1,7 +1,8 @@
 import { redirect, type Handle } from '@sveltejs/kit';
 import { handle as authenticationHandle } from './auth';
 import { sequence } from '@sveltejs/kit/hooks';
- 
+import { AUTH_REQUIRED_GROUP } from '$env/static/private';
+
 async function authorizationHandle({ event, resolve }) {
   // Protect any routes under /
   if (event.url.pathname.startsWith('/')) {
@@ -10,13 +11,18 @@ async function authorizationHandle({ event, resolve }) {
       // Redirect to the signin page
       throw redirect(303, '/auth/signin');
     }
+
+    if (AUTH_REQUIRED_GROUP === '') {
+      return resolve(event);
+    }
+    
+    const userGroups = session.user.groups || [];
+    if (!userGroups.includes(AUTH_REQUIRED_GROUP)) {
+      throw redirect(303, '/auth/signin');
+    }
   }
- 
-  // If the request is still here, just proceed as normally
+
   return resolve(event);
 }
- 
-// First handle authentication, then authorization
-// Each function acts as a middleware, receiving the request handle
-// And returning a handle which gets passed to the next function
+
 export const handle: Handle = sequence(authenticationHandle, authorizationHandle)

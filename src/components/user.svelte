@@ -11,29 +11,10 @@
 		user?: {
 			name?: string | null;
 			email?: string | null;
-			idToken?: string;
-			accessToken?: string;
-			refreshToken?: string;
 		};
 	}
 
 	export let data: User;
-
-	function stringifyToken(token: string) {
-		return JSON.stringify(jwtDecode(token), null, 2);
-	}
-
-	let idToken = '';
-	let accessToken = '';
-	let refreshToken = '';
-
-	onMount(() => {
-		if (data && data.user) {
-			if (data.user.idToken) idToken = stringifyToken(data.user.idToken);
-			if (data.user.accessToken) accessToken = stringifyToken(data.user.accessToken);
-			if (data.user.refreshToken) refreshToken = stringifyToken(data.user.refreshToken);
-		}
-	});
 </script>
 
 <div>

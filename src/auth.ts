@@ -14,34 +14,21 @@ declare module '@auth/core/types' {
 	interface Session extends DefaultSession {
 		sessionToken?: string;
 		user: {
-			id?: string;
-			preferred_username?: string;
-			given_name?: string;
-			family_name?: string;
-			idToken?: string;
-			accessToken?: string;
-			refreshToken?: string;
+			preferred_username?: string | null;
+			given_name?: string | null;
+			family_name?: string | null;
+			groups?: string[] | null;
 		} & DefaultSession['user'];
 	}
 }
 
 declare module '@auth/core/jwt' {
 	interface JWT {
-		id?: string;
-		preferred_username?: string;
-		given_name?: string;
-		family_name?: string;
-		idToken?: string;
-		accessToken?: string;
-		refreshToken?: string;
+		preferred_username?: string | null;
+		given_name?: string | null;
+		family_name?: string | null;
+		groups?: string[] | null;
 	}
-}
-
-// Keycloak profile type
-interface KeycloakProfile extends Profile {
-	preferred_username?: string;
-	given_name?: string;
-	family_name?: string;
 }
 
 const kcConfig = {
@@ -56,47 +43,33 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 	providers: [Keycloak(kcConfig)],
 	callbacks: {
 		async jwt({ user, token, account, profile }) {
-			// Store user ID on first sign-in
-			if (user?.id) {
-				token.id = user.id;
-			}
 
-			// Store Keycloak profile information
 			if (profile) {
-				const kcProfile = profile as KeycloakProfile;
-				token.preferred_username = kcProfile.preferred_username;
-				token.given_name = kcProfile.given_name;
-				token.family_name = kcProfile.family_name;
+				token.preferred_username = profile.preferred_username;
+				token.given_name = profile.given_name;
+				token.family_name = profile.family_name;
 			}
 
-			// Store tokens from the account
 			if (account) {
-				token.idToken = account.id_token;
-				token.accessToken = account.access_token;
-				token.refreshToken = account.refresh_token;
+				token.sessionToken = account.access_token;
+				
+				// Decode groups from the session token
+				if (account.access_token) {
+					const payload = JSON.parse(
+						Buffer.from(account.access_token.split('.')[1], 'base64').toString()
+					);
+					token.groups = payload.groupMembership || [];
+				}
 			}
 
 			return token;
 		},
 
 		async session({ session, token }) {
-			// Add custom fields to the session
-			if (token.id) {
-				session.user.id = token.id;
-			}
-			
 			session.user.preferred_username = token.preferred_username;
 			session.user.given_name = token.given_name;
 			session.user.family_name = token.family_name;
-			session.user.idToken = token.idToken;
-			session.user.accessToken = token.accessToken;
-			session.user.refreshToken = token.refreshToken;
-			
-			// Store access token as session token if available
-			if (token.accessToken && typeof token.accessToken === 'string') {
-				session.sessionToken = token.accessToken;
-			}
-
+			session.user.groups = token.groups;
 			return session;
 		}
 	}
