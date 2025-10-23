@@ -15,7 +15,7 @@ async function authorizationHandle({ event, resolve }) {
     if (AUTH_REQUIRED_GROUP === '') {
       return resolve(event);
     }
-    
+
     const userGroups = session.user.groups || [];
     if (!userGroups.includes(AUTH_REQUIRED_GROUP)) {
       throw redirect(303, '/auth/signin');

@@ -12,8 +12,8 @@ import {
 // Extend the built-in session and JWT types
 declare module '@auth/core/types' {
 	interface Session extends DefaultSession {
-		sessionToken?: string;
 		user: {
+			accessToken?: string | null;
 			preferred_username?: string | null;
 			given_name?: string | null;
 			family_name?: string | null;
@@ -24,6 +24,7 @@ declare module '@auth/core/types' {
 
 declare module '@auth/core/jwt' {
 	interface JWT {
+		accessToken?: string | null;
 		preferred_username?: string | null;
 		given_name?: string | null;
 		family_name?: string | null;
@@ -51,14 +52,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			}
 
 			if (account) {
-				token.sessionToken = account.access_token;
-				
-				// Decode groups from the session token
-				if (account.access_token) {
+				token.accessToken = account.access_token;
+				if (account.id_token) {
 					const payload = JSON.parse(
-						Buffer.from(account.access_token.split('.')[1], 'base64').toString()
+						Buffer.from(account.id_token.split('.')[1], 'base64').toString()
 					);
-					token.groups = payload.groupMembership || [];
+					token.groups = payload.groups || [];
 				}
 			}
 
@@ -66,10 +65,12 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 		},
 
 		async session({ session, token }) {
+			session.user.accessToken = token.accessToken;
 			session.user.preferred_username = token.preferred_username;
 			session.user.given_name = token.given_name;
 			session.user.family_name = token.family_name;
 			session.user.groups = token.groups;
+			console.log('Session: ', session);
 			return session;
 		}
 	}

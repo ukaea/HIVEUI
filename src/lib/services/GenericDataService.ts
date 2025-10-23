@@ -85,7 +85,7 @@ export class GenericDataService<T> {
         session: Session | null | undefined,
         sortHandler?: (a: T, b: T) => number
     ): Promise<T[]> {
-        const accessToken = session?.sessionToken;
+        const accessToken = session?.user.accessToken;
         if (!accessToken) {
             throw new Error('No access token available');
         }
@@ -184,7 +184,7 @@ export class GenericDataService<T> {
         isNewEntry: boolean
     ): Promise<void> {
         try {
-            const accessToken = session?.sessionToken;
+            const accessToken = session?.user.accessToken;
             if (!accessToken) {
                 throw new Error('No access token available');
             }
@@ -251,7 +251,7 @@ export class GenericDataService<T> {
      * Delete from remote API
      */
     private async deleteRemote(id: string, session: Session | null | undefined): Promise<void> {
-        const accessToken = session?.sessionToken;
+        const accessToken = session?.user.accessToken;
         if (!accessToken) {
             throw new Error('No access token available');
         }

@@ -61,7 +61,7 @@
 
 	async function fetchEquipment() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -220,7 +220,7 @@
 
 	async function handleAPISubmission(rawMetadata: any, isNewEntry: boolean): Promise<void> {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -292,7 +292,7 @@
 					alert(`Failed to delete equipment: ${error.message}`);
 				});
 			} else {
-				const accessToken = $page.data.session?.sessionToken;
+				const accessToken = $page.data.session?.user.accessToken;
 				fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment/${equipmentUUID}`, {
 					method: 'DELETE',
 					headers: { Authorization: `Bearer ${accessToken}` }

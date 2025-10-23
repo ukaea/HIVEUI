@@ -175,7 +175,7 @@
 
 	async function fetchExperiments() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -206,7 +206,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -255,7 +255,7 @@
 			return;
 		}
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -312,7 +312,7 @@
 	async function handleAPISubmission(metadata: CompiledPulseMetadata, isNewEntry: boolean): Promise<void> {
 		//Not currently implemented
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -496,7 +496,7 @@
 						alert(`Failed to delete pulse: ${error.message}`);
 					});
 			} else {
-				const accessToken = $page.data.session?.sessionToken;
+				const accessToken = $page.data.session?.user.accessToken;
 				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
