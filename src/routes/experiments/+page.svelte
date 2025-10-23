@@ -310,102 +310,45 @@
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField
-					label="Experiment Title"
-					value={draft.experimentTitle}
+					label="ID"
+					value={isNewEntry ? (draft.ID = crypto.randomUUID()) : draft.ID}
 					on:change={(e) => {
-						draft.experimentTitle = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Experiment ID"
-					value={isNewEntry ? (draft.experimentUUID = crypto.randomUUID()) : draft.experimentUUID}
-					on:change={(e) => {
-						draft.experimentUUID = e.detail.value;
+						draft.ID = e.detail.value;
 						refresh();
 					}}
 					disabled
 				/>
-				<TextField
-					label="Coil Name"
-					value={draft.coilName}
+				<DateField
+					label="Start Date"
+					format="dd/MM/yyyy"
+					picker
+					clearable
+					value={draft.startDate}
 					on:change={(e) => {
-						draft.coilName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Coil UUID"
-					value={draft.coilUUID}
-					on:change={(e) => {
-						draft.coilUUID = e.detail.value;
+						draft.startDate = e.detail.value;
 						refresh();
 					}}
 				/>
 				<DateField
-					label="Experiment Start"
+					label="End Date"
 					format="dd/MM/yyyy"
 					picker
 					clearable
-					value={draft.experimentStart}
+					value={draft.endDate}
 					on:change={(e) => {
-						draft.experimentStart = e.detail.value;
+						draft.endDate = e.detail.value;
 						refresh();
 					}}
 				/>
-				<DateField
-					label="Experiment End"
-					format="dd/MM/yyyy"
-					picker
-					clearable
-					value={draft.experimentEnd}
+				<TextField
+					label="Description"
+					value={draft.desciption}
 					on:change={(e) => {
-						draft.experimentEnd = e.detail.value;
+						draft.desciption = e.detail.value;
 						refresh();
 					}}
+					disabled
 				/>
-				<SelectField
-					label="Heating Type"
-					value={draft.heatingType}
-					options={heatingTypeOptions}
-					on:change={(e) => {
-						draft.heatingType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<SelectField
-					label="Sample Cooling"
-					value={draft.sampleCooling}
-					options={[
-						{ label: 'Enabled', value: true },
-						{ label: 'Disabled', value: false }
-					]}
-					on:change={(e) => {
-						draft.sampleCooling = e.detail.value;
-						refresh();
-					}}
-				/>
-			</div>
-
-			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Campaign Information</h4>
-				<div class="space-y-3">
-					<div class="flex gap-2">
-						<SelectField
-							label="Select Campaign"
-							value={draft.campaignUUID}
-							options={allCampaigns.map((campaign) => ({ label: campaign.campaignTitle, value: campaign.campaignUUID }))}
-							on:change={(e) => {
-								const selectedCampaignData = allCampaigns.find((campaign) => campaign.campaignUUID === e.detail.value);
-								if (selectedCampaignData) {
-									draft.campaignUUID = selectedCampaignData.campaignUUID;
-									draft.campaignTitle = selectedCampaignData.campaignTitle;
-									refresh();
-								}
-							}}
-						/>
-					</div>
-				</div>
 			</div>
 
 			<div class="p-4 grid grid-cols-2 gap-4">
