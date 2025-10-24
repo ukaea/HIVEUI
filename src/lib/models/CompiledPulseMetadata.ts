@@ -2,9 +2,9 @@ import { PersonMetadata } from "./PersonMetadata";
 
 export class HeatingInformation {
     currentType: string;
-    inputPower: string;
-    inputCurrent: string;
-    inputVoltage: string;
+    inputPower: number;
+    inputCurrent: number;
+    inputVoltage: number;
     outputFrequency: string;
     measuredPower: string;
     outputCurrent: string;
@@ -12,9 +12,9 @@ export class HeatingInformation {
 
     constructor() {
         this.currentType = '';
-        this.inputPower = '';
-        this.inputCurrent = '';
-        this.inputVoltage = '';
+        this.inputPower = 0.0;
+        this.inputCurrent = 0.0;
+        this.inputVoltage = 0.0;
         this.outputFrequency = '';
         this.measuredPower = '';
         this.outputCurrent = '';
@@ -104,8 +104,8 @@ export class CoolantPressure {
 
 export class CoolantInformation {
     coolantType: string;
-    targetCoolantFlow: string;
-    targetCoolantTemperature: string;
+    targetCoolantFlow: number;
+    targetCoolantTemperature: number;
     measuredCoolantFlow: string;
     coolantFlowVariance:string;
     coolantPressureIn: string;
@@ -119,8 +119,8 @@ export class CoolantInformation {
 
     constructor() {
         this.coolantType = '';
-        this.targetCoolantFlow = '';
-        this.targetCoolantTemperature = '';
+        this.targetCoolantFlow = 0.0;
+        this.targetCoolantTemperature = 0.0;
         this.measuredCoolantFlow = '';
         this.coolantFlowVariance = '';
         this.coolantPressureIn = '';

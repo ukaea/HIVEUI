@@ -652,6 +652,7 @@
 				<TextField
 					label="Input Power"
 					value={draft.heatingInformation.inputPower}
+					type="integer"
 					on:change={(e) => {
 						draft.heatingInformation.inputPower = e.detail.value;
 						refresh();
@@ -661,6 +662,7 @@
 				<TextField
 					label="Input Current"
 					value={draft.heatingInformation.inputCurrent}
+					type="integer"
 					on:change={(e) => {
 						draft.heatingInformation.inputCurrent = e.detail.value;
 						refresh();
@@ -670,6 +672,7 @@
 				<TextField
 					label="Input Voltage"
 					value={draft.heatingInformation.inputVoltage}
+					type="integer"
 					on:change={(e) => {
 						draft.heatingInformation.inputVoltage = e.detail.value;
 						refresh();
@@ -690,6 +693,7 @@
 				<TextField
 					label="Target Coolant Flow"
 					value={draft.coolantInformation.targetCoolantFlow}
+					type="integer"
 					on:change={(e) => {
 						draft.coolantInformation.targetCoolantFlow = e.detail.value;
 						refresh();
@@ -698,6 +702,7 @@
 				<TextField
 					label="Target Coolant Temperature"
 					value={draft.coolantInformation.targetCoolantTemperature}
+					type="integer"
 					on:change={(e) => {
 						draft.coolantInformation.targetCoolantTemperature = e.detail.value;
 						refresh();
