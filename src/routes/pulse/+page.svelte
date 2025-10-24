@@ -553,6 +553,7 @@
 				/>
 				<TextField
 					label="Sample Number"
+					type="integer"
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
@@ -562,6 +563,7 @@
 				<TextField
 					label="Pulse Number"
 					value={draft.pulseNumber}
+					type="integer"
 					on:change={(e) => {
 						draft.pulseNumber = e.detail.value;
 						refresh();

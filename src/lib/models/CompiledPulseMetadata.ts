@@ -172,8 +172,8 @@ export class CoolantInformation {
 
 	// Includes the experiment and configurations
 export class CompiledPulseMetadata {
-    pulseNumber: string;
-    sampleNumber: string;
+    pulseNumber: number;
+    sampleNumber: number;
     dataCaptureStart: Date;
     pulseStart: Date;
     pulseEnd: Date;
@@ -190,8 +190,8 @@ export class CompiledPulseMetadata {
     status: string;
     
     constructor() {
-        this.pulseNumber = '';
-        this.sampleNumber = '';
+        this.pulseNumber = 0;
+        this.sampleNumber = 0;
         this.dataCaptureStart = new Date();
         this.pulseStart = new Date();
         this.pulseEnd = new Date();
