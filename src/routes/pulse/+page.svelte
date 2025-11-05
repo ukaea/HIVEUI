@@ -548,6 +548,7 @@
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
+						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -557,6 +558,7 @@
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
+						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -566,6 +568,7 @@
 					type="integer"
 					on:change={(e) => {
 						draft.pulseNumber = e.detail.value;
+						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
