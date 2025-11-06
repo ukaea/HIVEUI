@@ -1,8 +1,7 @@
 services:
   hiveui:
     image: hive-ui:dev
-    pull_policy: always
+    pull_policy: never
     env_file: ".env"
-    ports:
-      - 3000:3000
     restart: unless-stopped
+    network_mode: "host"
