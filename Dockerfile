@@ -13,4 +13,4 @@ RUN npm ci --omit=dev
 EXPOSE 3000
 EXPOSE 3003
 ENV NODE_ENV=production
-CMD ["node", "build"]
+CMD ["sh", "-c", "ORIGIN=http://scicat-test.apps.l:3003 node build"]
