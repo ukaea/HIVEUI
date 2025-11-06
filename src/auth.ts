@@ -70,7 +70,6 @@ export const { handle, signIn, signOut } = SvelteKitAuth({
 			session.user.given_name = token.given_name;
 			session.user.family_name = token.family_name;
 			session.user.groups = token.groups;
-			console.log('Session: ', session);
 			return session;
 		}
 	}
