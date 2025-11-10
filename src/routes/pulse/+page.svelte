@@ -265,9 +265,9 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const ID = metadata.pulseNumber;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/`;
-			const fileName = `${ID}.json`;
+			const ID = metadata.pulseId;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${ID}`;
+			const fileName = metadata.json;
 
 			const saveMetadata = {
 				targetPath: `${filePath}/${fileName}`,
@@ -459,6 +459,11 @@
 		{ label: 'DC', value: 'DC' }
 	];
 
+	let coilHeatingTypeOptions: MenuOption[] = [
+		{ label: 'Induction', value: 'Induction' },
+		{ label: 'DC', value: 'DC' }
+	];
+
 	let coolantTypeOptions: MenuOption[] = [
 		{ label: 'Water', value: 'Water' },
 		{ label: 'Demineralised Water', value: 'Demineralised Water' },
@@ -636,6 +641,16 @@
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
+				<SelectField
+					options={coilHeatingTypeOptions}
+					label="Heating Type"
+					value={draft.heatingInformation.heatingType}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.heatingInformation.heatingType = e.detail.value;
+					}}
+				/>
+
 				<SelectField
 					options={coilCurrentTypeOptions}
 					label="Current Type"

@@ -1,6 +1,7 @@
 import { PersonMetadata } from "./PersonMetadata";
 
 export class HeatingInformation {
+    heatingType: string;
     currentType: string;
     inputPower: number;
     inputCurrent: number;
@@ -11,6 +12,7 @@ export class HeatingInformation {
     outputVoltage: string;
 
     constructor() {
+        this.heatingType = '';
         this.currentType = '';
         this.inputPower = 0.0;
         this.inputCurrent = 0.0;
@@ -23,6 +25,7 @@ export class HeatingInformation {
 
     static fromJSON(json: any): HeatingInformation {
         const heat = new HeatingInformation();
+        heat.heatingType = json.heatingType || '';
         heat.currentType = json.currentType || '';
         heat.inputPower = json.inputPower || '';
         heat.inputCurrent = json.inputCurrent || '';
@@ -36,6 +39,7 @@ export class HeatingInformation {
 
     static toJSON(metadata: HeatingInformation): any {
         return{
+            heatingType: metadata.heatingType,
             currentType: metadata.currentType,
             inputPower: metadata.inputPower,
             inputCurrent: metadata.inputCurrent,
@@ -103,6 +107,7 @@ export class CoolantPressure {
 }
 
 export class CoolantInformation {
+    sampleCooling: boolean | null;
     coolantType: string;
     targetCoolantFlow: number;
     targetCoolantTemperature: number;
@@ -118,6 +123,7 @@ export class CoolantInformation {
     deltaTemperature: string;
 
     constructor() {
+        this.sampleCooling = null;
         this.coolantType = '';
         this.targetCoolantFlow = 0.0;
         this.targetCoolantTemperature = 0.0;
@@ -134,6 +140,7 @@ export class CoolantInformation {
     }
     static fromJSON(json: any): CoolantInformation{
         const coolant = new CoolantInformation();
+        coolant.sampleCooling = json.sampleCooling || '';
         coolant.coolantType = json.coolantType || '';
         coolant.targetCoolantFlow = json.targetCoolantFlow || '';
         coolant.targetCoolantTemperature = json.targetCoolantTemperature || '';
@@ -152,6 +159,7 @@ export class CoolantInformation {
 
     static toJSON(metadata: CoolantInformation): any {
         return {
+        sampleCooling: metadata.sampleCooling,
         coolantType: metadata.coolantType,
         targetCoolantFlow: metadata.targetCoolantFlow,
         targetCoolantTemperature: metadata.targetCoolantTemperature,
