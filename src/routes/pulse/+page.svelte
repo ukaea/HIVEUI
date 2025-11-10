@@ -464,6 +464,11 @@
 		{ label: 'DC', value: 'DC' }
 	];
 
+	let sampleCoolingOption: MenuOption[] = [
+		{ label: 'Yes', value: true },
+		{ label: 'No', value: false }
+	];
+
 	let coolantTypeOptions: MenuOption[] = [
 		{ label: 'Water', value: 'Water' },
 		{ label: 'Demineralised Water', value: 'Demineralised Water' },
@@ -698,6 +703,16 @@
 					disabled={inputPowerToggle}
 				/>
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
+				<SelectField
+					options={sampleCoolingOption}
+					label="Sample Cooling"
+					value={draft.coolantInformation.sampleCooling}
+					autoplacement={false}
+					on:change={(e) => {
+						draft.coolantInformation.sampleCooling = e.detail.value;
+						refresh();
+					}}
+				/>
 				<SelectField
 					options={coolantTypeOptions}
 					label="Coolant Type"
