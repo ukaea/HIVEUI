@@ -22,10 +22,11 @@ export class FlowRange {
     }
 }
 
-export class FlowmeterDeviceInformation {
+export class FlowmeterMetadata {
     make: string;
     model: string;
     serialNumber: string;
+    assetId: string;
     flowmeterType: string;
     flowRange: FlowRange;
 
@@ -33,31 +34,34 @@ export class FlowmeterDeviceInformation {
         this.make = '';
         this.model = '';
         this.serialNumber = '';
+        this.assetId = '';
         this.flowmeterType = '';
         this.flowRange = new FlowRange();
     }
 
-    static fromJSON(json: any): FlowmeterDeviceInformation {
-        const device = new FlowmeterDeviceInformation();
+    static fromJSON(json: any): FlowmeterMetadata {
+        const device = new FlowmeterMetadata();
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
+        device.assetId = json.assetId || '';
         device.flowmeterType = json.flowmeterType || '';
         device.flowRange = json.flowRange ? FlowRange.fromJSON(json.flowRange) : new FlowRange();
         return device;
     }
 
-    static toJSON(device: FlowmeterDeviceInformation): any {
+    static toJSON(device: FlowmeterMetadata): any {
         return {
             make: device.make,
             model: device.model,
             serialNumber: device.serialNumber,
+            assetId: device.assetId,
             flowmeterType: device.flowmeterType,
             flowRange: FlowRange.toJSON(device.flowRange)
         };
     }
 }
-
+/** 
 export class FlowmeterMetadata {
     deviceInformation: FlowmeterDeviceInformation;
 
@@ -79,3 +83,5 @@ export class FlowmeterMetadata {
         };
     }
 }
+    FlowmeterDeviceInformation
+    */

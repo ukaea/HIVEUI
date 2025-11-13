@@ -1,23 +1,65 @@
+import {
+    CameraMetadata,
+    DicMetadata,
+    FlowmeterMetadata,
+    IrCameraMetadata, LensMetadata,
+    PyrometerMetadata,
+    ThermocoupleMetadata
+} from '.';
+
+
+type Equipment = DicMetadata | ThermocoupleMetadata | CameraMetadata |
+                    FlowmeterMetadata | PyrometerMetadata | IrCameraMetadata | LensMetadata;
+
+
 export class EquipmentMetadata {
-	equipmentUUID: string;
 	equipmentName: string;
+    equipmentType: string;
+    equipmentConfig: Equipment | null
 
 	constructor() {
-		this.equipmentUUID = '';
 		this.equipmentName = '';
+        this.equipmentType = ''
+        this.equipmentConfig = null;
 	}
 
     static fromJSON(json: any): EquipmentMetadata {
         const equipment = new EquipmentMetadata();
-        equipment.equipmentUUID = json.equipmentUUID || '';
         equipment.equipmentName = json.equipmentName || '';
+        equipment.equipmentType = json.equipmentType || '';
+        switch (json.equipmentType) {
+            case "thermocouple":
+                equipment.equipmentConfig = ThermocoupleMetadata.fromJSON(json.equipment);
+                break;
+            case "camera":
+                equipment.equipmentConfig = CameraMetadata.fromJSON(json.equipment);
+                break;
+            case "lens":
+                equipment.equipmentConfig = LensMetadata.fromJSON(json.equipment);
+                break;
+            case "dic":
+                equipment.equipmentConfig = DicMetadata.fromJSON(json.equipment);
+                break;
+            case "flowmeter":
+                equipment.equipmentConfig = FlowmeterMetadata.fromJSON(json.equipment);
+                break;
+            case "pyrometer":
+                equipment.equipmentConfig = PyrometerMetadata.fromJSON(json.equipment);
+                break;
+            case "ir-camera":
+                equipment.equipmentConfig = IrCameraMetadata.fromJSON(json.equipment);
+                break;
+            default:
+                equipment.equipmentConfig = null;
+        }
         return equipment;
     }
 
     static toJSON(equipment: EquipmentMetadata): any {
         return {
-            equipmentUUID: equipment.equipmentUUID,
-            equipmentName: equipment.equipmentName
+            equipmentName: equipment.equipmentName,
+            equipmentType: equipment.equipmentType,
+            equipment: equipment.equipmentConfig
         };
     }
 }

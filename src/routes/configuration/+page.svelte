@@ -419,7 +419,7 @@
 					}}
 				/>
 				<TextField
-					label="Configuration UUID"
+					label="Configuration ID"
 					value={isNewEntry ? (draft.configurationUUID = crypto.randomUUID()) : draft.configurationUUID}
 					on:change={(e) => {
 						draft.configurationUUID = e.detail.value;
@@ -537,9 +537,9 @@
 	<div class="p-4">
 		<Form initial={newCombination} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<h4 class="col-span-2 mt-1">Combination Details</h4>
+				<h4 class="col-span-2 mt-1">Diagnostic Details</h4>
 				<TextField
-					label="Combination Name"
+					label="Diagnostic Name"
 					value={draft?.combinationName || ''}
 					on:change={(e) => {
 						if (draft) {
@@ -550,7 +550,7 @@
 					}}
 				/>
 				<TextField
-					label="Combination UUID"
+					label="Diagnostic ID"
 					value={isNewCombination ? (draft ? (draft.combinationUUID = crypto.randomUUID()) : '') : draft?.combinationUUID || ''}
 					on:change={(e) => {
 						if (draft) {
@@ -576,7 +576,7 @@
 								}}
 							/>
 							<TextField
-								label="Equipment UUID"
+								label="Equipment ID"
 								value={equipment.equipmentUUID}
 								on:change={(e) => {
 									equipment.equipmentUUID = e.detail.value;
