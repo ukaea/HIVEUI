@@ -33,7 +33,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -60,7 +60,7 @@
 
 	async function fetchCombinations() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -87,7 +87,7 @@
 
 	async function fetchEquipment() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -188,7 +188,7 @@
 
 	async function handleAPISubmission(rawMetadata: ConfigurationMetadata, isNewEntry: boolean): Promise<void> {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -255,7 +255,7 @@
 
 	async function handleCombinationAPISubmission(rawMetadata: CombinationMetadata, isNewEntry: boolean): Promise<void> {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -292,7 +292,7 @@
 						alert(`Failed to delete configuration: ${error.message}`);
 					});
 			} else {
-				const accessToken = $page.data.session?.sessionToken;
+				const accessToken = $page.data.session?.user.accessToken;
 				fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations/${selectedMetadata.configurationUUID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete configuration from API');

@@ -3,192 +3,142 @@
 	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import { ExperimentMetadata, HeatingTypeMetadata, PersonMetadata, CustomerMetadata, ConfigurationMetadata, CampaignMetadata } from '$lib/models';
+	import { PUBLIC_LOCAL_ONLY} from '$env/static/public';
+	import { ExperimentMetadata, HeatingTypeMetadata, PersonMetadata, CustomerMetadata, ConfigurationMetadata } from '$lib/models';
+	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 
-	let sortedData: ExperimentMetadata[] = [];
+	let allExperiments: ExperimentMetadata[] = [];
 	let allConfigurations: ConfigurationMetadata[] = [];
-	let selectedConfiguration: ConfigurationMetadata | null = null;
-	let allCampaigns: CampaignMetadata[] = [];
-	let selectedCampaign: CampaignMetadata | null = null;
+	let selectedExperiment: ExperimentMetadata | null = null;
 
+	let open = false;
+	let isNewEntry = false;
+	let localOnly = false;
+	
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentTitle', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
-	const campaignOrder = tableOrderStore({ initialBy: 'campaignTitle', initialDirection: 'asc' });
 
 	experimentOrder.subscribe(() => {
-		sortedData = sortedData.sort($experimentOrder.handler);
+		allExperiments = allExperiments.sort($experimentOrder.handler);
 	});
 
 	configurationOrder.subscribe(() => {
 		allConfigurations = allConfigurations.sort($configurationOrder.handler);
 	});
 
-	campaignOrder.subscribe(() => {
-		allCampaigns = allCampaigns.sort($campaignOrder.handler);
-	});
-
-
-	let open = false;
-	let selectedMetadata: ExperimentMetadata | null = null;
-	let isNewEntry = false;
-	let localOnly = false;
-
 	const heatingTypeOptions: MenuOption[] = Object.values(HeatingTypeMetadata).map((type) => ({
 		label: type,
 		value: type
 	}));
 
-	async function fetchExperiments() {
+	const experimentService = new GenericDataService<ExperimentMetadata>(
+		{
+			modelClass: ExperimentMetadataModel,
+			endpoint: '/api/v1/experiments',
+			localFolder: 'experiments',
+			idField: 'experimentUUID',
+			displayName: 'experiments'
+		}
+	);
+
+	const configurationService = new GenericDataService<ConfigurationMetadata>(
+		{
+			modelClass: ConfigurationMetadata,
+			endpoint: '/api/v1/configurations',
+			localFolder: 'configurations',
+			idField: 'configurationUUID',
+			displayName: 'configurations'
+		}
+	);
+
+	async function fetchConfigurations() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('experiments');
-				const experimentData = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
-				const experiments = await Promise.all(experimentData.map(ExperimentMetadata.fromJSON));
-				sortedData = experiments.sort($experimentOrder.handler);
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/experiments`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch experiments');
-			const data = await response.json();
-			sortedData = data.map(ExperimentMetadata.fromJSON).sort($experimentOrder.handler);
+			allConfigurations = await configurationService.fetchAll(
+				localOnly,
+				$page.data.session
+			);
 		} catch (error) {
-			console.error('Error fetching experiments:', error);
-			alert('Failed to load experiments. Please try again later.');
+			console.error('Error fetching configurations:', error);
+			alert((error as Error).message);
 		}
 	}
+
+	async function fetchExperiments() {
+        try {
+            allExperiments = await experimentService.fetchAll(
+                localOnly,
+                $page.data.session
+            );
+        } catch (error) {
+            console.error('Error fetching experiments:', error);
+            alert((error as Error).message);
+        }
+    }
 
 	async function handleMetadataSubmit() {
-		const rawMetadata = selectedMetadata;
-		if (!rawMetadata || !rawMetadata.experimentUUID) {
-			alert('Experiment UUID is required.');
-			return;
-		}
-		console.log('Submitting metadata:', rawMetadata);
-		try {
-			await handleFileSubmission(rawMetadata);
-		} catch (error) {
-			console.error('File submission failed:', error);
-		}
+        if (!selectedExperiment) {
+            alert('No metadata selected.');
+            return;
+        }
 
-		if (localOnly) {
-			handleModalClose();
-			await fetchExperiments();
-			return;
-		}
+        try {
+            await experimentService.submit(
+                selectedExperiment,
+                localOnly,
+                $page.data.session,
+                isNewEntry
+            );
+            
+            alert(isNewEntry 
+                ? 'New experiment submitted successfully!' 
+                : 'Experiment updated successfully!'
+            );
+            
+            handleModalClose();
+            await fetchExperiments();
+        } catch (error) {
+            console.error('Submission error:', error);
+            alert(`Failed to submit experiment: ${(error as Error).message}`);
+        }
+    }
 
-		try {
-			await handleAPISubmission(rawMetadata, isNewEntry);
-			handleModalClose();
-			await fetchExperiments();
-		} catch (error) {
-			console.error('API submission failed:', error);
-		}
-	}
+	async function handleDelete() {
+        if (!selectedExperiment) return;
 
-	async function handleFileSubmission(rawMetadata: ExperimentMetadata): Promise<void> {
-		try {
-			const experimentUUID = rawMetadata.experimentUUID;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/`;
-			const fileName = `${experimentUUID}.json`;
-			let cleanedMetadata = ExperimentMetadata.toJSON(rawMetadata);
-			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
-
-			const fileResponse = await fetch('/api/save-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(saveMetadata) });
-
-			if (!fileResponse.ok) {
-				const errorData = await fileResponse.json();
-				throw new Error(`Failed to save metadata file: ${errorData.message}`);
-			}
-
-			console.log('Metadata file saved successfully');
-			alert('Metadata file saved successfully');
-		} catch (error) {
-			console.error('Error saving metadata file:', error);
-			alert(`Failed to save metadata file: ${error.message}`);
-			throw error;
-		}
-	}
-
-	async function handleAPISubmission(rawMetadata: ExperimentMetadata, isNewEntry: boolean): Promise<void> {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			const mappedMetadata = ExperimentMetadata.toJSON(rawMetadata);
-			const url = `${PUBLIC_METACAT_URL}/api/v1/experiments?schema=any`;
-			const method = isNewEntry ? 'POST' : 'POST';
-			const endpointResponse = await fetch(url, { method: method, headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${accessToken}` }, body: JSON.stringify(mappedMetadata) });
-
-			if (!endpointResponse.ok) throw new Error('Failed to save experiment to endpoint');
-
-			console.log('Experiment submitted to API successfully');
-			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
-		} catch (error) {
-			console.error('Error submitting experiment to API:', error);
-			alert(`Failed to submit experiment to API: ${error.message}`);
-			throw error;
-		}
-	}
-
-	function handleDelete(): void {
-		if (!selectedMetadata) return;
-
-		if (confirm(`Are you sure you want to delete the experiment with UUID: ${selectedMetadata.experimentUUID}?`)) {
-			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/experiments/${selectedMetadata.experimentUUID}.json`;
-				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
-					.then((response) => {
-						if (!response.ok) throw new Error('Failed to delete local file');
-						alert('Experiment deleted successfully');
-						fetchExperiments();
-					})
-					.catch((error) => {
-						console.error('Error deleting local file:', error);
-						alert(`Failed to delete experiment: ${error.message}`);
-					});
-			} else {
-				const accessToken = $page.data.session?.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/experiments/${selectedMetadata.experimentUUID}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
-					.then((response) => {
-						if (!response.ok) throw new Error('Failed to delete experiment from API');
-						alert('Experiment deleted successfully');
-						fetchExperiments();
-					})
-					.catch((error) => {
-						console.error('Error deleting experiment from API:', error);
-						alert(`Failed to delete experiment: ${error.message}`);
-					});
-			}
-			handleModalClose();
-		}
-	}
+        if (confirm(`Are you sure you want to delete the experiment with UUID: ${selectedExperiment.experimentUUID}?`)) {
+            try {
+                await experimentService.delete(
+                    selectedExperiment,
+                    localOnly,
+                    $page.data.session
+                );
+                
+                alert('Experiment deleted successfully');
+                handleModalClose();
+                await fetchExperiments();
+            } catch (error) {
+                console.error('Delete error:', error);
+                alert(`Failed to delete experiment: ${(error as Error).message}`);
+            }
+        }
+    }
 
 	function handleRowClick(row: ExperimentMetadata): void {
-		selectedMetadata = { ...row };
+		selectedExperiment = { ...row };
 		isNewEntry = false;
 		open = true;
 	}
 
 	function handleNewEntry(): void {
-		selectedMetadata = { ...new ExperimentMetadata() };
+		selectedExperiment = { ...new ExperimentMetadata() };
 		isNewEntry = true;
 		open = true;
 	}
 
 	function handleModalClose() {
 		open = false;
-		selectedMetadata = null;
+		selectedExperiment = null;
 		isNewEntry = false;
 	}
 
@@ -202,60 +152,7 @@
 		}
 		fetchExperiments();
 		fetchConfigurations();
-		fetchCampaigns();
 	});
-
-	async function fetchConfigurations() {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('configurations');
-				const configurationData = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
-				const configurations = await Promise.all(configurationData.map(ConfigurationMetadata.fromJSON));
-				allConfigurations = configurations.sort($configurationOrder.handler);
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/experiments`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch experiments');
-			const data = await response.json();
-			sortedData = data.map(ExperimentMetadata.fromJSON).sort($experimentOrder.handler);
-		} catch (error) {
-			console.error('Error fetching experiments:', error);
-			alert('Failed to load experiments. Please try again later.');
-		}
-	}
-
-	async function fetchCampaigns() {
-		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('campaigns');
-				const campaignData = await Promise.all(files.map((filename: string) => getJsonContent('campaigns/' + filename)));
-				const campaigns = await Promise.all(campaignData.map(CampaignMetadata.fromJSON));
-				allCampaigns = campaigns.sort($campaignOrder.handler);
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/campaigns`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch campaigns');
-			const data = await response.json();
-			allCampaigns = data.map(CampaignMetadata.fromJSON).sort($campaignOrder.handler);
-		} catch (error) {
-			console.error('Error fetching campaigns:', error);
-			alert('Failed to load campaigns. Please try again later.');
-		}
-	}
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
@@ -265,7 +162,7 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={sortedData}
+			data={allExperiments}
 			columns={[
 				{ name: 'experimentTitle', align: 'left', header: 'Experiment Title' },
 				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
@@ -306,48 +203,84 @@
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
+		<Form initial={selectedExperiment} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField
-					label="ID"
-					value={isNewEntry ? (draft.ID = crypto.randomUUID()) : draft.ID}
+					label="Experiment Title"
+					value={draft.experimentTitle}
 					on:change={(e) => {
-						draft.ID = e.detail.value;
-						refresh();
-					}}
-					disabled
-				/>
-				<DateField
-					label="Start Date"
-					format="dd/MM/yyyy"
-					picker
-					clearable
-					value={draft.startDate}
-					on:change={(e) => {
-						draft.startDate = e.detail.value;
-						refresh();
-					}}
-				/>
-				<DateField
-					label="End Date"
-					format="dd/MM/yyyy"
-					picker
-					clearable
-					value={draft.endDate}
-					on:change={(e) => {
-						draft.endDate = e.detail.value;
+						draft.experimentTitle = e.detail.value;
 						refresh();
 					}}
 				/>
 				<TextField
-					label="Description"
-					value={draft.desciption}
+					label="Experiment UUID"
+					value={isNewEntry ? (draft.experimentUUID = crypto.randomUUID()) : draft.experimentUUID}
 					on:change={(e) => {
-						draft.desciption = e.detail.value;
+						draft.experimentUUID = e.detail.value;
 						refresh();
 					}}
 					disabled
+				/>
+				<TextField
+					label="Coil Name"
+					value={draft.coilName}
+					on:change={(e) => {
+						draft.coilName = e.detail.value;
+						refresh();
+					}}
+				/>
+				<TextField
+					label="Coil UUID"
+					value={draft.coilUUID}
+					on:change={(e) => {
+						draft.coilUUID = e.detail.value;
+						refresh();
+					}}
+				/>
+				<DateField
+					label="Experiment Start"
+					format="dd/MM/yyyy"
+					picker
+					clearable
+					value={draft.experimentStart}
+					on:change={(e) => {
+						draft.experimentStart = e.detail.value;
+						refresh();
+					}}
+				/>
+				<DateField
+					label="Experiment End"
+					format="dd/MM/yyyy"
+					picker
+					clearable
+					value={draft.experimentEnd}
+					on:change={(e) => {
+						draft.experimentEnd = e.detail.value;
+						refresh();
+					}}
+				/>
+				<SelectField
+					label="Heating Type"
+					value={draft.heatingType}
+					options={heatingTypeOptions}
+					on:change={(e) => {
+						draft.heatingType = e.detail.value;
+						refresh();
+					}}
+				/>
+				<SelectField
+					label="Sample Cooling"
+					value={draft.sampleCooling}
+					options={[
+						{ label: 'Enabled', value: true },
+						{ label: 'Disabled', value: false }
+					]}
+					on:change={(e) => {
+						draft.sampleCooling = e.detail.value;
+						refresh();
+					}}
 				/>
 			</div>
 
@@ -427,7 +360,7 @@
 				<div class="flex gap-2">
 					<Button
 						on:click={() => {
-							selectedMetadata = current;
+							selectedExperiment = current;
 							handleMetadataSubmit();
 						}}
 						variant="fill">Save</Button

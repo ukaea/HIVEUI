@@ -7,11 +7,6 @@
 	import { mdiBookOpenVariantOutline, mdiMagnify, mdiPulse, mdiContentSaveCog, mdiGroup } from '@mdi/js';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
-
-	async function handleTrigger() {
-		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
-	}
-
 	export let data: LayoutServerData;
 
 	settings({
@@ -40,7 +35,6 @@
 	</AppBar>
 
 	<svelte:fragment slot="nav">
-		<NavItem text="Campaigns" currentUrl={$page.url} path="/campaigns" icon={mdiGroup} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Experiments" currentUrl={$page.url} path="/experiments" icon={mdiBookOpenVariantOutline} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Equipment" currentUrl={$page.url} path="/equipment" icon={mdiMagnify} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Configuration" currentUrl={$page.url} path="/configuration" icon={mdiContentSaveCog} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
