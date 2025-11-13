@@ -12,4 +12,4 @@ COPY --from=builder /app/build build/
 COPY --from=builder /app/node_modules node_modules/
 EXPOSE 3000
 ENV NODE_ENV=production
-CMD ["sh", "-c", "ORIGIN=http://localhost:3000 node build"]
+CMD ["sh", "-c", "node build"]
