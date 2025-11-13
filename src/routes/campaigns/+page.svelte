@@ -48,7 +48,7 @@
 	async function handleMetadataSubmit() {
 		const rawMetadata = selectedMetadata;
 		if (!rawMetadata || !rawMetadata.campaignUUID) {
-			alert('Campaign UUID is required.');
+			alert('Campaign ID is required.');
 			return;
 		}
 		console.log('Submitting metadata:', rawMetadata);
@@ -193,7 +193,7 @@
 			data={sortedData}
 			columns={[
 				{ name: 'campaignTitle', align: 'left', header: 'Campaign Title' },
-				{ name: 'campaignUUID', align: 'left', header: 'Campaign UUID' }
+				{ name: 'campaignUUID', align: 'left', header: 'Campaign ID' }
 			]}
 			order={campaignOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -217,7 +217,7 @@
 					}}
 				/>
 				<TextField
-					label="Campaign UUID"
+					label="Campaign ID"
 					value={isNewEntry ? (draft.campaignUUID = crypto.randomUUID()) : draft.campaignUUID}
 					on:change={(e) => {
 						draft.campaignUUID = e.detail.value;

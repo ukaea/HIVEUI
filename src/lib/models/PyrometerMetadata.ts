@@ -46,10 +46,11 @@ export class TemperatureRange {
     }
 }
 
-export class PyrometerDeviceInformation {
+export class PyrometerMetadata {
     make: string;
     model: string;
     serialNumber: string;
+    assetId: string;
     spectralRange: SpectralRange;
     temperatureRange: TemperatureRange;
 
@@ -57,55 +58,35 @@ export class PyrometerDeviceInformation {
         this.make = '';
         this.model = '';
         this.serialNumber = '';
+        this.assetId = '';
         this.spectralRange = new SpectralRange();
         this.temperatureRange = new TemperatureRange();
     }
 
-    static fromJSON(json: any): PyrometerDeviceInformation {
-        const device = new PyrometerDeviceInformation();
+    static fromJSON(json: any): PyrometerMetadata {
+        const device = new PyrometerMetadata();
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
+        device.assetId = json.assetId || '';
         device.spectralRange = json.spectralRange ? SpectralRange.fromJSON(json.spectralRange) : new SpectralRange();
         device.temperatureRange = json.temperatureRange ? TemperatureRange.fromJSON(json.temperatureRange) : new TemperatureRange();
         return device;
     }
 
-    static toJSON(device: PyrometerDeviceInformation): any {
+    static toJSON(device: PyrometerMetadata): any {
         return {
             make: device.make,
             model: device.model,
             serialNumber: device.serialNumber,
+            assetId: device.assetId,
             spectralRange: SpectralRange.toJSON(device.spectralRange),
             temperatureRange: TemperatureRange.toJSON(device.temperatureRange)
         };
     }
 }
 
-export class PyrometerDeviceSettings {
-    emissivity: number;
-    framerate: number;
-
-    constructor() {
-        this.emissivity = 0;
-        this.framerate = 0;
-    }
-
-    static fromJSON(json: any): PyrometerDeviceSettings {
-        const settings = new PyrometerDeviceSettings();
-        settings.emissivity = json.emissivity || 0;
-        settings.framerate = json.framerate || 0;
-        return settings;
-    }
-
-    static toJSON(settings: PyrometerDeviceSettings): any {
-        return {
-            emissivity: settings.emissivity,
-            framerate: settings.framerate
-        };
-    }
-}
-
+/** 
 export class PyrometerMetadata {
     deviceInformation: PyrometerDeviceInformation;
     deviceSettings: PyrometerDeviceSettings;
@@ -133,3 +114,4 @@ export class PyrometerMetadata {
         };
     }
 }
+    */

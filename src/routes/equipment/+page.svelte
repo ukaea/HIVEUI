@@ -28,7 +28,6 @@
 		{ label: 'Thermocouple', value: 'thermocouple' },
 		{ label: 'Camera', value: 'camera' },
 		{ label: 'Lens', value: 'lens' },
-		{ label: 'DIC', value: 'dic' },
 		{ label: 'Flowmeter', value: 'flowmeter' },
 		{ label: 'Pyrometer', value: 'pyrometer' },
 		{ label: 'IR Camera', value: 'ir-camera' }
@@ -78,9 +77,9 @@
 					let model = '';
 
 					// Extract display information based on equipment type
-					if (data.deviceInformation) {
-						make = data.deviceInformation.make || '';
-						model = data.deviceInformation.model || '';
+					if (data) {
+						make = data.make || '';
+						model = data.model || '';
 						name = `${make} ${model}`.trim();
 					} else if (equipmentType === 'thermocouple') {
 						name = `${data.tcType || 'Thermocouple'} - ${data.location || 'Unknown Location'}`;
@@ -398,25 +397,33 @@
 					<h4 class="col-span-2 mt-1">Camera Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Asset ID"
+						value={draft.assetId}
+						on:change={(e) => {
+							draft.assetId = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -424,18 +431,18 @@
 					<TextField
 						label="Resolution X"
 						type="number"
-						value={draft.deviceInformation.resolution.x}
+						value={draft.resolution.x}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.x = Number(e.detail.value);
+							draft.resolution.x = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Resolution Y"
 						type="number"
-						value={draft.deviceInformation.resolution.y}
+						value={draft.resolution.y}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.y = Number(e.detail.value);
+							draft.resolution.y = Number(e.detail.value);
 							refresh();
 						}}
 					/>
@@ -445,7 +452,7 @@
 					<h4 class="col-span-2 mt-1">Lens Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
 							draft.deviceInformation.make = e.detail.value;
 							refresh();
@@ -506,33 +513,41 @@
 					<h4 class="col-span-2 mt-1">Flowmeter Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Asset ID"
+						value={draft.assetId}
+						on:change={(e) => {
+							draft.assetId = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Flowmeter Type"
-						value={draft.deviceInformation.flowmeterType}
+						value={draft.flowmeterType}
 						on:change={(e) => {
-							draft.deviceInformation.flowmeterType = e.detail.value;
+							draft.flowmeterType = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -540,18 +555,18 @@
 					<TextField
 						label="Minimum Flow"
 						type="number"
-						value={draft.deviceInformation.flowRange.minimum}
+						value={draft.flowRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.flowRange.minimum = Number(e.detail.value);
+							draft.flowRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Flow"
 						type="number"
-						value={draft.deviceInformation.flowRange.maximum}
+						value={draft.flowRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.flowRange.maximum = Number(e.detail.value);
+							draft.flowRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
@@ -561,25 +576,33 @@
 					<h4 class="col-span-2 mt-1">Pyrometer Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.make = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.model = e.detail.value;
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.serialNumber = e.detail.value;
+							refresh();
+						}}
+					/>
+					<TextField
+						label="Asset ID"
+						value={draft.assetId}
+						on:change={(e) => {
+							draft.assetId = e.detail.value;
 							refresh();
 						}}
 					/>
@@ -587,18 +610,18 @@
 					<TextField
 						label="Minimum Wavelength"
 						type="number"
-						value={draft.deviceInformation.spectralRange.minimum}
+						value={draft.spectralRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.minimum = Number(e.detail.value);
+							draft.spectralRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Wavelength"
 						type="number"
-						value={draft.deviceInformation.spectralRange.maximum}
+						value={draft.spectralRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.maximum = Number(e.detail.value);
+							draft.spectralRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
@@ -606,38 +629,18 @@
 					<TextField
 						label="Minimum Temperature"
 						type="number"
-						value={draft.deviceInformation.temperatureRange.minimum}
+						value={draft.temperatureRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.minimum = Number(e.detail.value);
+							draft.temperatureRange.minimum = Number(e.detail.value);
 							refresh();
 						}}
 					/>
 					<TextField
 						label="Maximum Temperature"
 						type="number"
-						value={draft.deviceInformation.temperatureRange.maximum}
+						value={draft.temperatureRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.maximum = Number(e.detail.value);
-							refresh();
-						}}
-					/>
-					<h4 class="col-span-2 mt-4">Device Settings</h4>
-					<TextField
-						label="Emissivity"
-						type="number"
-						step="0.01"
-						value={draft.deviceSettings.emissivity}
-						on:change={(e) => {
-							draft.deviceSettings.emissivity = Number(e.detail.value);
-							refresh();
-						}}
-					/>
-					<TextField
-						label="Framerate (Hz)"
-						type="number"
-						value={draft.deviceSettings.framerate}
-						on:change={(e) => {
-							draft.deviceSettings.framerate = Number(e.detail.value);
+							draft.temperatureRange.maximum = Number(e.detail.value);
 							refresh();
 						}}
 					/>

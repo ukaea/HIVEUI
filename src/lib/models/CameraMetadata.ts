@@ -1,3 +1,4 @@
+
 export class CameraResolution {
     x: number;
     y: number;
@@ -22,38 +23,42 @@ export class CameraResolution {
     }
 }
 
-export class CameraDeviceInformation {
+export class CameraMetadata {
     make: string;
     model: string;
     serialNumber: string;
+    assetId: string;
     resolution: CameraResolution;
 
     constructor() {
         this.make = '';
         this.model = '';
         this.serialNumber = '';
+        this.assetId = '';
         this.resolution = new CameraResolution();
     }
 
-    static fromJSON(json: any): CameraDeviceInformation {
-        const device = new CameraDeviceInformation();
+    static fromJSON(json: any): CameraMetadata {
+        const device = new CameraMetadata();
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
+        device.assetId = json.assetId || '';
         device.resolution = json.resolution ? CameraResolution.fromJSON(json.resolution) : new CameraResolution();
         return device;
     }
 
-    static toJSON(device: CameraDeviceInformation): any {
+    static toJSON(device: CameraMetadata): any {
         return {
             make: device.make,
             model: device.model,
             serialNumber: device.serialNumber,
+            assetId: device.assetId,
             resolution: CameraResolution.toJSON(device.resolution)
         };
     }
 }
-
+/** 
 export class CameraMetadata {
     deviceInformation: CameraDeviceInformation;
 
@@ -75,3 +80,5 @@ export class CameraMetadata {
         };
     }
 }
+*/
+
