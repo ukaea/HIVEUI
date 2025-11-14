@@ -10,6 +10,9 @@
 
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
+	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
+	import { CoolantInformation, HeatingInformation, ThermocoupleInformation } from '$lib/models/CompiledPulseMetadata';
 
 	async function handleTrigger() {
 		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
@@ -31,7 +34,7 @@
 		pulseNumber: string;
 		dataCaptureStart: Date;
 		pulseStart: Date;
-		pulseEnd: string;
+		pulseEnd: Date;
 		pulseDuration: string;
 		operator1: PersonMetadata;
 		operator2: PersonMetadata;
@@ -41,7 +44,7 @@
 		comment: string;
 		pulseQuality: string;
 		experimentNumber: string;
-		configurationUUID: string;
+		configurationId: number;
 		status: string;
 		constructor() {
 			this.pulseNumber = '';
@@ -57,7 +60,7 @@
 			this.comment = '';
 			this.pulseQuality = '';
 			this.experimentNumber = '';
-			this.configurationUUID = '';
+			this.configurationId = 0;
 			this.status = '';
 		}
 	}
@@ -71,10 +74,28 @@
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentName', initialDirection: 'asc' });
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
 
+	
+	const experimentService = new GenericDataService<ExperimentMetadata>({
+		modelClass: ExperimentMetadataModel,
+		endpoint: '/api/v1/experiments',
+		localFolder: 'experiments',
+		idField: 'experimentNumber',
+		displayName: 'experiments'
+	});
+
+	const configurationService = new GenericDataService<ConfigurationMetadata>({
+		modelClass: ConfigurationMetadata,
+		endpoint: '/api/v1/configurations',
+		localFolder: 'configurations',
+		idField: 'configurationId',
+		displayName: 'configurations'
+	});
+
 	order.subscribe((value) => {
 		sortedData = sortedData.sort($order.handler);
 	});
 
+	
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
@@ -93,81 +114,46 @@
 			mapped.dataCaptureStart = new Date(mapped.dataCaptureStart);
 		}
 
-		console.log('Mapped Pulse:', mapped);
-
 		return mapped;
 	}
 
 	async function fetchExperiments() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('experiments');
-				const experimentData = await Promise.all(files.map((filename: string) => getJsonContent('experiments/' + filename)));
-				const experiments = await Promise.all(experimentData.map(ExperimentMetadata.fromJSON));
-				sortedExperiments = experiments.sort($experimentOrder.handler);
-
-				experimentOptions = sortedExperiments.map((experiment) => ({
-					label: experiment.experimentTitle,
-					value: experiment.experimentNumber
-				}));
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/experiments`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch experiments');
-			const data = await response.json();
-			sortedExperiments = data.map(ExperimentMetadata.fromJSON).sort($experimentOrder.handler);
+			sortedExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			experimentOptions = sortedExperiments.map((exp) => ({
+				label: `${exp.experimentNumber} - ${exp.description}`,
+				value: exp.experimentNumber
+			}));
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
-			alert('Failed to load experiments. Please try again later.');
+			alert((error as Error).message);
 		}
 	}
 
 	async function fetchConfigurations() {
 		try {
-			const accessToken = $page.data.session?.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('configurations');
-				const configurationData = await Promise.all(files.map((filename: string) => getJsonContent('configurations/' + filename)));
-				const configurations = await Promise.all(configurationData.map(ConfigurationMetadata.fromJSON));
-				sortedConfigurations = configurations.sort($configurationOrder.handler);
-
-				configurationOptions = sortedConfigurations.map((configuration) => ({
-					label: configuration.configurationName,
-					value: configuration.configurationUUID
-				}));
-				return;
-			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/configurations`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch configurations');
-			const data = await response.json();
-			const configurations = await Promise.all(data.map(ConfigurationMetadata.fromJSON));
-			sortedConfigurations = configurations.sort($configurationOrder.handler);
+			sortedConfigurations = await configurationService.fetchAll(localOnly, $page.data.session);
+			configurationOptions = sortedConfigurations.map((config) => ({
+				label: `${config.configurationId} - ${config.configurationName}`,
+				value: config.configurationId
+			}));
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
-			alert('Failed to load configurations. Please try again later.');
+			alert((error as Error).message);
 		}
 	}
 
 	async function fetchPulses() {
 		try {
 			if (localOnly) {
-				const pulseFiles = await getJsonFiles('pulses');
-				const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
-				sortedData = pulseData.map(mapToPulse).sort($order.handler);
-				return;
+				// const pulseFiles = await getJsonFiles('pulses');
+				// const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
+				// sortedData = pulseData.map(mapToPulse).sort($order.handler);
+				// return;
+				// const globalPulseData = await getJsonFile(`${PUBLIC_ROOT_FOLDER_LOCATION}`, 'global-pulse-data.json');
+
+				// Contains a list of Pulse Ids and their status
+
 			}
 		} catch (error) {
 			console.error('Error fetching pulses:', error);
@@ -180,7 +166,7 @@
 			return;
 		}
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -237,7 +223,7 @@
 	async function handleAPISubmission(metadata: CompiledPulseMetadata, isNewEntry: boolean): Promise<void> {
 		//Not currently implemented
 		try {
-			const accessToken = $page.data.session?.sessionToken;
+			const accessToken = $page.data.session?.user.sessionToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -265,9 +251,11 @@
 
 	async function handlePulseFileSubmission(metadata: CompiledPulseMetadata): Promise<void> {
 		try {
-			const ID = metadata.pulseId;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${ID}`;
-			const fileName = metadata.json;
+			const pulseNumber = metadata.pulseNumber;
+			const sampleNumber = metadata.sampleNumber;
+			const experimentNumber = metadata.experimentNumber;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}`;
+			const fileName = "manual-metadata.json";
 
 			const saveMetadata = {
 				targetPath: `${filePath}/${fileName}`,
@@ -381,7 +369,7 @@
 				pulseLocation: `pulses/${metadata.pulseNumber}.json`,
 				pulseStatus: metadata.status,
 				experimentNumber: metadata.experimentNumber,
-				configurationUUID: metadata.configurationUUID
+				configurationId: metadata.configurationId
 			};
 
 			const saveMetadata = {
@@ -424,7 +412,7 @@
 						alert(`Failed to delete pulse: ${error.message}`);
 					});
 			} else {
-				const accessToken = $page.data.session?.sessionToken;
+				const accessToken = $page.data.session?.user.sessionToken;
 				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseNumber}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
@@ -447,6 +435,8 @@
 		fetchPulses();
 		fetchExperiments();
 		fetchConfigurations();
+
+		console.log('Experiments:', sortedExperiments);	
 	});
 
 	let pulseQualityOptions: MenuOption[] = [
@@ -496,22 +486,8 @@
 			data={sortedData}
 			columns={[
 				{ name: 'pulseNumber', align: 'left', header: 'Pulse Number' },
-				{name: 'experimentNumber', align: 'left', header: 'Experiment Name',
-					// @ts-expect-error
-					format: (value) => {
-						if (!value) return '';
-						const experiment = sortedExperiments.find((exp) => exp.experimentNumber === value);
-						return experiment ? experiment.experimentTitle : '';
-					}
-				},
-				{ name: 'configurationUUID', align: 'left', header: 'Configuration Name',
-					// @ts-expect-error
-					format: (value) => {
-						if (!value) return '';
-						const configuration = sortedConfigurations.find((conf) => conf.configurationUUID === value);
-						return configuration ? configuration.configurationName : '';
-					}
-				},
+				{name: 'experimentNumber', align: 'left', header: 'Experiment Number'},
+				{ name: 'configurationId', align: 'left', header: 'Configuration Id'},
 				{
 					name: 'pulseStart',
 					align: 'left',
@@ -585,10 +561,10 @@
 				<SelectField
 					options={configurationOptions}
 					label="Configuration"
-					value={draft.configurationUUID}
+					value={draft.configurationId}
 					autoplacement={false}
 					on:change={(e) => {
-						draft.configurationUUID = e.detail.value;
+						draft.configurationId = e.detail.value;
 						refresh();
 					}}
 				/>

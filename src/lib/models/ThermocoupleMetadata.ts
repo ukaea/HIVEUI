@@ -1,41 +1,29 @@
 export class ThermocoupleMetadata {
-    status: string;
     attachment: string;
-    tcType: string;
-    location: string;
-    areaType: string;
-    circleDiameter: string;
-    noiseFloor: string;
+    thermocoupleType: string;
+    circleDiameter: number;
+    noiseFloor: number;
 
     constructor() {
-        this.status = '';
         this.attachment = '';
-        this.tcType = '';
-        this.location = '';
-        this.areaType = '';
-        this.circleDiameter = '';
-        this.noiseFloor = '';
+        this.thermocoupleType = '';
+        this.circleDiameter = 0;
+        this.noiseFloor = 0;
     }
 
     static fromJSON(json: any): ThermocoupleMetadata {
         const metadata = new ThermocoupleMetadata();
-        metadata.status = json.status || '';
         metadata.attachment = json.attachment || '';
-        metadata.tcType = json.tcType || json.thermocoupleType || '';
-        metadata.location = json.location || '';
-        metadata.areaType = json.areaType || '';
-        metadata.circleDiameter = json.circleDiameter || '';
-        metadata.noiseFloor = json.noiseFloor || '';
+        metadata.thermocoupleType = json.tcType || json.thermocoupleType || '';
+        metadata.circleDiameter = json.circleDiameter || 0;
+        metadata.noiseFloor = json.noiseFloor || 0;
         return metadata;
     }
 
     static toJSON(metadata: ThermocoupleMetadata): any {
         return {
-            status: metadata.status,
             attachment: metadata.attachment,
-            thermocoupleType: metadata.tcType,
-            location: metadata.location,
-            areaType: metadata.areaType,
+            thermocoupleType: metadata.thermocoupleType,
             circleDiameter: metadata.circleDiameter,
             noiseFloor: metadata.noiseFloor
         };

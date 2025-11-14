@@ -3,26 +3,136 @@
 	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
 	import { tableOrderStore } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-	import {
-		ThermocoupleMetadata,
-		CameraMetadata,
-		LensMetadata,
-		DicMetadata,
-		FlowmeterMetadata,
-		PyrometerMetadata,
-		IrCameraMetadata
-	} from '$lib/models';
+	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
+	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
+	import { GenericDataService } from '$lib/services/GenericDataService';
+	import Zod from 'zod';
 
-	let sortedData: any[] = [];
-	let selectedMetadata: any = null;
-	let selectedEquipmentType = '';
+	let allEquipment: EquipmentMetadata[] = [];
+	let selectedEquipment: EquipmentMetadata | null = null;
+	let selectedEquipmentType: string | null | undefined = null;
+
 	let isNewEntry = false;
 	let open = false;
 	let localOnly = false;
 
 	const equipmentOrder = tableOrderStore({ initialBy: 'equipmentName', initialDirection: 'asc' });
+	equipmentOrder.subscribe(() => {
+		allEquipment = allEquipment.sort($equipmentOrder.handler);
+	});
+
+	let thermocoupleSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			attachment: Zod.string().min(1, 'Attachment is required'),
+			thermocoupleType: Zod.string().min(1, 'Thermocouple Type is required'),
+			circleDiameter: Zod.number().min(0, 'Circle Diameter is required'),
+			noiseFloor: Zod.number().min(0, 'Noise Floor is required')
+		})
+	});
+
+	let cameraSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().optional(),
+			assetId: Zod.string().optional(),
+			resolution: Zod.object({
+				x: Zod.number().min(1, 'Resolution X is required'),
+				y: Zod.number().min(1, 'Resolution Y is required')
+			})
+		})
+	});
+
+	let lensSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			deviceInformation: Zod.object({
+				make: Zod.string().min(1, 'Make is required'),
+				model: Zod.string().min(1, 'Model is required'),
+				serialNumber: Zod.string().min(1, 'Serial Number is required'),
+				focalLength: Zod.string().min(1, 'Focal Length is required'),
+				aperture: Zod.string().min(1, 'Aperture is required'),
+				fieldOfViewX: Zod.string().min(1, 'Field of View X is required'),
+				fieldOfViewY: Zod.string().min(1, 'Field of View Y is required')
+			})
+		})
+	});
+
+	let flowmeterSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().min(1, 'Serial Number is required'),
+			assetId: Zod.string().optional(),
+			flowmeterType: Zod.string().min(1, 'Flowmeter Type is required'),
+			flowRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Flow is required'),
+				maximum: Zod.number().min(0, 'Maximum Flow is required')
+			})
+		})
+	});
+
+	let pyrometerSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().optional(),
+			assetId: Zod.string().optional(),
+			spectralRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
+				maximum: Zod.number().min(0, 'Maximum Wavelength is required')
+			}),
+			temperatureRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Temperature is required'),
+				maximum: Zod.number().min(0, 'Maximum Temperature is required')
+			})
+		})
+	});
+
+	let ircameraSchema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			deviceInformation: Zod.object({
+				make: Zod.string().min(1, 'Make is required'),
+				model: Zod.string().min(1, 'Model is required'),
+				serialNumber: Zod.string().min(1, 'Serial Number is required'),
+				resolution: Zod.object({
+					x: Zod.number().min(1, 'Resolution X is required'),
+					y: Zod.number().min(1, 'Resolution Y is required')
+				}),
+				spectralRange: Zod.object({
+					minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
+					maximum: Zod.number().min(0, 'Maximum Wavelength is required')
+				}),
+				temperatureRange: Zod.object({
+					minimum: Zod.number().min(0, 'Minimum Temperature is required'),
+					maximum: Zod.number().min(0, 'Maximum Temperature is required')
+				})
+			}),
+			deviceSettings: Zod.object({
+				emissivity: Zod.number().min(0, 'Emissivity is required'),
+				framerate: Zod.number().min(0, 'Framerate is required')
+			})
+		})
+	});
+
+	const equipmentService = new GenericDataService<EquipmentMetadata>({
+		modelClass: EquipmentMetadata,
+		endpoint: '/api/v1/equipment',
+		localFolder: 'equipment',
+		idField: 'equipmentName',
+		displayName: 'equipment'
+	});
 
 	const equipmentTypes = [
 		{ label: 'Thermocouple', value: 'thermocouple' },
@@ -33,12 +143,52 @@
 		{ label: 'IR Camera', value: 'ir-camera' }
 	];
 
-	equipmentOrder.subscribe(() => {
-		sortedData = sortedData.sort($equipmentOrder.handler);
-	});
+	async function fetchEquipment() {
+		try {
+			allEquipment = await equipmentService.fetchAll(localOnly, $page.data.session);
+		} catch (error) {
+			console.error('Error fetching equipment:', error);
+			alert((error as Error).message);
+		}
+	}
 
-	function createNewEquipment(type: string) {
-		switch(type) {
+	async function handleMetadataSubmit() {
+		if (!selectedEquipment) {
+			alert('No metadata selected.');
+			return;
+		}
+
+		if (!selectedEquipmentType) {
+			alert('No equipment type selected.');
+			return;
+		}
+
+		let schema = getSchema(selectedEquipmentType);
+		if (!schema) {
+			alert('No schema found for the selected equipment type.');
+			return;
+		}
+
+		//Validate against zod schema
+		const parseResult = schema.safeParse(selectedEquipment);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
+			return;
+		}
+
+		try {
+			await equipmentService.submit(selectedEquipment, localOnly, $page.data.session, isNewEntry);
+			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
+			handleModalClose();
+			await fetchEquipment();
+		} catch (error) {
+			console.error('Submission error:', error);
+			alert(`Failed to submit equipment: ${(error as Error).message}`);
+		}
+	}
+
+	function createNewEquipment(type: string | null | undefined): any {
+		switch (type) {
 			case 'thermocouple':
 				return JSON.parse(JSON.stringify(new ThermocoupleMetadata()));
 			case 'camera':
@@ -54,260 +204,55 @@
 			case 'ir-camera':
 				return JSON.parse(JSON.stringify(new IrCameraMetadata()));
 			default:
-				return JSON.parse(JSON.stringify(new ThermocoupleMetadata()));
+				return null;
 		}
 	}
 
-	async function fetchEquipment() {
-		try {
-			const accessToken = $page.data.session?.user.accessToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
+	function handleDelete(): void {
+		if (!selectedEquipment) return;
+
+		if (confirm(`Are you sure you want to delete equipment ${selectedEquipment.equipmentName}?`)) {
+			try {
+				equipmentService.delete(selectedEquipment, localOnly, $page.data.session);
+				alert('Equipment deleted successfully');
+				handleModalClose();
+				fetchEquipment();
+			} catch (error) {
+				console.error('Error deleting equipment metadata:', error);
 			}
-
-			if (localOnly) {
-				const files = await getJsonFiles('equipment');
-				const equipmentData = await Promise.all(files.map((filename: string) => getJsonContent('equipment/' + filename)));
-
-				// Transform equipment data to include display properties
-				const equipment = equipmentData.map((data: any) => {
-					const equipmentType = data.equipmentType || 'unknown';
-					let name = '';
-					let make = '';
-					let model = '';
-
-					// Extract display information based on equipment type
-					if (data) {
-						make = data.make || '';
-						model = data.model || '';
-						name = `${make} ${model}`.trim();
-					} else if (equipmentType === 'thermocouple') {
-						name = `${data.tcType || 'Thermocouple'} - ${data.location || 'Unknown Location'}`;
-						make = data.tcType || '';
-						model = data.attachment || '';
-					}
-
-					return {
-						...data,
-						type: equipmentType,
-						name: name || `${equipmentType} - ${data.equipmentUUID || 'No UUID'}`,
-						make: make,
-						model: model
-					};
-				});
-
-				sortedData = equipment.sort($equipmentOrder.handler);
-				return;
-			}
-
-			// For API mode, fetch from endpoint
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment`, {
-				headers: { Authorization: `Bearer ${accessToken}` }
-			});
-
-			if (!response.ok) throw new Error('Failed to fetch equipment');
-			const data = await response.json();
-			sortedData = data.sort($equipmentOrder.handler);
-		} catch (error) {
-			console.error('Error fetching equipment:', error);
-			alert('Failed to load equipment. Please try again later.');
-		}
-	}
-
-	async function handleMetadataSubmit() {
-		const rawMetadata = selectedMetadata;
-		if (!rawMetadata) {
-			alert('No equipment metadata to save.');
-			return;
-		}
-
-		// Generate UUID if it's a new entry
-		if (isNewEntry) {
-			rawMetadata.equipmentUUID = crypto.randomUUID();
-		}
-
-		console.log('Submitting equipment metadata:', rawMetadata);
-
-		try {
-			await handleFileSubmission(rawMetadata);
-		} catch (error) {
-			console.error('File submission failed:', error);
-		}
-
-		if (localOnly) {
-			handleModalClose();
-			await fetchEquipment();
-			return;
-		}
-
-		try {
-			await handleAPISubmission(rawMetadata, isNewEntry);
-			handleModalClose();
-			await fetchEquipment();
-		} catch (error) {
-			console.error('API submission failed:', error);
-		}
-	}
-
-	async function handleFileSubmission(rawMetadata: any): Promise<void> {
-		try {
-			const equipmentUUID = rawMetadata.equipmentUUID || crypto.randomUUID();
-			rawMetadata.equipmentUUID = equipmentUUID;
-
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/equipment/`;
-			const fileName = `${equipmentUUID}.json`;
-			// Convert back to the appropriate class for proper JSON serialization
-			let cleanedMetadata;
-			switch(selectedEquipmentType) {
-				case 'thermocouple':
-					const thermocouple = ThermocoupleMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = ThermocoupleMetadata.toJSON(thermocouple);
-					break;
-				case 'camera':
-					const camera = CameraMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = CameraMetadata.toJSON(camera);
-					break;
-				case 'lens':
-					const lens = LensMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = LensMetadata.toJSON(lens);
-					break;
-				case 'dic':
-					const dic = DicMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = DicMetadata.toJSON(dic);
-					break;
-				case 'flowmeter':
-					const flowmeter = FlowmeterMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = FlowmeterMetadata.toJSON(flowmeter);
-					break;
-				case 'pyrometer':
-					const pyrometer = PyrometerMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = PyrometerMetadata.toJSON(pyrometer);
-					break;
-				case 'ir-camera':
-					const irCamera = IrCameraMetadata.fromJSON(rawMetadata);
-					cleanedMetadata = IrCameraMetadata.toJSON(irCamera);
-					break;
-				default:
-					cleanedMetadata = rawMetadata;
-			}
-
-			// Add equipment type and UUID to the metadata
-			cleanedMetadata.equipmentType = selectedEquipmentType;
-			cleanedMetadata.equipmentUUID = equipmentUUID;
-
-			const saveMetadata = { targetPath: `${filePath}/${fileName}`, metadata: cleanedMetadata };
-
-			const fileResponse = await fetch('/api/save-json', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(saveMetadata)
-			});
-
-			if (!fileResponse.ok) {
-				const errorData = await fileResponse.json();
-				throw new Error(`Failed to save metadata file: ${errorData.message}`);
-			}
-
-			console.log('Equipment metadata file saved successfully');
-			alert('Equipment metadata file saved successfully');
-		} catch (error: any) {
-			console.error('Error saving metadata file:', error);
-			alert(`Failed to save metadata file: ${error.message}`);
-			throw error;
-		}
-	}
-
-	async function handleAPISubmission(rawMetadata: any, isNewEntry: boolean): Promise<void> {
-		try {
-			const accessToken = $page.data.session?.user.accessToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
-			const url = `${PUBLIC_METACAT_URL}/api/v1/equipment?schema=any`;
-			const method = isNewEntry ? 'POST' : 'POST';
-			const endpointResponse = await fetch(url, {
-				method: method,
-				headers: {
-					'Content-Type': 'application/json',
-					Authorization: `Bearer ${accessToken}`
-				},
-				body: JSON.stringify(rawMetadata)
-			});
-
-			if (!endpointResponse.ok) throw new Error('Failed to save equipment to endpoint');
-
-			console.log('Equipment submitted to API successfully');
-			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
-		} catch (error: any) {
-			console.error('Error submitting equipment to API:', error);
-			alert(`Failed to submit equipment to API: ${error.message}`);
-			throw error;
 		}
 	}
 
 	function handleRowClick(row: any): void {
-		selectedMetadata = JSON.parse(JSON.stringify(row));
-		selectedEquipmentType = row.type || 'thermocouple';
+		selectedEquipment = JSON.parse(JSON.stringify(row));
+		selectedEquipmentType = row.equipmentType || 'thermocouple';
+		console.log('Selected Equipment:', selectedEquipment);
 		isNewEntry = false;
 		open = true;
 	}
 
 	function handleNewEntry(): void {
-		selectedMetadata = createNewEquipment(selectedEquipmentType);
+		if (!selectedEquipmentType) {
+			alert('Please select an equipment type first.');
+			return;
+		}
+
+		selectedEquipment = { ...new EquipmentMetadata() };
+		selectedEquipment.equipmentType = selectedEquipmentType;
+		selectedEquipment.equipment = createNewEquipment(selectedEquipmentType);
+
 		isNewEntry = true;
 		open = true;
 	}
 
 	function handleModalClose() {
 		open = false;
-		selectedMetadata = null;
+		selectedEquipment = null;
 		isNewEntry = false;
 	}
 
 	function handleFormCancel() {
 		handleModalClose();
-	}
-
-	function handleDelete(): void {
-		if (!selectedMetadata) return;
-
-		const equipmentUUID = selectedMetadata.equipmentUUID;
-		if (confirm(`Are you sure you want to delete this equipment with UUID: ${equipmentUUID}?`)) {
-			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/equipment/${equipmentUUID}.json`;
-				fetch('/api/delete-json', {
-					method: 'POST',
-					headers: { 'Content-Type': 'application/json' },
-					body: JSON.stringify({ targetPath: filePath })
-				})
-				.then((response) => {
-					if (!response.ok) throw new Error('Failed to delete local file');
-					alert('Equipment deleted successfully');
-					fetchEquipment();
-				})
-				.catch((error) => {
-					console.error('Error deleting local file:', error);
-					alert(`Failed to delete equipment: ${error.message}`);
-				});
-			} else {
-				const accessToken = $page.data.session?.user.accessToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/equipment/${equipmentUUID}`, {
-					method: 'DELETE',
-					headers: { Authorization: `Bearer ${accessToken}` }
-				})
-				.then((response) => {
-					if (!response.ok) throw new Error('Failed to delete equipment from API');
-					alert('Equipment deleted successfully');
-					fetchEquipment();
-				})
-				.catch((error) => {
-					console.error('Error deleting equipment from API:', error);
-					alert(`Failed to delete equipment: ${error.message}`);
-				});
-			}
-			handleModalClose();
-		}
 	}
 
 	onMount(() => {
@@ -316,33 +261,50 @@
 		}
 		fetchEquipment();
 	});
+
+	function getSchema(selectedEquipmentType: string | null | undefined): Zod.ZodType<any, Zod.ZodTypeDef, any> | undefined {
+		switch (selectedEquipmentType) {
+			case 'thermocouple':
+				return thermocoupleSchema;
+			case 'camera':
+				return cameraSchema;
+			case 'lens':
+				return lensSchema;
+			case 'flowmeter':
+				return flowmeterSchema;
+			case 'pyrometer':
+				return pyrometerSchema;
+			case 'ir-camera':
+				return ircameraSchema;
+			default:
+				return undefined;
+		}
+	}
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
 	<div class="mb-4 flex justify-between items-center">
 		<h2 class="text-2xl font-bold">Equipment</h2>
 		<div class="flex gap-2 items-center">
-		<div class="font-bold">
-			<SelectField
-				label="Equipment Type"
-				value={selectedEquipmentType}
-				options={equipmentTypes}
-				on:change={(e) => {
-					selectedEquipmentType = e.detail.value;
-				}}
-			/>
-		</div> 
+			<div class="font-bold">
+				<SelectField
+					label="Equipment Type"
+					value={selectedEquipmentType}
+					options={equipmentTypes}
+					on:change={(e) => {
+						selectedEquipmentType = e.detail.value;
+					}}
+				/>
+			</div>
 			<Button on:click={handleNewEntry} variant="fill" disabled={!selectedEquipmentType}>New Equipment</Button>
 		</div>
 	</div>
 	<div class="table-container">
 		<Table
-			data={sortedData}
+			data={allEquipment}
 			columns={[
-				{ name: 'type', align: 'left', header: 'Type' },
-				{ name: 'name', align: 'left', header: 'Name' },
-				{ name: 'make', align: 'left', header: 'Make' },
-				{ name: 'model', align: 'left', header: 'Model' }
+				{ name: 'equipmentName', align: 'left', header: 'Name' },
+				{ name: 'equipmentType', align: 'left', header: 'Type' }
 			]}
 			order={equipmentOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
@@ -354,400 +316,575 @@
 <Dialog {open} on:close={handleModalClose} class="equipmentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Equipment' : 'Edit Equipment'}</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
-
+		<Form initial={selectedEquipment} schema={getSchema(selectedEquipmentType)} let:draft let:refresh let:state let:current let:revertAll let:errors>
 			{#if selectedEquipmentType === 'thermocouple'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">Thermocouple Information</h4>
 					<TextField
 						label="Attachment"
-						value={draft.attachment}
+						value={draft.equipment.attachment}
 						on:change={(e) => {
-							draft.attachment = e.detail.value;
+							draft.equipment.attachment = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.attachment}
 					/>
 					<TextField
 						label="Thermocouple Type"
-						value={draft.tcType}
+						value={draft.equipment.thermocoupleType}
 						on:change={(e) => {
-							draft.tcType = e.detail.value;
+							draft.equipment.thermocoupleType = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.thermocoupleType}
 					/>
 					<TextField
 						label="Circle Diameter (mm)"
-						value={draft.circleDiameter}
+						type="integer"
+						value={draft.equipment.circleDiameter}
 						on:change={(e) => {
-							draft.circleDiameter = e.detail.value;
+							draft.equipment.circleDiameter = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.circleDiameter}
 					/>
 					<TextField
 						label="Noise Floor (%)"
-						value={draft.noiseFloor}
+						type="integer"
+						value={draft.equipment.noiseFloor}
 						on:change={(e) => {
-							draft.noiseFloor = e.detail.value;
+							draft.equipment.noiseFloor = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.noiseFloor}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'camera'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">Camera Information</h4>
 					<TextField
 						label="Make"
-						value={draft.make}
+						value={draft.equipment.make}
 						on:change={(e) => {
-							draft.make = e.detail.value;
+							draft.equipment.make = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.make}
 					/>
 					<TextField
 						label="Model"
-						value={draft.model}
+						value={draft.equipment.model}
 						on:change={(e) => {
-							draft.model = e.detail.value;
+							draft.equipment.model = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.model}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.serialNumber}
+						value={draft.equipment.serialNumber}
 						on:change={(e) => {
-							draft.serialNumber = e.detail.value;
+							draft.equipment.serialNumber = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.serialNumber}
 					/>
 					<TextField
 						label="Asset ID"
-						value={draft.assetId}
+						value={draft.equipment.assetId}
 						on:change={(e) => {
-							draft.assetId = e.detail.value;
+							draft.equipment.assetId = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.assetId}
 					/>
 					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
 						label="Resolution X"
-						type="number"
-						value={draft.resolution.x}
+						type="integer"
+						value={draft.equipment.resolution.x}
 						on:change={(e) => {
-							draft.resolution.x = Number(e.detail.value);
+							draft.equipment.resolution.x = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.resolution?.x}
 					/>
 					<TextField
 						label="Resolution Y"
-						type="number"
-						value={draft.resolution.y}
+						type="integer"
+						value={draft.equipment.resolution.y}
 						on:change={(e) => {
-							draft.resolution.y = Number(e.detail.value);
+							draft.equipment.resolution.y = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.resolution?.y}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'lens'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">Lens Information</h4>
 					<TextField
 						label="Make"
-						value={draft.make}
+						value={draft.equipment.deviceInformation.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.equipment.deviceInformation.make = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.make}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.equipment.deviceInformation.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.equipment.deviceInformation.model = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.model}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.equipment.deviceInformation.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.equipment.deviceInformation.serialNumber = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.serialNumber}
 					/>
 					<TextField
 						label="Focal Length (mm)"
-						value={draft.deviceInformation.focalLength}
+						value={draft.equipment.deviceInformation.focalLength}
 						on:change={(e) => {
-							draft.deviceInformation.focalLength = e.detail.value;
+							draft.equipment.deviceInformation.focalLength = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.focalLength}
 					/>
 					<TextField
 						label="Aperture"
-						value={draft.deviceInformation.aperture}
+						value={draft.equipment.deviceInformation.aperture}
 						on:change={(e) => {
-							draft.deviceInformation.aperture = e.detail.value;
+							draft.equipment.deviceInformation.aperture = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.aperture}
 					/>
 					<h4 class="col-span-2 mt-4">Field of View (px)</h4>
 					<TextField
 						label="Field of View X"
-						value={draft.deviceInformation.fieldOfViewX}
+						value={draft.equipment.deviceInformation.fieldOfViewX}
 						on:change={(e) => {
-							draft.deviceInformation.fieldOfViewX = e.detail.value;
+							draft.equipment.deviceInformation.fieldOfViewX = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.fieldOfViewX}
 					/>
 					<TextField
 						label="Field of View Y"
-						value={draft.deviceInformation.fieldOfViewY}
+						value={draft.equipment.deviceInformation.fieldOfViewY}
 						on:change={(e) => {
-							draft.deviceInformation.fieldOfViewY = e.detail.value;
+							draft.equipment.deviceInformation.fieldOfViewY = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.fieldOfViewY}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'flowmeter'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">Flowmeter Information</h4>
 					<TextField
 						label="Make"
-						value={draft.make}
+						value={draft.equipment.make}
 						on:change={(e) => {
-							draft.make = e.detail.value;
+							draft.equipment.make = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.make}
 					/>
 					<TextField
 						label="Model"
-						value={draft.model}
+						value={draft.equipment.model}
 						on:change={(e) => {
-							draft.model = e.detail.value;
+							draft.equipment.model = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.model}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.serialNumber}
+						value={draft.equipment.serialNumber}
 						on:change={(e) => {
-							draft.serialNumber = e.detail.value;
+							draft.equipment.serialNumber = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.serialNumber}
 					/>
 					<TextField
 						label="Asset ID"
-						value={draft.assetId}
+						value={draft.equipment.assetId}
 						on:change={(e) => {
-							draft.assetId = e.detail.value;
+							draft.equipment.assetId = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.assetId}
 					/>
 					<TextField
 						label="Flowmeter Type"
-						value={draft.flowmeterType}
+						value={draft.equipment.flowmeterType}
 						on:change={(e) => {
-							draft.flowmeterType = e.detail.value;
+							draft.equipment.flowmeterType = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.flowmeterType}
 					/>
 					<h4 class="col-span-2 mt-4">Flow Range (L/min)</h4>
 					<TextField
 						label="Minimum Flow"
-						type="number"
-						value={draft.flowRange.minimum}
+						type="integer"
+						value={draft.equipment.flowRange.minimum}
 						on:change={(e) => {
-							draft.flowRange.minimum = Number(e.detail.value);
+							draft.equipment.flowRange.minimum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.flowRange?.minimum}
 					/>
 					<TextField
 						label="Maximum Flow"
-						type="number"
-						value={draft.flowRange.maximum}
+						type="integer"
+						value={draft.equipment.flowRange.maximum}
 						on:change={(e) => {
-							draft.flowRange.maximum = Number(e.detail.value);
+							draft.equipment.flowRange.maximum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.flowRange?.maximum}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'pyrometer'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">Pyrometer Information</h4>
 					<TextField
 						label="Make"
-						value={draft.make}
+						value={draft.equipment.make}
 						on:change={(e) => {
-							draft.make = e.detail.value;
+							draft.equipment.make = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.make}
 					/>
 					<TextField
 						label="Model"
-						value={draft.model}
+						value={draft.equipment.model}
 						on:change={(e) => {
-							draft.model = e.detail.value;
+							draft.equipment.model = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.model}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.serialNumber}
+						value={draft.equipment.serialNumber}
 						on:change={(e) => {
-							draft.serialNumber = e.detail.value;
+							draft.equipment.serialNumber = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.serialNumber}
 					/>
 					<TextField
 						label="Asset ID"
-						value={draft.assetId}
+						value={draft.equipment.assetId}
 						on:change={(e) => {
-							draft.assetId = e.detail.value;
+							draft.equipment.assetId = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.assetId}
 					/>
 					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
 					<TextField
 						label="Minimum Wavelength"
-						type="number"
-						value={draft.spectralRange.minimum}
+						type="integer"
+						value={draft.equipment.spectralRange.minimum}
 						on:change={(e) => {
-							draft.spectralRange.minimum = Number(e.detail.value);
+							draft.equipment.spectralRange.minimum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.spectralRange?.minimum}
 					/>
 					<TextField
 						label="Maximum Wavelength"
-						type="number"
-						value={draft.spectralRange.maximum}
+						type="integer"
+						value={draft.equipment.spectralRange.maximum}
 						on:change={(e) => {
-							draft.spectralRange.maximum = Number(e.detail.value);
+							draft.equipment.spectralRange.maximum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.spectralRange?.maximum}
 					/>
 					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
 					<TextField
 						label="Minimum Temperature"
-						type="number"
-						value={draft.temperatureRange.minimum}
+						type="integer"
+						value={draft.equipment.temperatureRange.minimum}
 						on:change={(e) => {
-							draft.temperatureRange.minimum = Number(e.detail.value);
+							draft.equipment.temperatureRange.minimum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.temperatureRange?.minimum}
 					/>
 					<TextField
 						label="Maximum Temperature"
-						type="number"
-						value={draft.temperatureRange.maximum}
+						type="integer"
+						value={draft.equipment.temperatureRange.maximum}
 						on:change={(e) => {
-							draft.temperatureRange.maximum = Number(e.detail.value);
+							draft.equipment.temperatureRange.maximum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.temperatureRange?.maximum}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'ir-camera'}
 				<div class="p-4 grid grid-cols-2 gap-4">
+					<h4 class="col-span-2 mt-1">General Information</h4>
+					<TextField
+						label="Equipment Name"
+						value={draft.equipmentName}
+						on:change={(e) => {
+							draft.equipmentName = e.detail.value;
+							refresh();
+						}}
+						error={errors.equipmentName}
+					/>
+
+					<TextField
+						label="Equipment Type"
+						value={draft.equipmentType}
+						on:change={(e) => {
+							draft.equipment.tcType = e.detail.value;
+							refresh();
+						}}
+						disabled
+						error={errors.equipmentType}
+					/>
+
 					<h4 class="col-span-2 mt-1">IR Camera Information</h4>
 					<TextField
 						label="Make"
-						value={draft.deviceInformation.make}
+						value={draft.equipment.deviceInformation.make}
 						on:change={(e) => {
-							draft.deviceInformation.make = e.detail.value;
+							draft.equipment.deviceInformation.make = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.make}
 					/>
 					<TextField
 						label="Model"
-						value={draft.deviceInformation.model}
+						value={draft.equipment.deviceInformation.model}
 						on:change={(e) => {
-							draft.deviceInformation.model = e.detail.value;
+							draft.equipment.deviceInformation.model = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.model}
 					/>
 					<TextField
 						label="Serial Number"
-						value={draft.deviceInformation.serialNumber}
+						value={draft.equipment.deviceInformation.serialNumber}
 						on:change={(e) => {
-							draft.deviceInformation.serialNumber = e.detail.value;
+							draft.equipment.deviceInformation.serialNumber = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.serialNumber}
 					/>
 					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
 						label="Resolution X"
-						type="number"
-						value={draft.deviceInformation.resolution.x}
+						type="integer"
+						value={draft.equipment.deviceInformation.resolution.x}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.x = Number(e.detail.value);
+							draft.equipment.deviceInformation.resolution.x = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.resolution?.x}
 					/>
 					<TextField
 						label="Resolution Y"
-						type="number"
-						value={draft.deviceInformation.resolution.y}
+						type="integer"
+						value={draft.equipment.deviceInformation.resolution.y}
 						on:change={(e) => {
-							draft.deviceInformation.resolution.y = Number(e.detail.value);
+							draft.equipment.deviceInformation.resolution.y = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.resolution?.y}
 					/>
 					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
 					<TextField
 						label="Minimum Wavelength"
-						type="number"
-						value={draft.deviceInformation.spectralRange.minimum}
+						type="integer"
+						value={draft.equipment.deviceInformation.spectralRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.minimum = Number(e.detail.value);
+							draft.equipment.deviceInformation.spectralRange.minimum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.spectralRange?.minimum}
 					/>
 					<TextField
 						label="Maximum Wavelength"
-						type="number"
-						value={draft.deviceInformation.spectralRange.maximum}
+						type="integer"
+						value={draft.equipment.deviceInformation.spectralRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.spectralRange.maximum = Number(e.detail.value);
+							draft.equipment.deviceInformation.spectralRange.maximum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.spectralRange?.maximum}
 					/>
 					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
 					<TextField
 						label="Minimum Temperature"
-						type="number"
-						value={draft.deviceInformation.temperatureRange.minimum}
+						type="integer"
+						value={draft.equipment.deviceInformation.temperatureRange.minimum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.minimum = Number(e.detail.value);
+							draft.equipment.deviceInformation.temperatureRange.minimum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.temperatureRange?.minimum}
 					/>
 					<TextField
 						label="Maximum Temperature"
-						type="number"
-						value={draft.deviceInformation.temperatureRange.maximum}
+						type="integer"
+						value={draft.equipment.deviceInformation.temperatureRange.maximum}
 						on:change={(e) => {
-							draft.deviceInformation.temperatureRange.maximum = Number(e.detail.value);
+							draft.equipment.deviceInformation.temperatureRange.maximum = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceInformation?.temperatureRange?.maximum}
 					/>
 					<h4 class="col-span-2 mt-4">Device Settings</h4>
 					<TextField
 						label="Emissivity"
-						type="number"
-						step="0.01"
-						value={draft.deviceSettings.emissivity}
+						type="decimal"
+						value={draft.equipment.deviceSettings.emissivity}
 						on:change={(e) => {
-							draft.deviceSettings.emissivity = Number(e.detail.value);
+							draft.equipment.deviceSettings.emissivity = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceSettings?.emissivity}
 					/>
 					<TextField
 						label="Framerate (Hz)"
-						type="number"
-						value={draft.deviceSettings.framerate}
+						type="integer"
+						value={draft.equipment.deviceSettings.framerate}
 						on:change={(e) => {
-							draft.deviceSettings.framerate = Number(e.detail.value);
+							draft.equipment.deviceSettings.framerate = e.detail.value;
 							refresh();
 						}}
+						error={errors.equipment?.deviceSettings?.framerate}
 					/>
 				</div>
 			{/if}
@@ -760,11 +897,12 @@
 				{/if}
 				<div class="flex gap-2">
 					<Button
+						type="submit"
+						variant="fill"
 						on:click={() => {
-							selectedMetadata = current;
+							selectedEquipment = current;
 							handleMetadataSubmit();
-						}}
-						variant="fill">Save</Button
+						}}>Save</Button
 					>
 					<Button
 						on:click={() => {

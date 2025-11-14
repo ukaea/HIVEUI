@@ -5,13 +5,13 @@ import { getJsonContent } from "$lib/jsonUtils";
 import type { MetadataModel } from '$lib/services/GenericDataService';
 
 export class ConfigurationMetadata {
-    configurationUUID: string;
+    configurationId: number;
     configurationName: string;
     equipmentCombinations: CombinationMetadata[];
     configurationDescription: string;
 
     constructor() {
-        this.configurationUUID = '';
+        this.configurationId = 0;
         this.configurationName = '';
         this.equipmentCombinations = [];
         this.configurationDescription = '';
@@ -19,17 +19,17 @@ export class ConfigurationMetadata {
 
     static async fromJSON(json: any): Promise<ConfigurationMetadata> {
         const config = new ConfigurationMetadata();
-        config.configurationUUID = json.configurationUUID || '';
+        config.configurationId = json.configurationId || 0;
         config.configurationName = json.configurationName || '';
         config.configurationDescription = json.configurationDescription || '';
 
         if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
-            const combinationPromises = json.equipmentCombinations.map(async (combinationUUID: string) => {
+            const combinationPromises = json.equipmentCombinations.map(async (combinationId: number) => {
                 try {
-                    const combinationData = await getJsonContent(`combinations/${combinationUUID}.json`);
+                    const combinationData = await getJsonContent(`combinations/combi${combinationId}.json`);
                     return await CombinationMetadata.fromJSON(combinationData);
                 } catch (error) {
-                    console.error(`Failed to load combination ${combinationUUID}:`, error);
+                    console.error(`Failed to load combination ${combinationId}:`, error);
                     return null;
                 }
             });
@@ -43,9 +43,9 @@ export class ConfigurationMetadata {
 
     static toJSON(config: ConfigurationMetadata): any {
         return {
-            configurationUUID: config.configurationUUID,
+            configurationUUID: config.configurationId,
             configurationName: config.configurationName,
-            equipmentCombinations: config.equipmentCombinations.map(combination => combination.combinationUUID),
+            equipmentCombinations: config.equipmentCombinations.map(combination => combination.combinationId),
             configurationDescription: config.configurationDescription
         };
     }

@@ -1,3 +1,4 @@
+import type { MetadataModel } from '$lib/services/GenericDataService';
 import {
     CameraMetadata,
     DicMetadata,
@@ -15,12 +16,12 @@ type Equipment = DicMetadata | ThermocoupleMetadata | CameraMetadata |
 export class EquipmentMetadata {
 	equipmentName: string;
     equipmentType: string;
-    equipmentConfig: Equipment | null
+    equipment: Equipment | null
 
 	constructor() {
 		this.equipmentName = '';
         this.equipmentType = ''
-        this.equipmentConfig = null;
+        this.equipment = null;
 	}
 
     static fromJSON(json: any): EquipmentMetadata {
@@ -29,28 +30,28 @@ export class EquipmentMetadata {
         equipment.equipmentType = json.equipmentType || '';
         switch (json.equipmentType) {
             case "thermocouple":
-                equipment.equipmentConfig = ThermocoupleMetadata.fromJSON(json.equipment);
+                equipment.equipment = ThermocoupleMetadata.fromJSON(json.equipment);
                 break;
             case "camera":
-                equipment.equipmentConfig = CameraMetadata.fromJSON(json.equipment);
+                equipment.equipment = CameraMetadata.fromJSON(json.equipment);
                 break;
             case "lens":
-                equipment.equipmentConfig = LensMetadata.fromJSON(json.equipment);
+                equipment.equipment = LensMetadata.fromJSON(json.equipment);
                 break;
             case "dic":
-                equipment.equipmentConfig = DicMetadata.fromJSON(json.equipment);
+                equipment.equipment = DicMetadata.fromJSON(json.equipment);
                 break;
             case "flowmeter":
-                equipment.equipmentConfig = FlowmeterMetadata.fromJSON(json.equipment);
+                equipment.equipment = FlowmeterMetadata.fromJSON(json.equipment);
                 break;
             case "pyrometer":
-                equipment.equipmentConfig = PyrometerMetadata.fromJSON(json.equipment);
+                equipment.equipment = PyrometerMetadata.fromJSON(json.equipment);
                 break;
             case "ir-camera":
-                equipment.equipmentConfig = IrCameraMetadata.fromJSON(json.equipment);
+                equipment.equipment = IrCameraMetadata.fromJSON(json.equipment);
                 break;
             default:
-                equipment.equipmentConfig = null;
+                equipment.equipment = null;
         }
         return equipment;
     }
@@ -59,7 +60,10 @@ export class EquipmentMetadata {
         return {
             equipmentName: equipment.equipmentName,
             equipmentType: equipment.equipmentType,
-            equipment: equipment.equipmentConfig
+            equipment: equipment.equipment
         };
     }
 }
+
+// Export the model class implementation for the GenericDataService
+export const EquipmentMetadataModel: MetadataModel<EquipmentMetadata> = EquipmentMetadata;
