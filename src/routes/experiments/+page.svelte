@@ -63,7 +63,7 @@
 
 	async function fetchMembers() {
 		try {
-			allMembers = await MemberService.getMembers("HIVE");
+			//allMembers = await MemberService.getMembers("HIVE");
 		} catch (error) {
 			console.error('Error fetching members:', error);
 			alert((error as Error).message);

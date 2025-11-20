@@ -1,7 +1,8 @@
 services:
   hiveui:
-    image: harbor.stfc.ac.uk/fcl/hive-ui:dev
+    image: hive-ui:dev
     pull_policy: never
     env_file: ".env"
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "3003:3003"
