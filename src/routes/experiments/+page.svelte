@@ -18,26 +18,6 @@
 	let isNewEntry = false;
 	let localOnly = false;
 
-	let experimentSchema = Zod.object({
-		experimentNumber: Zod.number().min(1, 'Experiment Number must be greater than 0'),
-		startDate: Zod.date(),
-		endDate: Zod.date().optional(),
-		description: Zod.string().min(1, 'Description is required'),
-		leadInvestigator: Zod.object({
-			firstName: Zod.string().min(1, 'First name is required'),
-			lastName: Zod.string().min(1, 'Last name is required'),
-			email: Zod.string().email('Invalid email address')
-		}, {required_error: 'Lead Investigator is required'}),
-		customer: Zod.object({
-			organisation: Zod.string().optional(),
-			contactPerson: Zod.object({
-				firstName: Zod.string().optional(),
-				lastName: Zod.string().optional(),
-				email: Zod.string().optional()
-			})
-		})
-	});
-
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
 
 	experimentOrder.subscribe(() => {
@@ -77,7 +57,7 @@
 		}
 
 		//Validate against zod schema
-		const parseResult = experimentSchema.safeParse(selectedExperiment);
+		const parseResult = ExperimentMetadata.schema.safeParse(selectedExperiment);
 		if (!parseResult.success) {
 			console.error('Validation errors:', parseResult.error.errors);
 			return;
@@ -189,7 +169,7 @@
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedExperiment} schema={experimentSchema} let:draft let:refresh let:state let:current let:revertAll let:errors>
+		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:state let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField

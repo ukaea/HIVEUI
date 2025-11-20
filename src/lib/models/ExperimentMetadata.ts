@@ -1,5 +1,6 @@
 import {CustomerMetadata, PersonMetadata } from '$lib/models';
 import type { MetadataModel } from '$lib/services/GenericDataService';
+import Zod from 'zod';
 
 export class ExperimentMetadata {
     experimentNumber: number;
@@ -8,6 +9,26 @@ export class ExperimentMetadata {
     description: string;
     leadInvestigator: PersonMetadata;
     customer: CustomerMetadata;
+
+    static schema = Zod.object({
+		experimentNumber: Zod.number().min(1, 'Experiment Number must be greater than 0'),
+		startDate: Zod.date(),
+		endDate: Zod.date().optional(),
+		description: Zod.string().min(1, 'Description is required'),
+		leadInvestigator: Zod.object({
+			firstName: Zod.string().min(1, 'First name is required'),
+			lastName: Zod.string().min(1, 'Last name is required'),
+			email: Zod.string().email('Invalid email address')
+		}, {required_error: 'Lead Investigator is required'}),
+		customer: Zod.object({
+			organisation: Zod.string().optional(),
+			contactPerson: Zod.object({
+				firstName: Zod.string().optional(),
+				lastName: Zod.string().optional(),
+				email: Zod.string().optional()
+			})
+		})
+	});
 
     constructor() {
         this.experimentNumber = 0;

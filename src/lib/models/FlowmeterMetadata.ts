@@ -1,3 +1,5 @@
+import Zod from "zod";
+
 export class FlowRange {
     minimum: number;
     maximum: number;
@@ -29,6 +31,22 @@ export class FlowmeterMetadata {
     assetId: string;
     flowmeterType: string;
     flowRange: FlowRange;
+
+    static schema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().min(1, 'Serial Number is required'),
+			assetId: Zod.string().optional(),
+			flowmeterType: Zod.string().min(1, 'Flowmeter Type is required'),
+			flowRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Flow is required'),
+				maximum: Zod.number().min(0, 'Maximum Flow is required')
+			})
+		})
+	});
 
     constructor() {
         this.make = '';

@@ -21,111 +21,6 @@
 		allEquipment = allEquipment.sort($equipmentOrder.handler);
 	});
 
-	let thermocoupleSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			attachment: Zod.string().min(1, 'Attachment is required'),
-			thermocoupleType: Zod.string().min(1, 'Thermocouple Type is required'),
-			circleDiameter: Zod.number().min(0, 'Circle Diameter is required'),
-			noiseFloor: Zod.number().min(0, 'Noise Floor is required')
-		})
-	});
-
-	let cameraSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			make: Zod.string().min(1, 'Make is required'),
-			model: Zod.string().min(1, 'Model is required'),
-			serialNumber: Zod.string().optional(),
-			assetId: Zod.string().optional(),
-			resolution: Zod.object({
-				x: Zod.number().min(1, 'Resolution X is required'),
-				y: Zod.number().min(1, 'Resolution Y is required')
-			})
-		})
-	});
-
-	let lensSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			deviceInformation: Zod.object({
-				make: Zod.string().min(1, 'Make is required'),
-				model: Zod.string().min(1, 'Model is required'),
-				serialNumber: Zod.string().min(1, 'Serial Number is required'),
-				focalLength: Zod.string().min(1, 'Focal Length is required'),
-				aperture: Zod.string().min(1, 'Aperture is required'),
-				fieldOfViewX: Zod.string().min(1, 'Field of View X is required'),
-				fieldOfViewY: Zod.string().min(1, 'Field of View Y is required')
-			})
-		})
-	});
-
-	let flowmeterSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			make: Zod.string().min(1, 'Make is required'),
-			model: Zod.string().min(1, 'Model is required'),
-			serialNumber: Zod.string().min(1, 'Serial Number is required'),
-			assetId: Zod.string().optional(),
-			flowmeterType: Zod.string().min(1, 'Flowmeter Type is required'),
-			flowRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Flow is required'),
-				maximum: Zod.number().min(0, 'Maximum Flow is required')
-			})
-		})
-	});
-
-	let pyrometerSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			make: Zod.string().min(1, 'Make is required'),
-			model: Zod.string().min(1, 'Model is required'),
-			serialNumber: Zod.string().optional(),
-			assetId: Zod.string().optional(),
-			spectralRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
-				maximum: Zod.number().min(0, 'Maximum Wavelength is required')
-			}),
-			temperatureRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Temperature is required'),
-				maximum: Zod.number().min(0, 'Maximum Temperature is required')
-			})
-		})
-	});
-
-	let ircameraSchema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
-		equipment: Zod.object({
-			deviceInformation: Zod.object({
-				make: Zod.string().min(1, 'Make is required'),
-				model: Zod.string().min(1, 'Model is required'),
-				serialNumber: Zod.string().min(1, 'Serial Number is required'),
-				resolution: Zod.object({
-					x: Zod.number().min(1, 'Resolution X is required'),
-					y: Zod.number().min(1, 'Resolution Y is required')
-				}),
-				spectralRange: Zod.object({
-					minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
-					maximum: Zod.number().min(0, 'Maximum Wavelength is required')
-				}),
-				temperatureRange: Zod.object({
-					minimum: Zod.number().min(0, 'Minimum Temperature is required'),
-					maximum: Zod.number().min(0, 'Maximum Temperature is required')
-				})
-			}),
-			deviceSettings: Zod.object({
-				emissivity: Zod.number().min(0, 'Emissivity is required'),
-				framerate: Zod.number().min(0, 'Framerate is required')
-			})
-		})
-	});
-
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
 		endpoint: '/api/v1/equipment',
@@ -265,17 +160,17 @@
 	function getSchema(selectedEquipmentType: string | null | undefined): Zod.ZodType<any, Zod.ZodTypeDef, any> | undefined {
 		switch (selectedEquipmentType) {
 			case 'thermocouple':
-				return thermocoupleSchema;
+				return ThermocoupleMetadata.schema;
 			case 'camera':
-				return cameraSchema;
+				return CameraMetadata.schema;
 			case 'lens':
-				return lensSchema;
+				return LensMetadata.schema;
 			case 'flowmeter':
-				return flowmeterSchema;
+				return FlowmeterMetadata.schema;
 			case 'pyrometer':
-				return pyrometerSchema;
+				return PyrometerMetadata.schema;
 			case 'ir-camera':
-				return ircameraSchema;
+				return IrCameraMetadata.schema;
 			default:
 				return undefined;
 		}
