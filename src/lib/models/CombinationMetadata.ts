@@ -38,7 +38,7 @@ export class CombinationMetadata {
 
     static toJSON(combination: CombinationMetadata): any {
         return {
-            combinationUUID: combination.combinationId,
+            combinationId: combination.combinationId,
             combinationName: combination.combinationName,
             equipment: combination.equipment.map(eq => eq.equipmentName)
         };

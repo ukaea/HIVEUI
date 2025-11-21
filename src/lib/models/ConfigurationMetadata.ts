@@ -43,7 +43,7 @@ export class ConfigurationMetadata {
 
     static toJSON(config: ConfigurationMetadata): any {
         return {
-            configurationUUID: config.configurationId,
+            configurationId: config.configurationId,
             configurationName: config.configurationName,
             equipmentCombinations: config.equipmentCombinations.map(combination => combination.combinationId),
             configurationDescription: config.configurationDescription
