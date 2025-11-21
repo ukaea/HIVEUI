@@ -1,3 +1,5 @@
+import Zod from "zod";
+
 export class SpectralRange {
     minimum: number;
     maximum: number;
@@ -53,6 +55,25 @@ export class PyrometerMetadata {
     assetId: string;
     spectralRange: SpectralRange;
     temperatureRange: TemperatureRange;
+
+    static schema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().optional(),
+			assetId: Zod.string().optional(),
+			spectralRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
+				maximum: Zod.number().min(0, 'Maximum Wavelength is required')
+			}),
+			temperatureRange: Zod.object({
+				minimum: Zod.number().min(0, 'Minimum Temperature is required'),
+				maximum: Zod.number().min(0, 'Maximum Temperature is required')
+			})
+		})
+	});
 
     constructor() {
         this.make = '';

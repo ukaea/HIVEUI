@@ -6,7 +6,13 @@ import { AUTHN_ENABLE } from '$env/static/private';
 import { AUTHZ_ENABLE } from '$env/static/private';
 
 async function authorizationHandle({ event, resolve }) {
-  if (event.url.pathname.startsWith('/') && AUTHN_ENABLE === 'true') {
+
+  //If authentication is disabled, skip authorization
+  if (AUTHN_ENABLE !== 'true') {
+    return resolve(event);
+  }
+  
+  if (event.url.pathname.startsWith('/')) {
     const session = await event.locals.auth();
     if (!session) {
       throw redirect(303, '/auth/signin');

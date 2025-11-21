@@ -1,128 +1,95 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
-	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField} from 'svelte-ux';
+	import { tableOrderStore, SelectField} from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY} from '$env/static/public';
-	import { ExperimentMetadata, HeatingTypeMetadata, PersonMetadata, CustomerMetadata, ConfigurationMetadata } from '$lib/models';
+	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
+	import { ExperimentMetadata, PersonMetadata} from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
+	import { MemberService } from '$lib/services/MembersService';
+	import Zod from 'zod';
 
 	let allExperiments: ExperimentMetadata[] = [];
-	let allConfigurations: ConfigurationMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
+	let allMembers: PersonMetadata[] = [];
 
 	let open = false;
 	let isNewEntry = false;
 	let localOnly = false;
-	
-	const experimentOrder = tableOrderStore({ initialBy: 'experimentTitle', initialDirection: 'asc' });
-	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
+
+	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
 
 	experimentOrder.subscribe(() => {
 		allExperiments = allExperiments.sort($experimentOrder.handler);
 	});
 
-	configurationOrder.subscribe(() => {
-		allConfigurations = allConfigurations.sort($configurationOrder.handler);
+	const experimentService = new GenericDataService<ExperimentMetadata>({
+		modelClass: ExperimentMetadataModel,
+		endpoint: '/api/v1/experiments',
+		localFolder: 'experiments',
+		idField: 'experimentNumber',
+		displayName: 'experiments'
 	});
 
-	const heatingTypeOptions: MenuOption[] = Object.values(HeatingTypeMetadata).map((type) => ({
-		label: type,
-		value: type
-	}));
-
-	const experimentService = new GenericDataService<ExperimentMetadata>(
-		{
-			modelClass: ExperimentMetadataModel,
-			endpoint: '/api/v1/experiments',
-			localFolder: 'experiments',
-			idField: 'experimentUUID',
-			displayName: 'experiments'
-		}
-	);
-
-	const configurationService = new GenericDataService<ConfigurationMetadata>(
-		{
-			modelClass: ConfigurationMetadata,
-			endpoint: '/api/v1/configurations',
-			localFolder: 'configurations',
-			idField: 'configurationUUID',
-			displayName: 'configurations'
-		}
-	);
-
-	async function fetchConfigurations() {
+	async function fetchExperiments() {
 		try {
-			allConfigurations = await configurationService.fetchAll(
-				localOnly,
-				$page.data.session
-			);
+			allExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
 		} catch (error) {
-			console.error('Error fetching configurations:', error);
+			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
 		}
 	}
 
-	async function fetchExperiments() {
-        try {
-            allExperiments = await experimentService.fetchAll(
-                localOnly,
-                $page.data.session
-            );
-        } catch (error) {
-            console.error('Error fetching experiments:', error);
-            alert((error as Error).message);
-        }
-    }
+	async function fetchMembers() {
+		try {
+			//allMembers = await MemberService.getMembers("HIVE");
+		} catch (error) {
+			console.error('Error fetching members:', error);
+			alert((error as Error).message);
+		}
+	}
 
 	async function handleMetadataSubmit() {
-        if (!selectedExperiment) {
-            alert('No metadata selected.');
-            return;
-        }
+		if (!selectedExperiment) {
+			alert('No metadata selected.');
+			return;
+		}
 
-        try {
-            await experimentService.submit(
-                selectedExperiment,
-                localOnly,
-                $page.data.session,
-                isNewEntry
-            );
-            
-            alert(isNewEntry 
-                ? 'New experiment submitted successfully!' 
-                : 'Experiment updated successfully!'
-            );
-            
-            handleModalClose();
-            await fetchExperiments();
-        } catch (error) {
-            console.error('Submission error:', error);
-            alert(`Failed to submit experiment: ${(error as Error).message}`);
-        }
-    }
+		//Validate against zod schema
+		const parseResult = ExperimentMetadata.schema.safeParse(selectedExperiment);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
+			return;
+		}
+
+		try {
+			await experimentService.submit(selectedExperiment, localOnly, $page.data.session, isNewEntry);
+			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
+			handleModalClose();
+			await fetchExperiments();
+		} catch (error) {
+			console.error('Submission error:', error);
+			alert(`Failed to submit experiment: ${(error as Error).message}`);
+		}
+	}
 
 	async function handleDelete() {
-        if (!selectedExperiment) return;
+		if (!selectedExperiment) return;
 
-        if (confirm(`Are you sure you want to delete the experiment with UUID: ${selectedExperiment.experimentUUID}?`)) {
-            try {
-                await experimentService.delete(
-                    selectedExperiment,
-                    localOnly,
-                    $page.data.session
-                );
-                
-                alert('Experiment deleted successfully');
-                handleModalClose();
-                await fetchExperiments();
-            } catch (error) {
-                console.error('Delete error:', error);
-                alert(`Failed to delete experiment: ${(error as Error).message}`);
-            }
-        }
-    }
+		if (confirm(`Are you sure you want to delete experiment ${selectedExperiment.experimentNumber}?`)) {
+			try {
+				await experimentService.delete(selectedExperiment, localOnly, $page.data.session);
+
+				alert('Experiment deleted successfully');
+				handleModalClose();
+				await fetchExperiments();
+			} catch (error) {
+				console.error('Delete error:', error);
+				alert(`Failed to delete experiment: ${(error as Error).message}`);
+			}
+		}
+	}
 
 	function handleRowClick(row: ExperimentMetadata): void {
 		selectedExperiment = { ...row };
@@ -151,7 +118,7 @@
 			localOnly = true;
 		}
 		fetchExperiments();
-		fetchConfigurations();
+		fetchMembers();
 	});
 </script>
 
@@ -164,13 +131,12 @@
 		<Table
 			data={allExperiments}
 			columns={[
-				{ name: 'experimentTitle', align: 'left', header: 'Experiment Title' },
+				{ name: 'experimentNumber', align: 'left', header: 'Experiment Number' },
+				{ name: 'description', align: 'left', header: 'Description' },
 				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
-				{ name: 'coilName', align: 'left', header: 'Coil Name' },
-				{ name: 'leadInvestigator.email', align: 'left', header: 'Lead Investigator' },
-				{ name: 'heatingType', align: 'left', header: 'Heating Type' },
+				{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
 				{
-					name: 'experimentStart',
+					name: 'startDate',
 					align: 'left',
 					header: 'Start Date',
 					// @ts-expect-error
@@ -203,112 +169,73 @@
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedExperiment} let:draft let:refresh let:current let:revertAll>
+		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:state let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField
-					label="Experiment Title"
-					value={draft.experimentTitle}
+					label="Experiment Number"
+					type="integer"
+					value={draft.experimentNumber}
 					on:change={(e) => {
-						draft.experimentTitle = e.detail.value;
+						draft.experimentNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.experimentNumber}
 				/>
 				<TextField
-					label="Experiment UUID"
-					value={isNewEntry ? (draft.experimentUUID = crypto.randomUUID()) : draft.experimentUUID}
+					label="Description"
+					value={draft.description}
 					on:change={(e) => {
-						draft.experimentUUID = e.detail.value;
+						draft.description = e.detail.value;
 						refresh();
 					}}
-					disabled
-				/>
-				<TextField
-					label="Coil Name"
-					value={draft.coilName}
-					on:change={(e) => {
-						draft.coilName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Coil UUID"
-					value={draft.coilUUID}
-					on:change={(e) => {
-						draft.coilUUID = e.detail.value;
-						refresh();
-					}}
+					error={errors.description}
 				/>
 				<DateField
-					label="Experiment Start"
+					label="Start Date"
+					value={draft.startDate}
 					format="dd/MM/yyyy"
 					picker
 					clearable
-					value={draft.experimentStart}
 					on:change={(e) => {
-						draft.experimentStart = e.detail.value;
+						draft.startDate = e.detail.value;
 						refresh();
 					}}
+					error={errors.startDate}
 				/>
 				<DateField
-					label="Experiment End"
+					label="End Date"
+					value={draft.endDate}
 					format="dd/MM/yyyy"
 					picker
 					clearable
-					value={draft.experimentEnd}
 					on:change={(e) => {
-						draft.experimentEnd = e.detail.value;
+						draft.endDate = e.detail.value;
 						refresh();
 					}}
-				/>
-				<SelectField
-					label="Heating Type"
-					value={draft.heatingType}
-					options={heatingTypeOptions}
-					on:change={(e) => {
-						draft.heatingType = e.detail.value;
-						refresh();
-					}}
-				/>
-				<SelectField
-					label="Sample Cooling"
-					value={draft.sampleCooling}
-					options={[
-						{ label: 'Enabled', value: true },
-						{ label: 'Disabled', value: false }
-					]}
-					on:change={(e) => {
-						draft.sampleCooling = e.detail.value;
-						refresh();
-					}}
+					error={errors.endDate}
 				/>
 			</div>
 
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
-				<TextField
-					label="First Name"
-					value={draft.leadInvestigator.firstName}
+				<SelectField
+					label="Lead Investigator"
+					value={draft.leadInvestigator?.email || ''}
+					options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
 					on:change={(e) => {
-						draft.leadInvestigator.firstName = e.detail.value;
-						refresh();
+						const selectedMember = allMembers.find((member) => member.email === e.detail.value);
+						if (selectedMember) {
+							draft.leadInvestigator = 
+								{
+									firstName: selectedMember.firstName,
+									lastName: selectedMember.lastName,
+									email: selectedMember.email,
+								};
+							refresh();
+						}
 					}}
-				/>
-				<TextField
-					label="Last Name"
-					value={draft.leadInvestigator.lastName}
-					on:change={(e) => {
-						draft.leadInvestigator.lastName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Email"
-					value={draft.leadInvestigator.email}
-					on:change={(e) => {
-						draft.leadInvestigator.email = e.detail.value;
-						refresh();
-					}}
+					error={errors.leadInvestigator?.email}
 				/>
 			</div>
 
@@ -332,6 +259,7 @@
 						draft.customer.contactPerson.firstName = e.detail.value;
 						refresh();
 					}}
+					error={errors.customer?.contactPerson?.firstName}
 				/>
 				<TextField
 					label="Contact Last Name"
@@ -340,6 +268,7 @@
 						draft.customer.contactPerson.lastName = e.detail.value;
 						refresh();
 					}}
+					error={errors.customer?.contactPerson?.lastName}
 				/>
 				<TextField
 					label="Contact Email"
@@ -348,6 +277,7 @@
 						draft.customer.contactPerson.email = e.detail.value;
 						refresh();
 					}}
+					error={errors.customer?.contactPerson?.email}
 				/>
 			</div>
 
@@ -358,13 +288,11 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
+					<Button type="submit" variant="fill" on:click={() => {
+						selectedExperiment = current;
+						handleMetadataSubmit();
+					}}>Save</Button>
 					<Button
-						on:click={() => {
-							selectedExperiment = current;
-							handleMetadataSubmit();
-						}}
-						variant="fill">Save</Button
-					><Button
 						on:click={() => {
 							revertAll();
 							handleFormCancel();

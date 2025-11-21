@@ -195,7 +195,7 @@ export class CompiledPulseMetadata {
     comment: string;
     pulseQuality: string;
     experimentNumber: string;
-    configurationUUID: string;
+    configurationId: number;
     status: string;
     
     constructor() {
@@ -214,7 +214,7 @@ export class CompiledPulseMetadata {
         this.thermocoupleInformation = new ThermocoupleInformation();
         this.comment = '';
         this.pulseQuality = '';
-        this.configurationUUID = '';
+        this.configurationId = 0;
         this.status = '';
     }
 
@@ -245,7 +245,7 @@ export class CompiledPulseMetadata {
         pulse.comment = json.comment;
         pulse.pulseQuality = json.pulseQuality;
         pulse.experimentNumber = json.experimentNumber;
-        pulse.configurationUUID = json.configurationUUID;
+        pulse.configurationId = json.configurationId;
         pulse.status = json.status;
         return pulse
     }
@@ -267,7 +267,7 @@ export class CompiledPulseMetadata {
             comment: metaData.comment,
             pulseQuality: metaData.pulseQuality,
             experimentNumber: metaData.experimentNumber,
-            configurationUUID: metaData.configurationUUID,
+            configurationId: metaData.configurationId,
             status: metaData.status
         }
     }

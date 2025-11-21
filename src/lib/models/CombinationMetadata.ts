@@ -1,20 +1,21 @@
 import { getJsonContent } from "$lib/jsonUtils";
+import type { MetadataModel } from "$lib/services/GenericDataService";
 import { EquipmentMetadata } from './EquipmentMetadata';
 
 export class CombinationMetadata {
-    combinationUUID: string;
+    combinationId: number;
     combinationName: string;
     equipment: EquipmentMetadata[];
 
     constructor() {
-        this.combinationUUID = '';
+        this.combinationId = 0;
         this.combinationName = '';
         this.equipment = [];
     }
 
     static async fromJSON(json: any): Promise<CombinationMetadata> {
         const combination = new CombinationMetadata();
-        combination.combinationUUID = json.combinationUUID || '';
+        combination.combinationId = json.combinationId || 0;
         combination.combinationName = json.combinationName || '';
 
         if (json.equipment && Array.isArray(json.equipment)) {
@@ -37,9 +38,12 @@ export class CombinationMetadata {
 
     static toJSON(combination: CombinationMetadata): any {
         return {
-            combinationUUID: combination.combinationUUID,
+            combinationId: combination.combinationId,
             combinationName: combination.combinationName,
             equipment: combination.equipment.map(eq => eq.equipmentName)
         };
     }
 }
+
+// Export the model class implementation for the GenericDataService
+export const CombinationMetadataModel: MetadataModel<CombinationMetadata> = CombinationMetadata;

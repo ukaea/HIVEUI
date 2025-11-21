@@ -1,3 +1,4 @@
+import Zod from "zod";
 
 export class CameraResolution {
     x: number;
@@ -30,6 +31,21 @@ export class CameraMetadata {
     assetId: string;
     resolution: CameraResolution;
 
+    static schema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			make: Zod.string().min(1, 'Make is required'),
+			model: Zod.string().min(1, 'Model is required'),
+			serialNumber: Zod.string().optional(),
+			assetId: Zod.string().optional(),
+			resolution: Zod.object({
+				x: Zod.number().min(1, 'Resolution X is required'),
+				y: Zod.number().min(1, 'Resolution Y is required')
+			})
+		})
+	});
+
     constructor() {
         this.make = '';
         this.model = '';
@@ -58,27 +74,4 @@ export class CameraMetadata {
         };
     }
 }
-/** 
-export class CameraMetadata {
-    deviceInformation: CameraDeviceInformation;
-
-    constructor() {
-        this.deviceInformation = new CameraDeviceInformation();
-    }
-
-    static fromJSON(json: any): CameraMetadata {
-        const metadata = new CameraMetadata();
-        metadata.deviceInformation = json.deviceInformation ? 
-            CameraDeviceInformation.fromJSON(json.deviceInformation) : 
-            new CameraDeviceInformation();
-        return metadata;
-    }
-
-    static toJSON(metadata: CameraMetadata): any {
-        return {
-            deviceInformation: CameraDeviceInformation.toJSON(metadata.deviceInformation)
-        };
-    }
-}
-*/
 

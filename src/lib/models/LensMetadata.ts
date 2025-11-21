@@ -1,3 +1,5 @@
+import Zod from "zod";
+
 export class LensDeviceInformation {
     make: string;
     model: string;
@@ -44,6 +46,21 @@ export class LensDeviceInformation {
 
 export class LensMetadata {
     deviceInformation: LensDeviceInformation;
+    static schema = Zod.object({
+		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipment: Zod.object({
+			deviceInformation: Zod.object({
+				make: Zod.string().min(1, 'Make is required'),
+				model: Zod.string().min(1, 'Model is required'),
+				serialNumber: Zod.string().min(1, 'Serial Number is required'),
+				focalLength: Zod.string().min(1, 'Focal Length is required'),
+				aperture: Zod.string().min(1, 'Aperture is required'),
+				fieldOfViewX: Zod.string().min(1, 'Field of View X is required'),
+				fieldOfViewY: Zod.string().min(1, 'Field of View Y is required')
+			})
+		})
+	});
 
     constructor() {
         this.deviceInformation = new LensDeviceInformation();

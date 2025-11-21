@@ -4,4 +4,5 @@ services:
     pull_policy: never
     env_file: ".env"
     restart: unless-stopped
-    network_mode: "host"
+    ports:
+      - "3003:3003"
