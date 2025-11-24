@@ -119,7 +119,17 @@
 
 	async function fetchExperiments() {
 		try {
-			sortedExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			//sortedExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			sortedExperiments = [
+				{
+				experimentNumber: 0,
+				description: 'The first experiment'
+				},
+				{
+				experimentNumber: 2,
+				description: 'The second experiment'
+				}
+			]
 			experimentOptions = sortedExperiments.map((exp) => ({
 				label: `${exp.experimentNumber} - ${exp.description}`,
 				value: exp.experimentNumber
@@ -161,30 +171,27 @@
 		}
 	}
 
-	async function fetchPostProcessData(pulseNumber) {
-		if (!pulseNumber) {
-			return;
+	async function fetchPostProcessData(directory, filename) {
+		if (!directory && !filename) {
+			return null;
 		}
 		try {
-			const accessToken = $page.data.session?.user.sessionToken;
-			if (!accessToken) {
-				throw new Error('No access token available');
-			}
-
 			if (localOnly) {
-				const postProcessFile = await getJsonFile('pulses', pulseNumber);
+				sortedPostProcessData = await getJsonContent(`${directory}/${filename}`);
+			} else {
+				const accessToken = $page.data.session?.user.sessionToken;
+				if (!accessToken) {
+					throw new Error('No access token available');
+				}
+				const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
 
-				sortedPostProcessData = await getJsonContent(`pulses/${postProcessFile}`);
+				if (!response.ok) throw new Error('Failed to fetch configurations');
+				const data = await response.json();
+				sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
 			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch configurations');
-			const data = await response.json();
-			sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
 		} catch (error) {
 			console.error('Error fetching postprocess data:', error);
-			alert('Failed to load postprocess data. Please try again later.');
+			alert(`Failed to load postprocess data. Please try again later: ${error.message}`);
 		}
 	}
 
@@ -254,7 +261,7 @@
 			const pulseNumber = metadata.pulseNumber;
 			const sampleNumber = metadata.sampleNumber;
 			const experimentNumber = metadata.experimentNumber;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}`;
+			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}/raw`;
 			const fileName = "manual-metadata.json";
 
 			const saveMetadata = {
@@ -323,14 +330,18 @@
 			return;
 		}
 		shouldCloseDialog = false;
-		let id = draft.pulseNumber
+		const pulseNumber = draft.pulseNumber
+		const sampleNumber = draft.sampleNumber;
+		const experimentNumber = draft.experimentNumber;
+		const fileDir = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}/raw`;
+		const fileName = "manual-metadata.json";
 
 		try {
 			await commitFn();
 
-			await runPostProcess(id)
+			await runPostProcess(`${pulseNumber}`)
 
-			await fetchPostProcessData(id)
+			await fetchPostProcessData(fileDir, fileName)
 
 		} catch (error) {
 			console.error("Error running post processing:", error);

@@ -19,11 +19,11 @@ export async function getJsonFiles(directory: string, filename?: string) {
 }
 
 
-export async function  getJsonFile(directory:string, filename:string) {
+export async function getJsonFile(directory:string, filename:string) {
 	try{
 		const fullFilename = filename.endsWith('.json') ? filename : `${filename}.json`;
 
-		const filePath = `${directory}/${fullFilename}`;
+		const filePath = `${directory}/${filename}`;
 
 		const response = await fetch(`/api/get-json-file?path=${encodeURIComponent(filePath)}`);
 
