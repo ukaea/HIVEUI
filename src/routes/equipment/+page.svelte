@@ -40,7 +40,7 @@
 
 	async function fetchEquipment() {
 		try {
-			allEquipment = await equipmentService.fetchAll(localOnly, $page.data.session);
+			allEquipment = await equipmentService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert((error as Error).message);
@@ -72,7 +72,7 @@
 		}
 
 		try {
-			await equipmentService.submit(selectedEquipment, localOnly, $page.data.session, isNewEntry);
+			await equipmentService.submit(selectedEquipment, localOnly, isNewEntry);
 			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
 			handleModalClose();
 			await fetchEquipment();
@@ -108,7 +108,7 @@
 
 		if (confirm(`Are you sure you want to delete equipment ${selectedEquipment.equipmentName}?`)) {
 			try {
-				equipmentService.delete(selectedEquipment, localOnly, $page.data.session);
+				equipmentService.delete(selectedEquipment, localOnly);
 				alert('Equipment deleted successfully');
 				handleModalClose();
 				fetchEquipment();

@@ -34,7 +34,7 @@
 
 	async function fetchExperiments() {
 		try {
-			allExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			allExperiments = await experimentService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -43,7 +43,7 @@
 
 	async function fetchMembers() {
 		try {
-			//allMembers = await MemberService.getMembers("HIVE");
+			allMembers = await MemberService.getMembers("HIVE");
 		} catch (error) {
 			console.error('Error fetching members:', error);
 			alert((error as Error).message);
@@ -64,7 +64,7 @@
 		}
 
 		try {
-			await experimentService.submit(selectedExperiment, localOnly, $page.data.session, isNewEntry);
+			await experimentService.submit(selectedExperiment, localOnly, isNewEntry);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
@@ -79,7 +79,7 @@
 
 		if (confirm(`Are you sure you want to delete experiment ${selectedExperiment.experimentNumber}?`)) {
 			try {
-				await experimentService.delete(selectedExperiment, localOnly, $page.data.session);
+				await experimentService.delete(selectedExperiment, localOnly);
 
 				alert('Experiment deleted successfully');
 				handleModalClose();

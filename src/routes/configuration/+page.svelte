@@ -59,7 +59,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			allConfigurations = await configurationService.fetchAll(localOnly, $page.data.session);
+			allConfigurations = await configurationService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert((error as Error).message);
@@ -68,7 +68,7 @@
 
 	async function fetchCombinations() {
 		try {
-			allCombinations = await combinationService.fetchAll(localOnly, $page.data.session);
+			allCombinations = await combinationService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching combinations:', error);
 			alert((error as Error).message);
@@ -77,7 +77,7 @@
 
 	async function fetchEquipment() {
 		try {
-			allEquipment = await equipmentService.fetchAll(localOnly, $page.data.session);
+			allEquipment = await equipmentService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert((error as Error).message);
@@ -91,7 +91,7 @@
 		}
 
 		try {
-			await configurationService.submit(selectedConfiguration, localOnly, $page.data.session, isNewEntry);
+			await configurationService.submit(selectedConfiguration, localOnly, isNewEntry);
 			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 			handleModalClose();
 			await fetchConfigurations();
@@ -109,7 +109,7 @@
 		}
 
 		try {
-			await combinationService.submit(newCombination, localOnly, $page.data.session, isNewCombination);
+			await combinationService.submit(newCombination, localOnly, isNewCombination);
 			alert(isNewCombination ? 'New combination submitted successfully!' : 'Combination updated successfully!');
 			handleCombinationDialogClose();
 			await fetchCombinations();
@@ -123,7 +123,7 @@
 		if (!selectedConfiguration) return;
 
 		if (confirm(`Are you sure you want to delete configuration ${selectedConfiguration.configurationName}?`)) {
-			configurationService.delete(selectedConfiguration, localOnly, $page.data.session)
+			configurationService.delete(selectedConfiguration, localOnly)
 				.then(() => {
 					alert('Configuration deleted successfully');
 					handleModalClose();

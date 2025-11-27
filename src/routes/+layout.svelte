@@ -6,7 +6,7 @@
 	const session = authClient.useSession();
 </script>
 
-{#if $session.data}
+{#if $session.data || $session.isPending}
 	<AppLayout>
 		<slot />
 	</AppLayout>

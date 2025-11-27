@@ -7,7 +7,7 @@ declare global {
 		interface Locals {
             session: Session | null;
             // Extend the User type to include your custom group field
-            user: (User & { groups: string[] | null | undefined})| null;
+            user: (User & { groups: string[] | null | undefined, accessToken: string | null | undefined} )| null;
         }
 		// interface PageData {}
 		// interface PageState {}

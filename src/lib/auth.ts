@@ -13,8 +13,14 @@ function fetchUserInfoFromCustomProvider(tokens: any) {
 	}
 	
 	// Decode the ID token to get user info
-	const decodedToken = jwtDecode(idToken) as any;
-	return decodedToken;
+	const idData = jwtDecode(idToken) as any;
+
+	const keycloakData = {
+		id: idData,
+		accessToken: tokens.accessToken,
+	}
+
+	return keycloakData;
 }
 
 export const auth = betterAuth({
@@ -24,7 +30,12 @@ export const auth = betterAuth({
                 type: "string[]", // Allows storing an array of strings
                 required: true,
                 defaultValue: []
-            }
+            },
+			accessToken: {
+				type: "string",
+				required: true,
+				defaultValue: ""
+			}
         }
     },
 	plugins: [genericOAuth({
@@ -37,13 +48,14 @@ export const auth = betterAuth({
 				scopes: ["openid", "profile", "email"],
 				getUserInfo: async (tokens) => {
 					// Custom logic to fetch and return user info
-					const userInfo = await fetchUserInfoFromCustomProvider(tokens);
+					const keycloakData = await fetchUserInfoFromCustomProvider(tokens);
 					return {
-						id: userInfo.sub,
-						email: userInfo.email,
-						name: userInfo.name,
-						emailVerified: userInfo.email_verified,
-						groups: userInfo.groups || []
+						id: keycloakData.id.sub,
+						email: keycloakData.id.email,
+						name: keycloakData.id.name,
+						emailVerified: keycloakData.id.email_verified,
+						groups: keycloakData.id.groups || [],
+						accessToken: keycloakData.accessToken
 					};
 				}
 			},

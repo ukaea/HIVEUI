@@ -12,6 +12,7 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { CoolantInformation, HeatingInformation, ThermocoupleInformation } from '$lib/models/CompiledPulseMetadata';
+	import { authClient } from '$lib/auth-client';
 
 	async function handleTrigger() {
 		const { result, error } = await triggerDAG(env.PUBLIC_AIRFLOW_DIRECTORY, env.PUBLIC_AIRFLOW_INPUT_FILE);
@@ -94,7 +95,7 @@
 		sortedData = sortedData.sort($order.handler);
 	});
 
-	
+	const session = authClient.useSession();
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
@@ -118,7 +119,7 @@
 
 	async function fetchExperiments() {
 		try {
-			sortedExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			sortedExperiments = await experimentService.fetchAll(localOnly);
 			experimentOptions = sortedExperiments.map((exp) => ({
 				label: `${exp.experimentNumber} - ${exp.description}`,
 				value: exp.experimentNumber
@@ -131,7 +132,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			sortedConfigurations = await configurationService.fetchAll(localOnly, $page.data.session);
+			sortedConfigurations = await configurationService.fetchAll(localOnly);
 			configurationOptions = sortedConfigurations.map((config) => ({
 				label: `${config.configurationId} - ${config.configurationName}`,
 				value: config.configurationId
@@ -165,7 +166,7 @@
 			return;
 		}
 		try {
-			const accessToken = $page.data.session?.user.sessionToken;
+			const accessToken = $session.data?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -222,7 +223,7 @@
 	async function handleAPISubmission(metadata: CompiledPulseMetadata, isNewEntry: boolean): Promise<void> {
 		//Not currently implemented
 		try {
-			const accessToken = $page.data.session?.user.sessionToken;
+			const accessToken = $session.data?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
@@ -411,7 +412,7 @@
 						alert(`Failed to delete pulse: ${error.message}`);
 					});
 			} else {
-				const accessToken = $page.data.session?.user.sessionToken;
+				const accessToken = $session.data?.user.accessToken;
 				fetch(`${env.PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseNumber}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
@@ -434,8 +435,6 @@
 		fetchPulses();
 		fetchExperiments();
 		fetchConfigurations();
-
-		console.log('Experiments:', sortedExperiments);	
 	});
 
 	let pulseQualityOptions: MenuOption[] = [
