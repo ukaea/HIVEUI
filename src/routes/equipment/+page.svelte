@@ -3,7 +3,7 @@
 	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
 	import { tableOrderStore } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import Zod from 'zod';
@@ -151,7 +151,7 @@
 	}
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchEquipment();

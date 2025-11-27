@@ -1,10 +1,6 @@
 import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { 
-	AUTH_KEYCLOAK_ID, 
-	AUTH_KEYCLOAK_SECRET, 
-	AUTH_KEYCLOAK_ISSUER
-} from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 interface KeycloakTokenResponse {
 	access_token: string;
@@ -24,7 +20,7 @@ interface KeycloakUser {
 export const GET: RequestHandler = async ({ url }) => {
 	try {
 		// Validate environment variables
-		if (!AUTH_KEYCLOAK_ISSUER || !AUTH_KEYCLOAK_ID || !AUTH_KEYCLOAK_SECRET) {
+		if (!env.AUTH_KEYCLOAK_ISSUER || !env.AUTH_KEYCLOAK_ID || !env.AUTH_KEYCLOAK_SECRET) {
 			console.error('Missing Keycloak configuration');
 			return json(
 				{ success: false, message: 'Keycloak configuration is incomplete' },
@@ -32,7 +28,7 @@ export const GET: RequestHandler = async ({ url }) => {
 			);
 		}
 
-		const issuerUrl = new URL(AUTH_KEYCLOAK_ISSUER);
+		const issuerUrl = new URL(env.AUTH_KEYCLOAK_ISSUER);
 		const pathParts = issuerUrl.pathname.split('/');
 		const realmIndex = pathParts.indexOf('realms');
 		
@@ -55,8 +51,8 @@ export const GET: RequestHandler = async ({ url }) => {
 			},
 			body: new URLSearchParams({
 				grant_type: 'client_credentials',
-				client_id: AUTH_KEYCLOAK_ID,
-				client_secret: AUTH_KEYCLOAK_SECRET,
+				client_id: env.AUTH_KEYCLOAK_ID,
+				client_secret: env.AUTH_KEYCLOAK_SECRET,
 			}),
 		});
 

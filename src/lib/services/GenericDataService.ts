@@ -1,7 +1,6 @@
 // $lib/services/GenericDataService.ts
 import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-import type { Session } from '@auth/sveltekit';
+import { env } from '$env/dynamic/public';
 
 /**
  * Interface that all metadata models must implement
@@ -32,8 +31,8 @@ export class GenericDataService<T> {
 
     constructor(config: DataTypeConfig<T>) {
         this.config = config;
-        this.apiBaseUrl = PUBLIC_METACAT_URL;
-        this.rootFolderLocation = PUBLIC_ROOT_FOLDER_LOCATION;
+        this.apiBaseUrl = env.PUBLIC_METACAT_URL;
+        this.rootFolderLocation = env.PUBLIC_ROOT_FOLDER_LOCATION;
     }
 
     /**

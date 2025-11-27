@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { unlink, access, constants } from 'fs/promises';
 import { resolve, normalize, extname, relative } from 'path';
-import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export const POST: RequestHandler = async ({ request }) => {
   try {
@@ -11,7 +11,7 @@ export const POST: RequestHandler = async ({ request }) => {
       return json({ success: false, message: 'Invalid request structure - path is required' }, { status: 400 });
     }
 
-    const rootFolder = PUBLIC_ROOT_FOLDER_LOCATION;
+    const rootFolder = env.PUBLIC_ROOT_FOLDER_LOCATION;
     if (!rootFolder) {
       throw new Error('PUBLIC_ROOT_FOLDER_LOCATION is not set');
     }

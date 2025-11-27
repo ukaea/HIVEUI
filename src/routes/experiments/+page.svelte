@@ -3,7 +3,7 @@
 	import { Button, Table, Dialog, Form, TextField, DateField} from 'svelte-ux';
 	import { tableOrderStore, SelectField} from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 	import { ExperimentMetadata, PersonMetadata} from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
@@ -114,7 +114,7 @@
 	}
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchExperiments();
