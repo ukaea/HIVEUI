@@ -1,4 +1,4 @@
-import { BASE_JQ_URL } from '$env/static/public';
+import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
 import { resolve } from 'path';
 import type { RequestHandler } from './$types';
@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url }) => {
       }, { status: 400 });
     }
 
-    const rootFolder = BASE_JQ_URL;
+    const rootFolder = env.BASE_JQ_URL;
     if (!rootFolder) {
       throw new Error('JQ root path not set');
     }
