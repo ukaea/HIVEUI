@@ -43,6 +43,7 @@
 		"dotenv": "^16.4.5",
 		"jwt-decode": "^4.0.0",
 		"nanostores": "^1.1.0",
+		"node-jq": "^6.3.1",
 		"uuid": "^10.0.0"
 	}
 }
