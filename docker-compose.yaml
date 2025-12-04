@@ -2,7 +2,7 @@ services:
   hiveui:
     image: hive-ui:dev
     pull_policy: never
-    env_file: ".env"
+    env_file: .env
     restart: unless-stopped
     ports:
       - "3003:3003"

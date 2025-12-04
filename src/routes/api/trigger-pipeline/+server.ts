@@ -1,11 +1,11 @@
 import { json } from '@sveltejs/kit';
-import { AIRFLOW_URL, AIRFLOW_DAG_ID, AIRFLOW_USERNAME, AIRFLOW_PASSWORD } from '$env/static/private';
+import { env } from '$env/dynamic/private';
 
 export async function POST({ request }) {
     try {
         const { directory, inputfile } = await request.json();
-        const credentials = btoa(`${AIRFLOW_USERNAME}:${AIRFLOW_PASSWORD}`);
-        const endpoint = `${AIRFLOW_URL}/api/v1/dags/${AIRFLOW_DAG_ID}/dagRuns`;
+        const credentials = btoa(`${env.AIRFLOW_USERNAME}:${env.AIRFLOW_PASSWORD}`);
+        const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns`;
 
         const payload = {
             conf: {

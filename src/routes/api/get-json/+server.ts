@@ -2,7 +2,7 @@ import { json } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { readFile } from 'fs/promises';
 import { join, resolve, normalize } from 'path';
-import { PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
+import { env } from '$env/dynamic/public';
 
 export const GET: RequestHandler = async ({ url }) => {
   try {
@@ -14,7 +14,7 @@ export const GET: RequestHandler = async ({ url }) => {
       }, { status: 400 });
     }
 
-    const rootFolder = PUBLIC_ROOT_FOLDER_LOCATION;
+    const rootFolder = env.PUBLIC_ROOT_FOLDER_LOCATION;
     if (!rootFolder) {
       throw new Error('PUBLIC_ROOT_FOLDER_LOCATION is not set');
     }

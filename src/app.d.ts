@@ -1,10 +1,16 @@
-// See https://kit.svelte.dev/docs/types#app
-// for information about these interfaces
+// src/app.d.ts
+import { type Session, type User } from "better-auth";
+
 declare global {
 	namespace App {
 		// interface Error {}
-		// interface Locals {}
+		interface Locals {
+            session: Session | null;
+            // Extend the User type to include your custom group field
+            user: (User & { groups: string[] | null | undefined, accessToken: string | null | undefined} )| null;
+        }
 		// interface PageData {}
+		// interface PageState {}
 		// interface Platform {}
 	}
 }

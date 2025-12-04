@@ -1,7 +1,9 @@
 // $lib/services/GenericDataService.ts
 import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-import { PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-import type { Session } from '@auth/sveltekit';
+import { env } from '$env/dynamic/public';
+import { authClient } from '$lib/auth-client';
+
+const session = authClient.useSession();
 
 /**
  * Interface that all metadata models must implement
@@ -32,8 +34,8 @@ export class GenericDataService<T> {
 
     constructor(config: DataTypeConfig<T>) {
         this.config = config;
-        this.apiBaseUrl = PUBLIC_METACAT_URL;
-        this.rootFolderLocation = PUBLIC_ROOT_FOLDER_LOCATION;
+        this.apiBaseUrl = env.PUBLIC_METACAT_URL;
+        this.rootFolderLocation = env.PUBLIC_ROOT_FOLDER_LOCATION;
     }
 
     /**
@@ -41,7 +43,6 @@ export class GenericDataService<T> {
      */
     async fetchAll(
         localOnly: boolean,
-        session: Session | null | undefined,
         sortHandler?: (a: T, b: T) => number
     ): Promise<T[]> {
         try {
@@ -49,11 +50,11 @@ export class GenericDataService<T> {
                 return await this.fetchLocal(sortHandler);
             }
 
-            if (!session) {
+            if ($session.data == null) {
                 throw new Error('Session is required for remote fetch');
             }
 
-            return await this.fetchRemote(session, sortHandler);
+            return await this.fetchRemote(sortHandler);
         } catch (error) {
             console.error(`Error fetching ${this.config.displayName}:`, error);
             throw new Error(`Failed to load ${this.config.displayName}. Please try again later.`);
@@ -70,7 +71,7 @@ export class GenericDataService<T> {
                 getJsonContent(`${this.config.localFolder}/${filename}`)
             )
         );
-        
+
         const items = await Promise.all(
             data.map(json => this.config.modelClass.fromJSON(json))
         );
@@ -82,10 +83,9 @@ export class GenericDataService<T> {
      * Fetch from remote API
      */
     private async fetchRemote(
-        session: Session | null | undefined,
         sortHandler?: (a: T, b: T) => number
     ): Promise<T[]> {
-        const accessToken = session?.user.accessToken;
+        const accessToken = $session.data?.user.accessToken;
         if (!accessToken) {
             throw new Error('No access token available');
         }
@@ -112,7 +112,6 @@ export class GenericDataService<T> {
     async submit(
         item: T,
         localOnly: boolean,
-        session: Session | null | undefined,
         isNewEntry: boolean
     ): Promise<void> {
         const id = item[this.config.idField];
@@ -131,10 +130,10 @@ export class GenericDataService<T> {
 
         if (!localOnly) {
             try {
-                if (!session) {
+                if (!$session.data) {
                     throw new Error('Session is required for remote submission');
                 }
-                await this.handleAPISubmission(item, session, isNewEntry);
+                await this.handleAPISubmission(item, isNewEntry);
             } catch (error) {
                 console.error('API submission failed:', error);
                 throw error;
@@ -151,7 +150,7 @@ export class GenericDataService<T> {
             const filePath = `${this.rootFolderLocation}/${this.config.localFolder}/`;
             const fileName = `${id}.json`;
             const cleanedData = this.config.modelClass.toJSON(item);
-            
+
             const saveData = {
                 targetPath: `${filePath}${fileName}`,
                 metadata: cleanedData
@@ -180,11 +179,10 @@ export class GenericDataService<T> {
      */
     private async handleAPISubmission(
         item: T,
-        session: Session | null | undefined,
         isNewEntry: boolean
     ): Promise<void> {
         try {
-            const accessToken = session?.user.accessToken;
+            const accessToken = $session.data?.user.accessToken;
             if (!accessToken) {
                 throw new Error('No access token available');
             }
@@ -219,14 +217,13 @@ export class GenericDataService<T> {
     async delete(
         item: T,
         localOnly: boolean,
-        session: Session | null | undefined
     ): Promise<void> {
         const id = item[this.config.idField];
-        
+
         if (localOnly) {
             await this.deleteLocal(id as string);
         } else {
-            await this.deleteRemote(id as string, session);
+            await this.deleteRemote(id as string);
         }
     }
 
@@ -235,7 +232,7 @@ export class GenericDataService<T> {
      */
     private async deleteLocal(id: string): Promise<void> {
         const filePath = `${this.rootFolderLocation}/${this.config.localFolder}/${id}.json`;
-        
+
         const response = await fetch('/api/delete-json', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -250,8 +247,8 @@ export class GenericDataService<T> {
     /**
      * Delete from remote API
      */
-    private async deleteRemote(id: string, session: Session | null | undefined): Promise<void> {
-        const accessToken = session?.user.accessToken;
+    private async deleteRemote(id: string): Promise<void> {
+            const accessToken = $session.data?.user.accessToken;
         if (!accessToken) {
             throw new Error('No access token available');
         }
