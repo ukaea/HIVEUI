@@ -35,15 +35,15 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/api/v1/configurations',
-		localFolder: 'configurations',
+		endpoint: 'get-configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/api/v1/combinations',
+		apiOverride: '/api/',
+		endpoint: 'get-combinations',
 		localFolder: 'combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
@@ -59,7 +59,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			allConfigurations = await configurationService.fetchAll(localOnly);
+			allConfigurations = await configurationService.fetchAll(false);
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert((error as Error).message);
@@ -68,7 +68,7 @@
 
 	async function fetchCombinations() {
 		try {
-			allCombinations = await combinationService.fetchAll(localOnly);
+			allCombinations = await combinationService.fetchAll(false);
 		} catch (error) {
 			console.error('Error fetching combinations:', error);
 			alert((error as Error).message);

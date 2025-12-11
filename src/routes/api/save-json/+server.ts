@@ -1,67 +1,155 @@
-import { json } from '@sveltejs/kit';
+import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
 import { writeFile, access, constants, mkdir } from 'fs/promises';
 import { join, resolve, relative, normalize, basename, dirname, extname } from 'path';
-import { env } from '$env/dynamic/public';
+import { env } from '$env/dynamic/private'; // Switched to private for security/consistency
+import { getDb } from '$lib/server/db';
 
-export const POST: RequestHandler = async ({ request }) => {
+export const POST: RequestHandler = async ({ request, fetch }) => {
   try {
-    const jsonData = await request.json();
-    if (!jsonData || typeof jsonData !== 'object' || !jsonData.targetPath || !jsonData.metadata) {
-      return json({ success: false, message: 'Invalid JSON structure' }, { status: 400 });
+    const body = await request.json();
+    // Validate basic structure
+    if (!body || typeof body !== 'object' || !body.targetPath || !body.metadata) {
+       throw error(400, 'Invalid JSON structure: "targetPath" and "metadata" are required.');
     }
 
-    const rootFolder = env.PUBLIC_ROOT_FOLDER_LOCATION;
-    if (!rootFolder) {
-      throw new Error('PUBLIC_ROOT_FOLDER_LOCATION is not set');
+    const { targetPath, metadata } = body;
+
+    // =========================================================
+    // BRANCH 1: Local File System (starts with /local/)
+    // =========================================================
+    if (targetPath.startsWith('/local/')) {
+        const rootFolder = env.ROOT_FOLDER_LOCATION;
+        if (!rootFolder) {
+            throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
+        }
+
+        const relativePath = targetPath.replace(/^\/local\//, '');
+        const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+        const absoluteTargetPath = resolve(rootFolder, sanitizedPath);
+
+        // Security Check
+        if (!absoluteTargetPath.startsWith(resolve(rootFolder))) {
+            throw error(403, 'Access denied: Target path is outside root folder');
+        }
+
+        // Determine filename and directory
+        let fileName, directory;
+        if (extname(absoluteTargetPath).toLowerCase() === '.json') {
+            fileName = basename(absoluteTargetPath);
+            directory = dirname(absoluteTargetPath);
+        } else {
+            // If path is a folder, generate a timestamped filename
+            fileName = `hive_metadata_${Date.now()}.json`;
+            directory = absoluteTargetPath;
+        }
+
+        // Create directory if missing
+        try {
+            await mkdir(directory, { recursive: true });
+        } catch (err) {
+            console.error('Error creating directory:', err);
+            throw error(500, 'Failed to create target directory');
+        }
+
+        // Write File
+        const filePath = join(directory, fileName);
+        await writeFile(filePath, JSON.stringify(metadata, null, 2));
+
+        return json({ 
+            success: true, 
+            message: 'Saved to local file system',
+            path: relative(rootFolder, filePath)
+        });
     }
 
-    const targetPath = normalize(jsonData.targetPath);
-    const absoluteTargetPath = resolve(rootFolder, targetPath);
+    // =========================================================
+    // BRANCH 2: Database (starts with /db/)
+    // =========================================================
+    if (targetPath.startsWith('/db/')) {
+        if (!env.DB_URL) {
+            throw new Error('DB_URL is not set in environment variables');
+        }
 
-    // Determine the filename and directory
-    let fileName, directory;
-    if (extname(absoluteTargetPath).toLowerCase() === '.json') {
-      fileName = basename(absoluteTargetPath);
-      directory = dirname(absoluteTargetPath);
-    } else {
-      fileName = `hive_metadata_${Date.now()}.json`;
-      directory = absoluteTargetPath;
+        const tableName = targetPath.replace(/^\/db\//, '');
+
+        // Security: Validate table name (alphanumeric only)
+        if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+            throw error(400, 'Invalid table name format');
+        }
+
+        if (Object.keys(metadata).length === 0) {
+            throw error(400, 'No metadata provided to save');
+        }
+
+        const db = getDb();
+        
+        // Construct SQL Insert
+        // NOTE: This performs a standard INSERT. If you need Upsert (Insert or Replace),
+        // you can change 'INSERT INTO' to 'INSERT OR REPLACE INTO' (SQLite specific).
+        const keys = Object.keys(metadata);
+        const placeholders = keys.map(() => '?').join(', ');
+        const columns = keys.map(k => `"${k}"`).join(', '); // Quote columns for safety
+        
+        const sql = `INSERT INTO "${tableName}" (${columns}) VALUES (${placeholders})`;
+
+        try {
+            const info = db.prepare(sql).run(...Object.values(metadata));
+            
+            return json({
+                success: true,
+                message: 'Saved to database',
+                id: info.lastInsertRowid,
+                changes: info.changes
+            });
+        } catch (dbErr: any) {
+            console.error('Database Write Error:', dbErr);
+            // Handle unique constraint violations typically found in "Save" operations
+            if (dbErr.code === 'SQLITE_CONSTRAINT_UNIQUE') {
+                throw error(409, 'Duplicate entry: Data violates unique constraint');
+            }
+            throw error(500, 'Database write failed');
+        }
     }
 
-    // Create the directory if it doesn't exist
-    try {
-      await access(directory, constants.F_OK);
-    } catch (error) {
-      // Directory doesn't exist, create it
-      await mkdir(directory, { recursive: true });
-      console.log(`Created directory: ${directory}`);
+    // =========================================================
+    // BRANCH 3: Remote API (Default)
+    // =========================================================
+    const metacatBaseUrl = env.METACAT_URL;
+    if (!metacatBaseUrl) {
+        throw new Error('METACAT_URL is not set');
     }
 
-    // Check if the directory is writable
-    try {
-      await access(directory, constants.W_OK);
-    } catch (error) {
-      return json({ success: false, message: 'Target directory is not writable' }, { status: 403 });
-    }
+    // Construct Remote URL
+    const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${targetPath.replace(/^\//, '')}`;
 
-    const filePath = join(directory, fileName);
-    
-    const dataToSave = jsonData.metadata;
-    const jsonString = JSON.stringify(dataToSave, null, 2);
-
-    await writeFile(filePath, jsonString);
-
-    const relativePath = relative(rootFolder, filePath);
-
-    return json({ 
-      success: true, 
-      message: 'JSON object saved successfully',
-      path: relativePath
+    const response = await fetch(remoteUrl, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(metadata)
     });
 
-  } catch (error) {
-    console.error('Error saving JSON object:', error);
-    return json({ success: false, message: 'Error saving JSON object' }, { status: 500 });
+    if (!response.ok) {
+        throw error(response.status, `Remote API save failed: ${response.statusText}`);
+    }
+
+    // Return whatever the remote API returns, or a success wrapper
+    const responseData = await response.json().catch(() => ({})); // Handle empty responses gracefully
+    return json({
+        success: true,
+        message: 'Saved to remote API',
+        data: responseData
+    });
+
+  } catch (err: any) {
+    console.error('Error in save-json:', err);
+    if (err.status) throw err; // Rethrow SvelteKit errors
+    
+    return json({ 
+        success: false, 
+        message: err.message || 'Internal server error' 
+    }, { status: 500 });
   }
 };

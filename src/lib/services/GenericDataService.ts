@@ -1,6 +1,4 @@
 // $lib/services/GenericDataService.ts
-import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
-import { env } from '$env/dynamic/public';
 import { authClient } from '$lib/auth-client';
 
 const session = authClient.useSession();
@@ -19,7 +17,6 @@ export interface MetadataModel<T> {
 export interface DataTypeConfig<T> {
     modelClass: MetadataModel<T>;
     endpoint: string;
-    localFolder: string;
     idField: keyof T;
     displayName: string;
 }
@@ -29,13 +26,9 @@ export interface DataTypeConfig<T> {
  */
 export class GenericDataService<T> {
     private config: DataTypeConfig<T>;
-    private apiBaseUrl: string;
-    private rootFolderLocation: string;
 
     constructor(config: DataTypeConfig<T>) {
         this.config = config;
-        this.apiBaseUrl = env.PUBLIC_METACAT_URL;
-        this.rootFolderLocation = env.PUBLIC_ROOT_FOLDER_LOCATION;
     }
 
     /**
@@ -50,9 +43,9 @@ export class GenericDataService<T> {
                 return await this.fetchLocal(sortHandler);
             }
 
-            if ($session.data == null) {
-                throw new Error('Session is required for remote fetch');
-            }
+            // if (session.data == null) {
+            //     throw new Error('Session is required for remote fetch');
+            // }
 
             return await this.fetchRemote(sortHandler);
         } catch (error) {
@@ -65,15 +58,10 @@ export class GenericDataService<T> {
      * Fetch from local files
      */
     private async fetchLocal(sortHandler?: (a: T, b: T) => number): Promise<T[]> {
-        const files = await getJsonFiles(this.config.localFolder);
-        const data = await Promise.all(
-            files.map((filename: string) =>
-                getJsonContent(`${this.config.localFolder}/${filename}`)
-            )
-        );
-
+        const request = await fetch(`/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`)
+        const data = await request.json();
         const items = await Promise.all(
-            data.map(json => this.config.modelClass.fromJSON(json))
+            data.map((json: any) => this.config.modelClass.fromJSON(json))
         );
 
         return sortHandler ? items.sort(sortHandler) : items;
@@ -85,12 +73,19 @@ export class GenericDataService<T> {
     private async fetchRemote(
         sortHandler?: (a: T, b: T) => number
     ): Promise<T[]> {
-        const accessToken = $session.data?.user.accessToken;
-        if (!accessToken) {
-            throw new Error('No access token available');
-        }
+        //const accessToken = session.value.data?.user.accessToken;
+        // if (!accessToken) {
+        //     throw new Error('No access token available');
+        // }
 
-        const response = await fetch(`${this.apiBaseUrl}${this.config.endpoint}`, {
+        const accessToken = "dummy-access-token"; // Placeholder for demonstration
+
+        const fullRemoteUrl = `${this.apiBaseUrl}${this.config.endpoint}`;
+        console.log(`Fetching remote data from: ${fullRemoteUrl}`);
+        const proxyUrl = `/api/get-remote?requestURL=${encodeURIComponent(fullRemoteUrl)}`;
+
+        // 3. Call the SvelteKit Server Endpoint
+        const response = await fetch(proxyUrl, {
             headers: { Authorization: `Bearer ${accessToken}` }
         });
 
@@ -99,6 +94,8 @@ export class GenericDataService<T> {
         }
 
         const data = await response.json();
+
+        // 4. Hydrate classes on the client
         const items = await Promise.all(
             data.map((json: any) => this.config.modelClass.fromJSON(json))
         );
@@ -248,7 +245,7 @@ export class GenericDataService<T> {
      * Delete from remote API
      */
     private async deleteRemote(id: string): Promise<void> {
-            const accessToken = $session.data?.user.accessToken;
+        const accessToken = $session.data?.user.accessToken;
         if (!accessToken) {
             throw new Error('No access token available');
         }
