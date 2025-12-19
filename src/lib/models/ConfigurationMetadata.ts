@@ -1,8 +1,7 @@
 // $lib/models/ConfigurationMetadata.ts
 
 import { CombinationMetadata } from './CombinationMetadata';
-import { getJsonContent } from "$lib/jsonUtils";
-import type { MetadataModel } from '$lib/services/GenericDataService';
+import { GenericDataService, type MetadataModel } from '$lib/services/GenericDataService';
 
 export class ConfigurationMetadata {
     configurationId: number;
@@ -23,10 +22,17 @@ export class ConfigurationMetadata {
         config.configurationName = json.configurationName || '';
         config.configurationDescription = json.configurationDescription || '';
 
+        const combinationService = new GenericDataService<CombinationMetadata>({
+            modelClass: CombinationMetadata,
+            endpoint: '/local/combinations',
+            idField: 'combinationId',
+            displayName: 'combinations'
+        });
+
         if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
             const combinationPromises = json.equipmentCombinations.map(async (combinationId: number) => {
                 try {
-                    const combinationData = await getJsonContent(`combinations/combi${combinationId}.json`);
+                    const combinationData = await combinationService.fetchOne(`combi${combinationId}.json`);
                     return await CombinationMetadata.fromJSON(combinationData);
                 } catch (error) {
                     console.error(`Failed to load combination ${combinationId}:`, error);

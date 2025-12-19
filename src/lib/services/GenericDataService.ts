@@ -1,7 +1,4 @@
 // $lib/services/GenericDataService.ts
-import { authClient } from '$lib/auth-client';
-
-const session = authClient.useSession();
 
 /**
  * Interface that all metadata models must implement
@@ -16,13 +13,13 @@ export interface MetadataModel<T> {
  */
 export interface DataTypeConfig<T> {
     modelClass: MetadataModel<T>;
-    endpoint: string;
+    endpoint: string; // e.g., "/local/configs", "/db/users", or "/remote/metacat/items"
     idField: keyof T;
     displayName: string;
 }
 
 /**
- * Generic data service for CRUD operations
+ * Generic data service for CRUD operations using unified backend gateways
  */
 export class GenericDataService<T> {
     private config: DataTypeConfig<T>;
@@ -32,231 +29,116 @@ export class GenericDataService<T> {
     }
 
     /**
-     * Fetch all items
+     * Fetch items. Handles files, folders, DB rows, or Remote API responses
+     * based on the config.endpoint prefix.
      */
-    async fetchAll(
-        localOnly: boolean,
-        sortHandler?: (a: T, b: T) => number
-    ): Promise<T[]> {
+    async fetchAll(sortHandler?: (a: T, b: T) => number): Promise<T[]> {
         try {
-            if (localOnly) {
-                return await this.fetchLocal(sortHandler);
+            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
+            const response = await fetch(url);
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
 
-            // if (session.data == null) {
-            //     throw new Error('Session is required for remote fetch');
-            // }
+            const data = await response.json();
+            
+            // The backend might return a single object (if a specific file was requested)
+            // or an array (if a folder, table, or remote list was requested).
+            const rawItems = Array.isArray(data) ? data : [data];
 
-            return await this.fetchRemote(sortHandler);
+            // Hydrate raw JSON into Model instances
+            const items = await Promise.all(
+                rawItems.map((json: any) => this.config.modelClass.fromJSON(json))
+            );
+
+            return sortHandler ? items.sort(sortHandler) : items;
         } catch (error) {
             console.error(`Error fetching ${this.config.displayName}:`, error);
-            throw new Error(`Failed to load ${this.config.displayName}. Please try again later.`);
+            throw new Error(`Failed to load ${this.config.displayName}.`);
         }
     }
 
-    /**
-     * Fetch from local files
-     */
-    private async fetchLocal(sortHandler?: (a: T, b: T) => number): Promise<T[]> {
-        const request = await fetch(`/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`)
-        const data = await request.json();
-        const items = await Promise.all(
-            data.map((json: any) => this.config.modelClass.fromJSON(json))
-        );
-
-        return sortHandler ? items.sort(sortHandler) : items;
-    }
-
-    /**
-     * Fetch from remote API
-     */
-    private async fetchRemote(
-        sortHandler?: (a: T, b: T) => number
-    ): Promise<T[]> {
-        //const accessToken = session.value.data?.user.accessToken;
-        // if (!accessToken) {
-        //     throw new Error('No access token available');
-        // }
-
-        const accessToken = "dummy-access-token"; // Placeholder for demonstration
-
-        const fullRemoteUrl = `${this.apiBaseUrl}${this.config.endpoint}`;
-        console.log(`Fetching remote data from: ${fullRemoteUrl}`);
-        const proxyUrl = `/api/get-remote?requestURL=${encodeURIComponent(fullRemoteUrl)}`;
-
-        // 3. Call the SvelteKit Server Endpoint
-        const response = await fetch(proxyUrl, {
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to fetch ${this.config.displayName}`);
-        }
-
-        const data = await response.json();
-
-        // 4. Hydrate classes on the client
-        const items = await Promise.all(
-            data.map((json: any) => this.config.modelClass.fromJSON(json))
-        );
-
-        return sortHandler ? items.sort(sortHandler) : items;
-    }
-
-    /**
-     * Submit (create or update) an item
-     */
-    async submit(
-        item: T,
-        localOnly: boolean,
-        isNewEntry: boolean
-    ): Promise<void> {
-        const id = item[this.config.idField];
-        if (!id) {
-            throw new Error(`${String(this.config.idField)} is required.`);
-        }
-
-        console.log(`Submitting ${this.config.displayName}:`, item);
-
+    async fetchOne(id: string): Promise<T> {
         try {
-            await this.handleFileSubmission(item);
-        } catch (error) {
-            console.error('File submission failed:', error);
-            throw error;
-        }
+            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}&id=${encodeURIComponent(id)}`;
+            const response = await fetch(url);
 
-        if (!localOnly) {
-            try {
-                if (!$session.data) {
-                    throw new Error('Session is required for remote submission');
-                }
-                await this.handleAPISubmission(item, isNewEntry);
-            } catch (error) {
-                console.error('API submission failed:', error);
-                throw error;
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
             }
+
+            const data = await response.json();
+            return this.config.modelClass.fromJSON(data);
+        } catch (error) {
+            console.error(`Error fetching ${this.config.displayName} with ID ${id}:`, error);
+            throw new Error(`Failed to load ${this.config.displayName} with ID ${id}.`);
         }
     }
 
     /**
-     * Save to local file
+     * Submit (create or update) an item.
      */
-    private async handleFileSubmission(item: T): Promise<void> {
+    async submit(item: T): Promise<void> {
+        const id = item[this.config.idField];
+        if (!id) throw new Error(`${String(this.config.idField)} is required.`);
+
+        const cleanedData = this.config.modelClass.toJSON(item);
+
+        // For Local storage, we ensure the path points to a specific .json file
+        let targetPath = this.config.endpoint;
+        if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
+            targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
+        }
+
         try {
-            const id = item[this.config.idField];
-            const filePath = `${this.rootFolderLocation}/${this.config.localFolder}/`;
-            const fileName = `${id}.json`;
-            const cleanedData = this.config.modelClass.toJSON(item);
-
-            const saveData = {
-                targetPath: `${filePath}${fileName}`,
-                metadata: cleanedData
-            };
-
             const response = await fetch('/api/save-json', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(saveData)
+                body: JSON.stringify({
+                    targetPath: targetPath,
+                    metadata: cleanedData
+                })
             });
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(`Failed to save file: ${errorData.message}`);
+                throw new Error(errorData.message || 'Save failed');
             }
-
-            console.log(`${this.config.displayName} file saved successfully`);
         } catch (error) {
-            console.error(`Error saving ${this.config.displayName} file:`, error);
+            console.error(`Error saving ${this.config.displayName}:`, error);
             throw error;
         }
     }
 
     /**
-     * Submit to remote API
+     * Delete an item.
      */
-    private async handleAPISubmission(
-        item: T,
-        isNewEntry: boolean
-    ): Promise<void> {
+    async delete(item: T): Promise<void> {
+        const id = item[this.config.idField];
+        let targetPath = this.config.endpoint;
+        
+        // Ensure path resolves to the specific file for local cleanup
+        if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
+            targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
+        }
+
         try {
-            const accessToken = $session.data?.user.accessToken;
-            if (!accessToken) {
-                throw new Error('No access token available');
-            }
-
-            const mappedData = this.config.modelClass.toJSON(item);
-            const url = `${this.apiBaseUrl}${this.config.endpoint}?schema=any`;
-            const method = 'POST'; // Both create and update use POST
-
-            const response = await fetch(url, {
-                method,
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${accessToken}`
-                },
-                body: JSON.stringify(mappedData)
+            const response = await fetch('/api/delete-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ 
+                    targetPath,
+                    id // ID is provided for DB/Remote identification
+                })
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to save ${this.config.displayName} to endpoint`);
+                throw new Error(`Failed to delete ${this.config.displayName}`);
             }
-
-            console.log(`${this.config.displayName} submitted to API successfully`);
         } catch (error) {
-            console.error(`Error submitting ${this.config.displayName} to API:`, error);
+            console.error(`Error deleting ${this.config.displayName}:`, error);
             throw error;
-        }
-    }
-
-    /**
-     * Delete an item
-     */
-    async delete(
-        item: T,
-        localOnly: boolean,
-    ): Promise<void> {
-        const id = item[this.config.idField];
-
-        if (localOnly) {
-            await this.deleteLocal(id as string);
-        } else {
-            await this.deleteRemote(id as string);
-        }
-    }
-
-    /**
-     * Delete local file
-     */
-    private async deleteLocal(id: string): Promise<void> {
-        const filePath = `${this.rootFolderLocation}/${this.config.localFolder}/${id}.json`;
-
-        const response = await fetch('/api/delete-json', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ targetPath: filePath })
-        });
-
-        if (!response.ok) {
-            throw new Error('Failed to delete local file');
-        }
-    }
-
-    /**
-     * Delete from remote API
-     */
-    private async deleteRemote(id: string): Promise<void> {
-        const accessToken = $session.data?.user.accessToken;
-        if (!accessToken) {
-            throw new Error('No access token available');
-        }
-
-        const response = await fetch(`${this.apiBaseUrl}${this.config.endpoint}/${id}`, {
-            method: 'DELETE',
-            headers: { Authorization: `Bearer ${accessToken}` }
-        });
-
-        if (!response.ok) {
-            throw new Error(`Failed to delete ${this.config.displayName} from API`);
         }
     }
 }

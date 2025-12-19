@@ -1,5 +1,4 @@
-import { getJsonContent } from "$lib/jsonUtils";
-import type { MetadataModel } from "$lib/services/GenericDataService";
+import { GenericDataService, type MetadataModel } from "$lib/services/GenericDataService";
 import { EquipmentMetadata } from './EquipmentMetadata';
 
 export class CombinationMetadata {
@@ -18,17 +17,24 @@ export class CombinationMetadata {
         combination.combinationId = json.combinationId || 0;
         combination.combinationName = json.combinationName || '';
 
+        const equipmentService = new GenericDataService<EquipmentMetadata>({
+            modelClass: EquipmentMetadata,
+            endpoint: '/local/equipment',
+            idField: 'equipmentName',
+            displayName: 'equipment'
+        });
+
         if (json.equipment && Array.isArray(json.equipment)) {
             const equipmentPromises = json.equipment.map(async (equipmentName: string) => {
                 try {
-                    const equipmentData = await getJsonContent(`equipment/${equipmentName}.json`);
+                    const equipmentData = await equipmentService.fetchOne(equipmentName);
                     return EquipmentMetadata.fromJSON(equipmentData);
                 } catch (error) {
                     console.error(`Failed to load equipment ${equipmentName}:`, error);
                     return null;
                 }
             });
-            
+
             const equipment = await Promise.all(equipmentPromises);
             combination.equipment = equipment.filter(eq => eq !== null) as EquipmentMetadata[];
         }

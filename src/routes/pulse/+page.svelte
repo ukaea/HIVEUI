@@ -4,7 +4,6 @@
 	import { tableOrderStore, SelectField, type MenuOption, Notification } from 'svelte-ux';
 	import { page } from '$app/stores';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
-	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
 	import {  CompiledPulseMetadata, ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
 
 	import { triggerDAG } from '$lib/triggerPipeline';

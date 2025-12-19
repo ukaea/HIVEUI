@@ -35,31 +35,28 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: 'get-configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		apiOverride: '/api/',
-		endpoint: 'get-combinations',
-		localFolder: 'combinations',
+		endpoint: '/db/combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/api/v1/equipment',
-		localFolder: 'equipment',
+		endpoint: '/local/equipment',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});
 
 	async function fetchConfigurations() {
 		try {
-			allConfigurations = await configurationService.fetchAll(false);
+			allConfigurations = await configurationService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert((error as Error).message);
@@ -68,7 +65,7 @@
 
 	async function fetchCombinations() {
 		try {
-			allCombinations = await combinationService.fetchAll(false);
+			allCombinations = await combinationService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching combinations:', error);
 			alert((error as Error).message);
@@ -77,7 +74,7 @@
 
 	async function fetchEquipment() {
 		try {
-			allEquipment = await equipmentService.fetchAll(localOnly);
+			allEquipment = await equipmentService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert((error as Error).message);
@@ -91,7 +88,7 @@
 		}
 
 		try {
-			await configurationService.submit(selectedConfiguration, localOnly, isNewEntry);
+			await configurationService.submit(selectedConfiguration);
 			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 			handleModalClose();
 			await fetchConfigurations();
@@ -109,7 +106,7 @@
 		}
 
 		try {
-			await combinationService.submit(newCombination, localOnly, isNewCombination);
+			await combinationService.submit(newCombination);
 			alert(isNewCombination ? 'New combination submitted successfully!' : 'Combination updated successfully!');
 			handleCombinationDialogClose();
 			await fetchCombinations();
@@ -123,7 +120,7 @@
 		if (!selectedConfiguration) return;
 
 		if (confirm(`Are you sure you want to delete configuration ${selectedConfiguration.configurationName}?`)) {
-			configurationService.delete(selectedConfiguration, localOnly)
+			configurationService.delete(selectedConfiguration)
 				.then(() => {
 					alert('Configuration deleted successfully');
 					handleModalClose();
