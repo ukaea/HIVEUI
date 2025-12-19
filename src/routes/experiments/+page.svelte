@@ -26,15 +26,14 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/api/v1/experiments',
-		localFolder: 'experiments',
+		endpoint: '/local/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
 
 	async function fetchExperiments() {
 		try {
-			allExperiments = await experimentService.fetchAll(localOnly);
+			allExperiments = await experimentService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -64,7 +63,7 @@
 		}
 
 		try {
-			await experimentService.submit(selectedExperiment, localOnly, isNewEntry);
+			await experimentService.submit(selectedExperiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
@@ -79,7 +78,7 @@
 
 		if (confirm(`Are you sure you want to delete experiment ${selectedExperiment.experimentNumber}?`)) {
 			try {
-				await experimentService.delete(selectedExperiment, localOnly);
+				await experimentService.delete(selectedExperiment);
 
 				alert('Experiment deleted successfully');
 				handleModalClose();
