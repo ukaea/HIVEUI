@@ -5,10 +5,14 @@ import { redirect, type Handle } from "@sveltejs/kit";
 import { env } from '$env/dynamic/private';
 
 export const handle: Handle = async ({ event, resolve }) => {
-  let session = await auth.api.getSession({
+  if (event.url.pathname.startsWith("/api/auth")) {
+    return svelteKitHandler({ event, resolve, auth, building });
+  }
+
+  const session = await auth.api.getSession({
     headers: event.request.headers,
   });
-  
+
   if (session) {
     event.locals.session = session.session;
     event.locals.user = session.user;
@@ -19,26 +23,31 @@ export const handle: Handle = async ({ event, resolve }) => {
 
   // --- AUTHN BYPASS ---
   if (env.AUTHN_ENABLE !== 'true') {
-    return svelteKitHandler({ event, resolve, auth, building });
+    return resolve(event);
   }
 
-
-  const publicPrefixes = ['/api/auth'];
-  const publicPaths = ['/login', '/unauthorized'];
-  const publicRootPath = '/';
-
-  const isPublicRoute =
-    publicPaths.includes(event.url.pathname) ||
-    publicPrefixes.some(prefix => event.url.pathname.startsWith(prefix))
-    
-  // If it's a public route, skip all checks
-  if (isPublicRoute) {
-    return svelteKitHandler({ event, resolve, auth, building });
+  // --- PUBLIC PATHS ---
+  const publicPaths = ['/unauthorized'];
+  if (publicPaths.includes(event.url.pathname)) {
+    return resolve(event);
   }
 
-  // --- AUTHENTICATION (Login Check) ---
+  // --- AUTHENTICATION (Direct to Keycloak) ---
   if (!event.locals.user) {
-    throw redirect(303, '/login');
+    console.log('No active session found. Redirecting to Keycloak.');
+
+    const result = await auth.api.signInSocial({
+      body: {
+        provider: 'keycloak-custom',
+        callbackURL: `${event.url.origin}`
+      },
+    });
+
+    if (result && 'url' in result && result.url) {
+      throw redirect(302, result.url);
+    }
+
+    console.error("Better Auth did not return a redirect URL", result);
   }
 
   // --- AUTHORIZATION (Group Check) ---
@@ -50,18 +59,16 @@ export const handle: Handle = async ({ event, resolve }) => {
       throw new Error("Server misconfiguration: Missing required group.");
     }
 
-    // Check for group membership
-    const userGroups = event.locals.user.groups || [];
+    const userGroups = (event.locals.user as any).groups || [];
     const hasAccess = userGroups.includes(requiredGroup);
 
     if (!hasAccess) {
       console.log(`User ${event.locals.user.email} denied access. Missing group: ${requiredGroup}`);
-      await auth.api.signOut({
-        headers: event.request.headers,
-      });
+
+      await auth.api.signOut({ headers: event.request.headers });
       throw redirect(303, '/unauthorized');
     }
   }
 
-  return svelteKitHandler({ event, resolve, auth, building });
+  return resolve(event);
 };
