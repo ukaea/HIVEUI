@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField} from 'svelte-ux';
-	import { tableOrderStore, SelectField} from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
+	import { tableOrderStore, SelectField } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
-	import { ExperimentMetadata, PersonMetadata} from '$lib/models';
+	import { env } from '$env/dynamic/public';
+	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
-	import Zod from 'zod';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -17,6 +16,7 @@
 	let open = false;
 	let isNewEntry = false;
 	let localOnly = false;
+	let isManualEdit = false;
 
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
 
@@ -26,15 +26,14 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/api/v1/experiments',
-		localFolder: 'experiments',
+		endpoint: '/local/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
 
 	async function fetchExperiments() {
 		try {
-			allExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
+			allExperiments = await experimentService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -43,7 +42,7 @@
 
 	async function fetchMembers() {
 		try {
-			//allMembers = await MemberService.getMembers("HIVE");
+			allMembers = await MemberService.getMembers('HIVE');
 		} catch (error) {
 			console.error('Error fetching members:', error);
 			alert((error as Error).message);
@@ -64,7 +63,7 @@
 		}
 
 		try {
-			await experimentService.submit(selectedExperiment, localOnly, $page.data.session, isNewEntry);
+			await experimentService.submit(selectedExperiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
@@ -79,7 +78,7 @@
 
 		if (confirm(`Are you sure you want to delete experiment ${selectedExperiment.experimentNumber}?`)) {
 			try {
-				await experimentService.delete(selectedExperiment, localOnly, $page.data.session);
+				await experimentService.delete(selectedExperiment);
 
 				alert('Experiment deleted successfully');
 				handleModalClose();
@@ -94,6 +93,7 @@
 	function handleRowClick(row: ExperimentMetadata): void {
 		selectedExperiment = { ...row };
 		isNewEntry = false;
+		isManualEdit = true;
 		open = true;
 	}
 
@@ -107,6 +107,7 @@
 		open = false;
 		selectedExperiment = null;
 		isNewEntry = false;
+		isManualEdit = false;
 	}
 
 	function handleFormCancel() {
@@ -114,7 +115,7 @@
 	}
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchExperiments();
@@ -169,7 +170,7 @@
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:state let:current let:revertAll let:errors>
+		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<TextField
@@ -218,22 +219,55 @@
 			</div>
 
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<h4 class="col-span-2 mt-1">Lead Investigator</h4>
-				<SelectField
-					label="Lead Investigator"
-					value={draft.leadInvestigator?.email || ''}
-					options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
+				<h4 class="col-span-2 mt-1 flex items-center gap-3">
+					<div>Lead Investigator</div>
+					<div>
+						<SelectField
+							label="Select from Members"
+							value={isManualEdit ? '' : current.leadInvestigator?.email}
+							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
+							on:change={(e) => {
+								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
+								if (selectedMember) {
+									draft.leadInvestigator = {
+										firstName: selectedMember.firstName,
+										lastName: selectedMember.lastName,
+										email: selectedMember.email
+									};
+									isManualEdit = false;
+									refresh();
+								}
+							}}
+						/>
+					</div>
+				</h4>
+				<TextField
+					label="First Name"
+					value={current.leadInvestigator?.firstName}
 					on:change={(e) => {
-						const selectedMember = allMembers.find((member) => member.email === e.detail.value);
-						if (selectedMember) {
-							draft.leadInvestigator = 
-								{
-									firstName: selectedMember.firstName,
-									lastName: selectedMember.lastName,
-									email: selectedMember.email,
-								};
-							refresh();
-						}
+						draft.leadInvestigator.firstName = e.detail.value;
+						isManualEdit = true;
+						refresh();
+					}}
+					error={errors.leadInvestigator?.firstName}
+				/>
+				<TextField
+					label="Last Name"
+					value={current.leadInvestigator?.lastName}
+					on:change={(e) => {
+						draft.leadInvestigator.lastName = e.detail.value;
+						isManualEdit = true;
+						refresh();
+					}}
+					error={errors.leadInvestigator?.lastName}
+				/>
+				<TextField
+					label="Email"
+					value={current.leadInvestigator?.email}
+					on:change={(e) => {
+						draft.leadInvestigator.email = e.detail.value;
+						isManualEdit = true;
+						refresh();
 					}}
 					error={errors.leadInvestigator?.email}
 				/>
@@ -288,10 +322,14 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button type="submit" variant="fill" on:click={() => {
-						selectedExperiment = current;
-						handleMetadataSubmit();
-					}}>Save</Button>
+					<Button
+						type="submit"
+						variant="fill"
+						on:click={() => {
+							selectedExperiment = current;
+							handleMetadataSubmit();
+						}}>Save</Button
+					>
 					<Button
 						on:click={() => {
 							revertAll();

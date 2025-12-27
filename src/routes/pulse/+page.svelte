@@ -3,19 +3,18 @@
 	import { Button, Table, Dialog, Form, TextField, DateField, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, type MenuOption, Notification } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
 	import { mdiCheck, mdiWindowClose, mdiCheckCircleOutline } from '@mdi/js';
-	import { getJsonFiles, getJsonContent, getJsonFile } from '$lib/jsonUtils';
 	import {  CompiledPulseMetadata, ExperimentMetadata, ConfigurationMetadata, PersonMetadata } from '$lib/models';
 
 	import { triggerDAG } from '$lib/triggerPipeline';
-	import { PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { CoolantInformation, HeatingInformation, ThermocoupleInformation } from '$lib/models/CompiledPulseMetadata';
+	import { authClient } from '$lib/auth-client';
 
 	async function handleTrigger() {
-		const { result, error } = await triggerDAG(PUBLIC_AIRFLOW_DIRECTORY, PUBLIC_AIRFLOW_INPUT_FILE);
+		const { result, error } = await triggerDAG(env.PUBLIC_AIRFLOW_DIRECTORY, env.PUBLIC_AIRFLOW_INPUT_FILE);
 	}
 
 	const handleDisplayElement = (elementId, postProcessData, displayType = "block") => {
@@ -95,7 +94,7 @@
 		sortedData = sortedData.sort($order.handler);
 	});
 
-	
+	const session = authClient.useSession();
 	let open = false;
 	let selectedMetadata: CompiledPulseMetadata | null = null;
 	let isNewEntry = false;
@@ -119,17 +118,7 @@
 
 	async function fetchExperiments() {
 		try {
-			//sortedExperiments = await experimentService.fetchAll(localOnly, $page.data.session);
-			sortedExperiments = [
-				{
-				experimentNumber: 0,
-				description: 'The first experiment'
-				},
-				{
-				experimentNumber: 2,
-				description: 'The second experiment'
-				}
-			]
+			sortedExperiments = await experimentService.fetchAll(localOnly);
 			experimentOptions = sortedExperiments.map((exp) => ({
 				label: `${exp.experimentNumber} - ${exp.description}`,
 				value: exp.experimentNumber
@@ -142,7 +131,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			sortedConfigurations = await configurationService.fetchAll(localOnly, $page.data.session);
+			sortedConfigurations = await configurationService.fetchAll(localOnly);
 			configurationOptions = sortedConfigurations.map((config) => ({
 				label: `${config.configurationId} - ${config.configurationName}`,
 				value: config.configurationId
@@ -176,6 +165,11 @@
 			return null;
 		}
 		try {
+			const accessToken = $session.data?.user.accessToken;
+			if (!accessToken) {
+				throw new Error('No access token available');
+			}
+
 			if (localOnly) {
 				sortedPostProcessData = await getJsonContent(`${directory}/${filename}`);
 			} else {
@@ -230,12 +224,12 @@
 	async function handleAPISubmission(metadata: CompiledPulseMetadata, isNewEntry: boolean): Promise<void> {
 		//Not currently implemented
 		try {
-			const accessToken = $page.data.session?.user.sessionToken;
+			const accessToken = $session.data?.user.accessToken;
 			if (!accessToken) {
 				throw new Error('No access token available');
 			}
 
-			const url = isNewEntry ? `${PUBLIC_METACAT_URL}/api/v1/pulses` : `${PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseNumber}`;
+			const url = isNewEntry ? `${env.PUBLIC_METACAT_URL}/api/v1/pulses` : `${env.PUBLIC_METACAT_URL}/api/v1/pulses/${metadata.pulseNumber}`;
 
 			const response = await fetch(url, {
 				method: isNewEntry ? 'POST' : 'PUT',
@@ -261,7 +255,7 @@
 			const pulseNumber = metadata.pulseNumber;
 			const sampleNumber = metadata.sampleNumber;
 			const experimentNumber = metadata.experimentNumber;
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}/raw`;
+			const filePath = `${env.PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}`;
 			const fileName = "manual-metadata.json";
 
 			const saveMetadata = {
@@ -372,7 +366,7 @@
 
 	async function handleFlagFile(metadata: CompiledPulseMetadata) {
 		try {
-			const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}`;
+			const filePath = `${env.PUBLIC_ROOT_FOLDER_LOCATION}`;
 			const fileName = `currentPulse.json`;
 
 			const flagData = {
@@ -411,7 +405,7 @@
 
 		if (confirm(`Are you sure you want to delete the pulse with ID: ${selectedMetadata.pulseNumber}?`)) {
 			if (localOnly) {
-				const filePath = `${PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseNumber}.json`;
+				const filePath = `${env.PUBLIC_ROOT_FOLDER_LOCATION}/pulses/${selectedMetadata.pulseNumber}.json`;
 				fetch('/api/delete-json', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ targetPath: filePath }) })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete local file');
@@ -423,8 +417,8 @@
 						alert(`Failed to delete pulse: ${error.message}`);
 					});
 			} else {
-				const accessToken = $page.data.session?.user.sessionToken;
-				fetch(`${PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseNumber}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
+				const accessToken = $session.data?.user.accessToken;
+				fetch(`${env.PUBLIC_METACAT_URL}/api/v1/datasets/${selectedMetadata.pulseNumber}`, { method: 'DELETE', headers: { Authorization: `Bearer ${accessToken}` } })
 					.then((response) => {
 						if (!response.ok) throw new Error('Failed to delete pulse from API');
 						alert('Pulse deleted successfully');
@@ -440,14 +434,12 @@
 	}	
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchPulses();
 		fetchExperiments();
 		fetchConfigurations();
-
-		console.log('Experiments:', sortedExperiments);	
 	});
 
 	let pulseQualityOptions: MenuOption[] = [

@@ -1,5 +1,3 @@
-import type { Session } from "@auth/sveltekit";
-
 export interface KeycloakMember {
 	id: string;
 	username: string;

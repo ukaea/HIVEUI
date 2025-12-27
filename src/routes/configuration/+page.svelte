@@ -3,8 +3,7 @@
 	import { Button, Table, Dialog, Form, TextField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY, PUBLIC_METACAT_URL, PUBLIC_ROOT_FOLDER_LOCATION } from '$env/static/public';
-	import { getJsonFiles, getJsonContent } from '$lib/jsonUtils';
+	import { env } from '$env/dynamic/public';
 	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 
@@ -36,31 +35,28 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/api/v1/configurations',
-		localFolder: 'configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/api/v1/combinations',
-		localFolder: 'combinations',
+		endpoint: '/db/combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/api/v1/equipment',
-		localFolder: 'equipment',
+		endpoint: '/local/equipment',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});
 
 	async function fetchConfigurations() {
 		try {
-			allConfigurations = await configurationService.fetchAll(localOnly, $page.data.session);
+			allConfigurations = await configurationService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
 			alert((error as Error).message);
@@ -69,7 +65,7 @@
 
 	async function fetchCombinations() {
 		try {
-			allCombinations = await combinationService.fetchAll(localOnly, $page.data.session);
+			allCombinations = await combinationService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching combinations:', error);
 			alert((error as Error).message);
@@ -78,7 +74,7 @@
 
 	async function fetchEquipment() {
 		try {
-			allEquipment = await equipmentService.fetchAll(localOnly, $page.data.session);
+			allEquipment = await equipmentService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert((error as Error).message);
@@ -92,7 +88,7 @@
 		}
 
 		try {
-			await configurationService.submit(selectedConfiguration, localOnly, $page.data.session, isNewEntry);
+			await configurationService.submit(selectedConfiguration);
 			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 			handleModalClose();
 			await fetchConfigurations();
@@ -110,7 +106,7 @@
 		}
 
 		try {
-			await combinationService.submit(newCombination, localOnly, $page.data.session, isNewCombination);
+			await combinationService.submit(newCombination);
 			alert(isNewCombination ? 'New combination submitted successfully!' : 'Combination updated successfully!');
 			handleCombinationDialogClose();
 			await fetchCombinations();
@@ -124,7 +120,7 @@
 		if (!selectedConfiguration) return;
 
 		if (confirm(`Are you sure you want to delete configuration ${selectedConfiguration.configurationName}?`)) {
-			configurationService.delete(selectedConfiguration, localOnly, $page.data.session)
+			configurationService.delete(selectedConfiguration)
 				.then(() => {
 					alert('Configuration deleted successfully');
 					handleModalClose();
@@ -196,7 +192,7 @@
 	}
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchConfigurations();

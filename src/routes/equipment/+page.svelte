@@ -3,7 +3,7 @@
 	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
 	import { tableOrderStore } from 'svelte-ux';
 	import { page } from '$app/stores';
-	import { PUBLIC_LOCAL_ONLY } from '$env/static/public';
+	import { env } from '$env/dynamic/public';
 	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import Zod from 'zod';
@@ -23,8 +23,7 @@
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/api/v1/equipment',
-		localFolder: 'equipment',
+		endpoint: '/local/equipment',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});
@@ -40,7 +39,7 @@
 
 	async function fetchEquipment() {
 		try {
-			allEquipment = await equipmentService.fetchAll(localOnly, $page.data.session);
+			allEquipment = await equipmentService.fetchAll(localOnly);
 		} catch (error) {
 			console.error('Error fetching equipment:', error);
 			alert((error as Error).message);
@@ -72,7 +71,7 @@
 		}
 
 		try {
-			await equipmentService.submit(selectedEquipment, localOnly, $page.data.session, isNewEntry);
+			await equipmentService.submit(selectedEquipment, localOnly, isNewEntry);
 			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
 			handleModalClose();
 			await fetchEquipment();
@@ -108,7 +107,7 @@
 
 		if (confirm(`Are you sure you want to delete equipment ${selectedEquipment.equipmentName}?`)) {
 			try {
-				equipmentService.delete(selectedEquipment, localOnly, $page.data.session);
+				equipmentService.delete(selectedEquipment, localOnly);
 				alert('Equipment deleted successfully');
 				handleModalClose();
 				fetchEquipment();
@@ -151,7 +150,7 @@
 	}
 
 	onMount(() => {
-		if (PUBLIC_LOCAL_ONLY == 'true') {
+		if (env.PUBLIC_LOCAL_ONLY == 'true') {
 			localOnly = true;
 		}
 		fetchEquipment();
