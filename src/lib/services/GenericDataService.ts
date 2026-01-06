@@ -11,12 +11,28 @@ export interface MetadataModel<T> {
 /**
  * Configuration for a specific data type
  */
-export interface DataTypeConfig<T> {
+export interface GenericTypeConfig<T> {
     modelClass: MetadataModel<T>;
     endpoint: string; // e.g., "/local/configs", "/db/users", or "/remote/metacat/items"
     idField: keyof T;
     displayName: string;
 }
+
+/**
+ * Configuration for a pulse data type
+ */
+
+export interface PulseTypeConfg<T> {
+    modelClass: MetadataModel<T>;
+    endpoint: string;
+    idField: keyof T;
+    displayName: string;
+    experimentField: keyof T;
+    sampleField: keyof T;
+    isPulse: boolean;
+}
+
+type DataTypeConfig<T> = GenericTypeConfig<T> | PulseTypeConfg<T>;
 
 /**
  * Generic data service for CRUD operations using unified backend gateways
@@ -34,7 +50,16 @@ export class GenericDataService<T> {
      */
     async fetchAll(sortHandler?: (a: T, b: T) => number): Promise<T[]> {
         try {
-            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
+            let url: string;
+
+            if ("isPulse" in this.config) {
+                url = `/api/get-json?
+                    endpoint=${encodeURIComponent(this.config.endpoint)}
+                    &isPulse=${encodeURIComponent(this.config.isPulse)}`;
+            } else {
+                url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
+            }
+
             const response = await fetch(url);
 
             if (!response.ok) {
