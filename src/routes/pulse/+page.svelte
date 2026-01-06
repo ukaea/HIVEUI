@@ -76,18 +76,27 @@
 	
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/api/v1/experiments',
-		localFolder: 'experiments',
+		endpoint: '/local/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/api/v1/configurations',
+		endpoint: '/local/configurations',
 		localFolder: 'configurations',
-		idField: 'configurationId',
 		displayName: 'configurations'
+	});
+
+	const pulseService = new GenericDataService<CompiledPulseMetadata>({
+		modelClass: CompiledPulseMetadata,
+		endpoint: '/local/HIVE/',
+		localFolder: 'pulses',
+		displayName: 'pulse',
+		idField: "pulseNumber",
+		experimentField: "experimentNumber",
+		sampleField: "sampleNumber",
+		isPulse: true
 	});
 
 	order.subscribe((value) => {
@@ -118,7 +127,7 @@
 
 	async function fetchExperiments() {
 		try {
-			sortedExperiments = await experimentService.fetchAll(localOnly);
+			sortedExperiments = await experimentService.fetchAll();
 			experimentOptions = sortedExperiments.map((exp) => ({
 				label: `${exp.experimentNumber} - ${exp.description}`,
 				value: exp.experimentNumber
@@ -131,7 +140,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			sortedConfigurations = await configurationService.fetchAll(localOnly);
+			sortedConfigurations = await configurationService.fetchAll();
 			configurationOptions = sortedConfigurations.map((config) => ({
 				label: `${config.configurationId} - ${config.configurationName}`,
 				value: config.configurationId
@@ -144,16 +153,8 @@
 
 	async function fetchPulses() {
 		try {
-			if (localOnly) {
-				// const pulseFiles = await getJsonFiles('pulses');
-				// const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
-				// sortedData = pulseData.map(mapToPulse).sort($order.handler);
-				// return;
-				// const globalPulseData = await getJsonFile(`${PUBLIC_ROOT_FOLDER_LOCATION}`, 'global-pulse-data.json');
-
-				// Contains a list of Pulse Ids and their status
-
-			}
+			const pulseData = await pulseService.fetchAll();
+			sortedData = pulseData.sort($order.handler);
 		} catch (error) {
 			console.error('Error fetching pulses:', error);
 			alert('Failed to load pulses. Please try again later.');
@@ -193,7 +194,8 @@
 		const metadata = event.detail;
 
 		try {
-			await handlePulseFileSubmission(metadata);
+			await pulseService.submit(metadata);
+			//await handlePulseFileSubmission(metadata);
 			saveNotify = true;
 
 			setTimeout(() => {
@@ -537,7 +539,6 @@
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -547,7 +548,6 @@
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -557,7 +557,6 @@
 					type="integer"
 					on:change={(e) => {
 						draft.pulseNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
