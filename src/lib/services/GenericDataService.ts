@@ -53,9 +53,8 @@ export class GenericDataService<T> {
             let url: string;
 
             if ("isPulse" in this.config) {
-                url = `/api/get-json?
-                    endpoint=${encodeURIComponent(this.config.endpoint)}
-                    &isPulse=${encodeURIComponent(this.config.isPulse)}`;
+                url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}` +
+                    `&isPulse=${encodeURIComponent(this.config.isPulse)}`;
             } else {
                 url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
             }
@@ -112,12 +111,13 @@ export class GenericDataService<T> {
 
         // For Local storage, we ensure the path points to a specific .json file
         let targetPath: string;
+
+        // For Local pulse storage, add the expNumber, sampleNumber, pulseNumber to dir path
         if ("isPulse" in this.config){
-            const expDir = item[this.config.experimentField]
-            const sampleDir = item[this.config.sampleField]
-            const pulseDir = item[this.config.idField]
+            const subDir = `${item[this.config.experimentField]}/${item[this.config.sampleField]}/` +
+                            `${item[this.config.idField]}`
             
-            targetPath = `${this.config.endpoint}${expDir}/${sampleDir}/${pulseDir}`
+            targetPath = `${this.config.endpoint}${subDir}`
 
             if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
                 targetPath = `${targetPath.replace(/\/$/, '')}/raw/manual-metadata.json`;

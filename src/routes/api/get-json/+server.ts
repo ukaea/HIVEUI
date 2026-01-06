@@ -1,12 +1,47 @@
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
-import { readdir, readFile, stat } from 'fs/promises'; // Added stat
-import { resolve, normalize, extname, join } from 'path';
 import { env } from '$env/dynamic/private';
 import { getDb } from '$lib/services/DatabaseService';
+import { error, json } from '@sveltejs/kit';
+import { readdir, readFile, stat } from 'fs/promises'; // Added stat
+import path, { extname, join, normalize, resolve } from 'path';
+import type { RequestHandler } from './$types';
 
+
+
+async function findPulseFiles(rootDir: string): Promise<string[]> {
+  const results:string[] = [];
+
+  async function walk(dir: string): Promise<void> {
+    try {
+      const entries = await readdir(dir, {withFileTypes: true});
+
+      for (const entry of entries) {
+        const fullPath = join(dir, entry.name);
+
+        const stats = await stat(fullPath);
+
+        if (stats.isDirectory()) {
+          await walk(fullPath);
+        } else if (stats.isFile() && entry.name.endsWith("metadata.json")){
+          results.push(fullPath);
+        }
+        
+      }
+    } catch (err: any) {
+      console.error('Error reading local path:', err);
+      if (err.status) throw err; 
+      if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
+      throw error(500, 'Internal server error reading files');
+    }
+  }
+  await walk(rootDir);
+  return results;
+}
+
+  
 export const GET: RequestHandler = async ({ url, fetch }) => {
   const endpoint = url.searchParams.get('endpoint');
+  const isPulse = url.searchParams.get('isPulse');
+  const id  = url.searchParams.get('id');
 
   if (!endpoint) {
     return json({ 
@@ -25,8 +60,13 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
       const relativePath = endpoint.replace(/^\/local\//, '');
       const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-      const fullPath = resolve(rootFolder, sanitizedPath);
+      let fullPath: string;
 
+      if (id) {
+        fullPath = resolve(rootFolder, sanitizedPath, `${id}.json`);
+      } else {
+        fullPath = resolve(rootFolder, sanitizedPath);
+      }
       // Security check: ensure we are still within the root folder
       if (!fullPath.startsWith(resolve(rootFolder))) {
         throw error(403, 'Access denied: Invalid file path');
@@ -45,24 +85,44 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
       // Scenario B: It's a Directory (Current behavior)
       if (stats.isDirectory()) {
-        const files = await readdir(fullPath);
-        const jsonFiles = files.filter(file => extname(file).toLowerCase() === '.json');
+        // Scenario B1: It's a Pulse Directory
+        if (isPulse){
+          const jsonPaths = await findPulseFiles(fullPath);
+          const results = await Promise.all(
+            jsonPaths.map( async (jsonPath) =>{
+              const filename = path.basename(jsonPath)
+              try {
+                  const fileContent = await readFile(jsonPath, 'utf-8');
+                  //console.log("this is pulse path", fileContent)
+                  return JSON.parse(fileContent);
+                } catch (parseError) {
+                  console.warn(`Failed to parse JSON file: ${filename}`, parseError);
+                  return null;
+                }
+              }
+            ) 
+          );
+          return json(results.filter(item => item !== null));
+        } else {
+          // Scenario B2: It's not a Pulse Directory
+          const files = await readdir(fullPath);
+          const jsonFiles = files.filter(file => extname(file).toLowerCase() === '.json');
+          const filePromises = jsonFiles.map(async (filename) => {
+            const filePath = join(fullPath, filename);
+            try {
+              const fileContent = await readFile(filePath, 'utf-8');
+              console.log("this is pulse path", fileContent)
+              return JSON.parse(fileContent);
+            } catch (parseError) {
+              console.warn(`Failed to parse JSON file: ${filename}`, parseError);
+              return null;
+            }
+          });
 
-        const filePromises = jsonFiles.map(async (filename) => {
-          const filePath = join(fullPath, filename);
-          try {
-            const fileContent = await readFile(filePath, 'utf-8');
-            return JSON.parse(fileContent);
-          } catch (parseError) {
-            console.warn(`Failed to parse JSON file: ${filename}`, parseError);
-            return null;
-          }
-        });
-
-        const results = await Promise.all(filePromises);
-        return json(results.filter(item => item !== null));
+          const results = await Promise.all(filePromises);
+          return json(results.filter(item => item !== null));
+        }
       }
-
       throw error(400, 'Path is neither a file nor a directory');
 
     } catch (err: any) {
