@@ -111,9 +111,22 @@ export class GenericDataService<T> {
         const cleanedData = this.config.modelClass.toJSON(item);
 
         // For Local storage, we ensure the path points to a specific .json file
-        let targetPath = this.config.endpoint;
-        if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
-            targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
+        let targetPath: string;
+        if ("isPulse" in this.config){
+            const expDir = item[this.config.experimentField]
+            const sampleDir = item[this.config.sampleField]
+            const pulseDir = item[this.config.idField]
+            
+            targetPath = `${this.config.endpoint}${expDir}/${sampleDir}/${pulseDir}`
+
+            if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
+                targetPath = `${targetPath.replace(/\/$/, '')}/raw/manual-metadata.json`;
+            }
+        } else {
+            targetPath = this.config.endpoint;
+            if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
+                targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
+            }
         }
 
         try {
