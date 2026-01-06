@@ -35,7 +35,7 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/db/configurations',
+		endpoint: '/local/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
@@ -250,7 +250,6 @@
 						draft.configurationId = e.detail.value;
 						refresh();
 					}}
-					disabled
 				/>
 				<div class="col-span-2">
 					<TextField
