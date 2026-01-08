@@ -35,14 +35,14 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/db/configurations',
+		endpoint: '/local/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/db/combinations',
+		endpoint: '/local/combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
@@ -250,7 +250,7 @@
 						draft.configurationId = e.detail.value;
 						refresh();
 					}}
-					disabled
+					enabled
 				/>
 				<div class="col-span-2">
 					<TextField
