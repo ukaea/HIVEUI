@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import { getDb } from '$lib/services/DatabaseService';
+//import { getDb } from '$lib/services/DatabaseService';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
 import path, { extname, join, normalize, resolve } from 'path';
@@ -135,27 +135,27 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
   // --- BRANCH 2: Database ---
   if (endpoint.startsWith('/db/')) {
-    try {
-      if (!env.DB_URL) {
-        throw new Error('DB_URL is not set in environment variables');
-      }
-      const tableName = endpoint.replace(/^\/db\//, '');
-      if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
-        throw error(400, 'Invalid table name format');
-      }
+    // try {
+    //   if (!env.DB_URL) {
+    //     throw new Error('DB_URL is not set in environment variables');
+    //   }
+    //   const tableName = endpoint.replace(/^\/db\//, '');
+    //   if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+    //     throw error(400, 'Invalid table name format');
+    //   }
 
-      const db = getDb();
-      const rows = db.prepare(`SELECT * FROM "${tableName}"`).all();
-      return json(rows);
+    //   const db = getDb();
+    //   const rows = db.prepare(`SELECT * FROM "${tableName}"`).all();
+    //   return json(rows);
 
-    } catch (err: any) {
-      console.error('Database Error:', err);
-      if (err.status) throw err;
-      if (err.message?.includes('no such table')) {
-         throw error(404, `Table '${endpoint.replace(/^\/db\//, '')}' not found`);
-      }
-      throw error(500, 'Failed to retrieve data from database');
-    }
+    // } catch (err: any) {
+    //   console.error('Database Error:', err);
+    //   if (err.status) throw err;
+    //   if (err.message?.includes('no such table')) {
+    //      throw error(404, `Table '${endpoint.replace(/^\/db\//, '')}' not found`);
+    //   }
+    //   throw error(500, 'Failed to retrieve data from database');
+    // }
   }
 
   // --- BRANCH 3: Remote API (Metacat) ---

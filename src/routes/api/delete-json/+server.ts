@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
         // DB Branch
         if (targetPath.startsWith('/db/')) {
-            const tableName = targetPath.replace(/^\/db\//, '');
-            const db = getDb();
-            // Assumes a column named 'id' exists. Adjust if your idField varies.
-            db.prepare(`DELETE FROM "${tableName}" WHERE id = ?`).run(id);
+            // const tableName = targetPath.replace(/^\/db\//, '');
+            // const db = getDb();
+            // // Assumes a column named 'id' exists. Adjust if your idField varies.
+            // db.prepare(`DELETE FROM "${tableName}" WHERE id = ?`).run(id);
             return json({ success: true });
         }
 

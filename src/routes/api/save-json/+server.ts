@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, resolve, normalize, basename, dirname, extname } from 'path';
 import { env } from '$env/dynamic/private';
-import { getDb } from '$lib/services/DatabaseService';
+//import { getDb } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
     try {
@@ -39,19 +39,19 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
         // BRANCH 2: Database
         if (targetPath.startsWith('/db/')) {
-            const tableName = targetPath.replace(/^\/db\//, '');
-            if (!/^[a-zA-Z0-9_]+$/.test(tableName)) throw error(400, 'Invalid table name');
+            // const tableName = targetPath.replace(/^\/db\//, '');
+            // if (!/^[a-zA-Z0-9_]+$/.test(tableName)) throw error(400, 'Invalid table name');
 
-            const db = getDb();
-            const keys = Object.keys(metadata);
-            const columns = keys.map(k => `"${k}"`).join(', ');
-            const placeholders = keys.map(() => '?').join(', ');
+            // const db = getDb();
+            // const keys = Object.keys(metadata);
+            // const columns = keys.map(k => `"${k}"`).join(', ');
+            // const placeholders = keys.map(() => '?').join(', ');
             
-            // Note: Using INSERT OR REPLACE to handle updates
-            const sql = `INSERT OR REPLACE INTO "${tableName}" (${columns}) VALUES (${placeholders})`;
-            db.prepare(sql).run(...Object.values(metadata));
+            // // Note: Using INSERT OR REPLACE to handle updates
+            // const sql = `INSERT OR REPLACE INTO "${tableName}" (${columns}) VALUES (${placeholders})`;
+            // db.prepare(sql).run(...Object.values(metadata));
 
-            return json({ success: true, message: 'Saved to DB' });
+            // return json({ success: true, message: 'Saved to DB' });
         }
 
         // BRANCH 3: Remote
