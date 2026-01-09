@@ -76,18 +76,27 @@
 	
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/api/v1/experiments',
-		localFolder: 'experiments',
+		endpoint: '/local/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/api/v1/configurations',
+		endpoint: '/local/configurations',
 		localFolder: 'configurations',
-		idField: 'configurationId',
 		displayName: 'configurations'
+	});
+
+	const pulseService = new GenericDataService<CompiledPulseMetadata>({
+		modelClass: CompiledPulseMetadata,
+		endpoint: '/local/HIVE/',
+		localFolder: 'pulses',
+		displayName: 'pulse',
+		idField: "pulseNumber",
+		experimentField: "experimentNumber",
+		sampleField: "sampleNumber",
+		isPulse: true
 	});
 
 	order.subscribe((value) => {
@@ -118,7 +127,7 @@
 
 	async function fetchExperiments() {
 		try {
-			sortedExperiments = await experimentService.fetchAll(localOnly);
+			sortedExperiments = await experimentService.fetchAll();
 			experimentOptions = sortedExperiments.map((exp) => ({
 				label: `${exp.experimentNumber} - ${exp.description}`,
 				value: exp.experimentNumber
@@ -131,7 +140,7 @@
 
 	async function fetchConfigurations() {
 		try {
-			sortedConfigurations = await configurationService.fetchAll(localOnly);
+			sortedConfigurations = await configurationService.fetchAll();
 			configurationOptions = sortedConfigurations.map((config) => ({
 				label: `${config.configurationId} - ${config.configurationName}`,
 				value: config.configurationId
@@ -144,25 +153,17 @@
 
 	async function fetchPulses() {
 		try {
-			if (localOnly) {
-				// const pulseFiles = await getJsonFiles('pulses');
-				// const pulseData = await Promise.all(pulseFiles.map((filename: string) => getJsonContent('pulses/' + filename)));
-				// sortedData = pulseData.map(mapToPulse).sort($order.handler);
-				// return;
-				// const globalPulseData = await getJsonFile(`${PUBLIC_ROOT_FOLDER_LOCATION}`, 'global-pulse-data.json');
-
-				// Contains a list of Pulse Ids and their status
-
-			}
+			const pulseData = await pulseService.fetchAll();
+			sortedData = pulseData.sort($order.handler);
 		} catch (error) {
 			console.error('Error fetching pulses:', error);
 			alert('Failed to load pulses. Please try again later.');
 		}
 	}
 
-	async function fetchPostProcessData(pulseNumber) {
-		if (!pulseNumber) {
-			return;
+	async function fetchPostProcessData(directory, filename) {
+		if (!directory && !filename) {
+			return null;
 		}
 		try {
 			const accessToken = $session.data?.user.accessToken;
@@ -171,19 +172,21 @@
 			}
 
 			if (localOnly) {
-				const postProcessFile = await getJsonFile('pulses', pulseNumber);
+				sortedPostProcessData = await getJsonContent(`${directory}/${filename}`);
+			} else {
+				const accessToken = $page.data.session?.user.sessionToken;
+				if (!accessToken) {
+					throw new Error('No access token available');
+				}
+				const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
 
-				sortedPostProcessData = await getJsonContent(`pulses/${postProcessFile}`);
+				if (!response.ok) throw new Error('Failed to fetch configurations');
+				const data = await response.json();
+				sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
 			}
-
-			const response = await fetch(`${PUBLIC_METACAT_URL}/api/v1/postprocess`, { headers: { Authorization: `Bearer ${accessToken}` } });
-
-			if (!response.ok) throw new Error('Failed to fetch configurations');
-			const data = await response.json();
-			sortedPostProcessData = await Promise.all(data.map(mapToPulse).sort($order.handler)); 
 		} catch (error) {
 			console.error('Error fetching postprocess data:', error);
-			alert('Failed to load postprocess data. Please try again later.');
+			alert(`Failed to load postprocess data. Please try again later: ${error.message}`);
 		}
 	}
 
@@ -191,7 +194,8 @@
 		const metadata = event.detail;
 
 		try {
-			await handlePulseFileSubmission(metadata);
+			await pulseService.submitPulse(metadata);
+			//await handlePulseFileSubmission(metadata);
 			saveNotify = true;
 
 			setTimeout(() => {
@@ -315,21 +319,19 @@
 	}
 
 
-	async function handlePostProcess(commitFn, draft) {
-		if (!draft) {
-			console.error("Pulse Number not provided")
-			alert(`Failed to run post processing: No ID provided`);
+	async function handlePostProcess(commitFn, metadata: CompiledPulseMetadata) {
+		if (!metadata) {
+			throw new error("metadata required")
 			return;
 		}
 		shouldCloseDialog = false;
-		let id = draft.pulseNumber
 
 		try {
 			await commitFn();
 
-			await runPostProcess(id)
+			sortedPostProcessData = await pulseService.submitPulse(metadata, true);
 
-			await fetchPostProcessData(id)
+			//await pulseService.fetchPostProcessData(processedPath)
 
 		} catch (error) {
 			console.error("Error running post processing:", error);
@@ -345,7 +347,8 @@
 
 		selectedMetadata.status = 'Completed';
 
-		await handlePulseFileSubmission(selectedMetadata);
+		await pulseService.submitPulse(metadata);
+		//await handlePulseFileSubmission(selectedMetadata);
 		await handleFlagFile(selectedMetadata);
 
 		completeNotify = true;
@@ -531,7 +534,6 @@
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -541,7 +543,6 @@
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>
@@ -551,7 +552,6 @@
 					type="integer"
 					on:change={(e) => {
 						draft.pulseNumber = e.detail.value;
-						draft.pulseId = `${draft.experimentNumber || ''}-${draft.sampleNumber || ''}-${draft.pulseNumber || ''}`;
 						refresh();
 					}}
 				/>

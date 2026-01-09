@@ -1,5 +1,6 @@
 // $lib/services/GenericDataService.ts
 
+
 /**
  * Interface that all metadata models must implement
  */
@@ -11,12 +12,28 @@ export interface MetadataModel<T> {
 /**
  * Configuration for a specific data type
  */
-export interface DataTypeConfig<T> {
+export interface GenericTypeConfig<T> {
     modelClass: MetadataModel<T>;
     endpoint: string; // e.g., "/local/configs", "/db/users", or "/remote/metacat/items"
     idField: keyof T;
     displayName: string;
 }
+
+/**
+ * Configuration for a pulse data type
+ */
+
+export interface PulseTypeConfg<T> {
+    modelClass: MetadataModel<T>;
+    endpoint: string;
+    idField: keyof T;
+    displayName: string;
+    experimentField: keyof T;
+    sampleField: keyof T;
+    isPulse: boolean;
+}
+
+type DataTypeConfig<T> = GenericTypeConfig<T> | PulseTypeConfg<T>;
 
 /**
  * Generic data service for CRUD operations using unified backend gateways
@@ -34,7 +51,15 @@ export class GenericDataService<T> {
      */
     async fetchAll(sortHandler?: (a: T, b: T) => number): Promise<T[]> {
         try {
-            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
+            let url: string;
+
+            if ("isPulse" in this.config) {
+                url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}` +
+                    `&isPulse=${encodeURIComponent(this.config.isPulse)}`;
+            } else {
+                url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
+            }
+
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -111,8 +136,85 @@ export class GenericDataService<T> {
         }
     }
 
+    async submitPulse(item: T, postProcess:boolean=false) {
+        const id = item[this.config.idField];
+        if (!("isPulse" in this.config)) {
+            throw new Error("Cann only save Pulse metadata")
+        };
+
+        const cleanedData = this.config.modelClass.toJSON(item);
+
+        // For Local pulse storage, add the expNumber, sampleNumber, pulseNumber to dir path
+        const experimentDir = `E-${item[this.config.experimentField]}`;
+        const sampleDir = `S-${item[this.config.sampleField]}`;
+        const pulseDir = `P-${item[this.config.idField]}`;
+
+        let pulseTargetPath = `${this.config.endpoint}${experimentDir}/${sampleDir}/${pulseDir}/raw`
+
+        if (pulseTargetPath.startsWith('/local/') && !pulseTargetPath.endsWith('.json')) {
+            pulseTargetPath = `${pulseTargetPath.replace(/\/$/, '')}/manual-metadata.json`;
+        }
+
+        try {
+            const response = await fetch('/api/save-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetPath: pulseTargetPath,
+                    metadata: cleanedData
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Save failed');
+            }
+        } catch (error) {
+            console.error(`Error saving ${this.config.displayName}:`, error);
+            throw error;
+        }
+        
+        if (postProcess) {
+            const processedTargetPath = `${this.config.endpoint}${experimentDir}/${sampleDir}/${pulseDir}/processed/`;
+
+            try {
+                const resp = await fetch('/api/create-dir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetPath: processedTargetPath })
+                });
+                const { processPath } = await resp.json();
+                // processpath (directory to save postprocessed file) will be passed to airflow pipeline
+                
+
+                // const postProcessData = await this.fetchPostProcessData(processPath);
+                return processPath;
+            } catch (error) {
+            console.error(`Error executing postprocessing.`, error);
+            throw new Error(`Failed to execute postprocessing.`);
+            }
+        }
+    }
+
+    async fetchPostProcessData(filepath: string): Promise<T> {
+
+        if (!filepath) {
+            throw new Error("Must supply filepath")
+        };
+        const id = "manual-metadata";
+        const url = `/api/get-json?endpoint=${encodeURIComponent(filepath)}&id=${encodeURIComponent(id)}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data
+    }
+
     /**
-     * Delete an item.
+     * Delete an item. 
      */
     async delete(item: T): Promise<void> {
         const id = item[this.config.idField];
