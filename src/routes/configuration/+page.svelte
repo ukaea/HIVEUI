@@ -42,7 +42,7 @@
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/db/combinations',
+		endpoint: '/local/combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
@@ -250,6 +250,7 @@
 						draft.configurationId = e.detail.value;
 						refresh();
 					}}
+					enabled
 				/>
 				<div class="col-span-2">
 					<TextField

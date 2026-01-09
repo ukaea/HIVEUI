@@ -5,48 +5,48 @@ const db = new Database('exampleData/db/local.db', { verbose: console.log });
 
 export function initDb() {
     // Enable Write-Ahead Logging for concurrency and performance
-    db.exec('PRAGMA journal_mode = WAL;');
-    db.exec('PRAGMA foreign_keys = ON;');
+    // db.exec('PRAGMA journal_mode = WAL;');
+    // db.exec('PRAGMA foreign_keys = ON;');
 
-    const createTables = `
-        CREATE TABLE IF NOT EXISTS configurations (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL,
-            description TEXT
-        );
+    // const createTables = `
+    //     CREATE TABLE IF NOT EXISTS configurations (
+    //         id INTEGER PRIMARY KEY,
+    //         name TEXT NOT NULL,
+    //         description TEXT
+    //     );
 
-        CREATE TABLE IF NOT EXISTS combinations (
-            id INTEGER PRIMARY KEY,
-            name TEXT NOT NULL
-        );
+    //     CREATE TABLE IF NOT EXISTS combinations (
+    //         id INTEGER PRIMARY KEY,
+    //         name TEXT NOT NULL
+    //     );
 
-        -- Link between Configs and Combinations
-        CREATE TABLE IF NOT EXISTS config_combinations (
-            config_id INTEGER,
-            combination_id INTEGER,
-            FOREIGN KEY(config_id) REFERENCES configurations(id),
-            FOREIGN KEY(combination_id) REFERENCES combinations(id),
-            PRIMARY KEY (config_id, combination_id)
-        );
+    //     -- Link between Configs and Combinations
+    //     CREATE TABLE IF NOT EXISTS config_combinations (
+    //         config_id INTEGER,
+    //         combination_id INTEGER,
+    //         FOREIGN KEY(config_id) REFERENCES configurations(id),
+    //         FOREIGN KEY(combination_id) REFERENCES combinations(id),
+    //         PRIMARY KEY (config_id, combination_id)
+    //     );
 
-        -- Stores the equipment strings (e.g., "CAM_02")
-        CREATE TABLE IF NOT EXISTS combination_equipment (
-            combination_id INTEGER,
-            equipment_name TEXT,
-            FOREIGN KEY(combination_id) REFERENCES combinations(id)
-        );
-    `;
+    //     -- Stores the equipment strings (e.g., "CAM_02")
+    //     CREATE TABLE IF NOT EXISTS combination_equipment (
+    //         combination_id INTEGER,
+    //         equipment_name TEXT,
+    //         FOREIGN KEY(combination_id) REFERENCES combinations(id)
+    //     );
+    // `;
 
-    db.exec(createTables);
+    // db.exec(createTables);
 
-    // Check if DB is empty
-    const stmt = db.prepare('SELECT count(*) as count FROM configurations');
-    const result = stmt.get() as { count: number };
+    // // Check if DB is empty
+    // const stmt = db.prepare('SELECT count(*) as count FROM configurations');
+    // const result = stmt.get() as { count: number };
     
-    if (result.count === 0) {
-        console.log("Seeding database with initial data...");
-        seedData();
-    }
+    // if (result.count === 0) {
+    //     console.log("Seeding database with initial data...");
+    //     //seedData();
+    // }
 }
 
 function seedData() {
