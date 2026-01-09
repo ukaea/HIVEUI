@@ -1,5 +1,6 @@
 // $lib/services/GenericDataService.ts
 
+
 /**
  * Interface that all metadata models must implement
  */
@@ -110,23 +111,9 @@ export class GenericDataService<T> {
         const cleanedData = this.config.modelClass.toJSON(item);
 
         // For Local storage, we ensure the path points to a specific .json file
-        let targetPath: string;
-
-        // For Local pulse storage, add the expNumber, sampleNumber, pulseNumber to dir path
-        if ("isPulse" in this.config){
-            const subDir = `${item[this.config.experimentField]}/${item[this.config.sampleField]}/` +
-                            `${item[this.config.idField]}`
-            
-            targetPath = `${this.config.endpoint}${subDir}`
-
-            if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
-                targetPath = `${targetPath.replace(/\/$/, '')}/raw/manual-metadata.json`;
-            }
-        } else {
-            targetPath = this.config.endpoint;
-            if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
-                targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
-            }
+        let targetPath = this.config.endpoint;
+        if (targetPath.startsWith('/local/') && !targetPath.endsWith('.json')) {
+            targetPath = `${targetPath.replace(/\/$/, '')}/${id}.json`;
         }
 
         try {
@@ -149,8 +136,85 @@ export class GenericDataService<T> {
         }
     }
 
+    async submitPulse(item: T, postProcess:boolean=false) {
+        const id = item[this.config.idField];
+        if (!("isPulse" in this.config)) {
+            throw new Error("Cann only save Pulse metadata")
+        };
+
+        const cleanedData = this.config.modelClass.toJSON(item);
+
+        // For Local pulse storage, add the expNumber, sampleNumber, pulseNumber to dir path
+        const experimentDir = `E-${item[this.config.experimentField]}`;
+        const sampleDir = `S-${item[this.config.sampleField]}`;
+        const pulseDir = `P-${item[this.config.idField]}`;
+
+        let pulseTargetPath = `${this.config.endpoint}${experimentDir}/${sampleDir}/${pulseDir}/raw`
+
+        if (pulseTargetPath.startsWith('/local/') && !pulseTargetPath.endsWith('.json')) {
+            pulseTargetPath = `${pulseTargetPath.replace(/\/$/, '')}/manual-metadata.json`;
+        }
+
+        try {
+            const response = await fetch('/api/save-json', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    targetPath: pulseTargetPath,
+                    metadata: cleanedData
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Save failed');
+            }
+        } catch (error) {
+            console.error(`Error saving ${this.config.displayName}:`, error);
+            throw error;
+        }
+        
+        if (postProcess) {
+            const processedTargetPath = `${this.config.endpoint}${experimentDir}/${sampleDir}/${pulseDir}/processed/`;
+
+            try {
+                const resp = await fetch('/api/create-dir', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ targetPath: processedTargetPath })
+                });
+                const { processPath } = await resp.json();
+                // processpath (directory to save postprocessed file) will be passed to airflow pipeline
+                
+
+                // const postProcessData = await this.fetchPostProcessData(processPath);
+                return processPath;
+            } catch (error) {
+            console.error(`Error executing postprocessing.`, error);
+            throw new Error(`Failed to execute postprocessing.`);
+            }
+        }
+    }
+
+    async fetchPostProcessData(filepath: string): Promise<T> {
+
+        if (!filepath) {
+            throw new Error("Must supply filepath")
+        };
+        const id = "manual-metadata";
+        const url = `/api/get-json?endpoint=${encodeURIComponent(filepath)}&id=${encodeURIComponent(id)}`;
+        const response = await fetch(url);
+
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        return data
+    }
+
     /**
-     * Delete an item.
+     * Delete an item. 
      */
     async delete(item: T): Promise<void> {
         const id = item[this.config.idField];
