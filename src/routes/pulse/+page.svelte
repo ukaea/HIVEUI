@@ -194,7 +194,7 @@
 		const metadata = event.detail;
 
 		try {
-			await pulseService.submit(metadata);
+			await pulseService.submitPulse(metadata);
 			//await handlePulseFileSubmission(metadata);
 			saveNotify = true;
 
@@ -319,25 +319,19 @@
 	}
 
 
-	async function handlePostProcess(commitFn, draft) {
-		if (!draft) {
-			console.error("Pulse Number not provided")
-			alert(`Failed to run post processing: No ID provided`);
+	async function handlePostProcess(commitFn, metadata: CompiledPulseMetadata) {
+		if (!metadata) {
+			throw new error("metadata required")
 			return;
 		}
 		shouldCloseDialog = false;
-		const pulseNumber = draft.pulseNumber
-		const sampleNumber = draft.sampleNumber;
-		const experimentNumber = draft.experimentNumber;
-		const fileDir = `${PUBLIC_ROOT_FOLDER_LOCATION}/HIVE/E-${experimentNumber}/S-${sampleNumber}/P-${pulseNumber}/raw`;
-		const fileName = "manual-metadata.json";
 
 		try {
 			await commitFn();
 
-			await runPostProcess(`${pulseNumber}`)
+			sortedPostProcessData = await pulseService.submitPulse(metadata, true);
 
-			await fetchPostProcessData(fileDir, fileName)
+			//await pulseService.fetchPostProcessData(processedPath)
 
 		} catch (error) {
 			console.error("Error running post processing:", error);
@@ -353,7 +347,8 @@
 
 		selectedMetadata.status = 'Completed';
 
-		await handlePulseFileSubmission(selectedMetadata);
+		await pulseService.submitPulse(metadata);
+		//await handlePulseFileSubmission(selectedMetadata);
 		await handleFlagFile(selectedMetadata);
 
 		completeNotify = true;
