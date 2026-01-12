@@ -55,7 +55,7 @@ export class GenericDataService<T> {
 
             if ("isPulse" in this.config) {
                 url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}` +
-                    `&isPulse=${encodeURIComponent(this.config.isPulse)}`;
+                    `&isPulse=${encodeURIComponent(this.config.isPulse)}&target=${encodeURIComponent(this.config.displayName)}`;
             } else {
                 url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}`;
             }
@@ -86,7 +86,8 @@ export class GenericDataService<T> {
 
     async fetchOne(id: string): Promise<T> {
         try {
-            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}&id=${encodeURIComponent(id)}`;
+            const url = `/api/get-json?endpoint=${encodeURIComponent(this.config.endpoint)}&id=${encodeURIComponent(id)}` +
+                        `&target=${encodeURIComponent(this.config.displayName)}`;
             const response = await fetch(url);
 
             if (!response.ok) {
@@ -161,7 +162,8 @@ export class GenericDataService<T> {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetPath: pulseTargetPath,
-                    metadata: cleanedData
+                    metadata: cleanedData,
+                    target: this.config.displayName
                 })
             });
 
@@ -187,8 +189,8 @@ export class GenericDataService<T> {
                 // processpath (directory to save postprocessed file) will be passed to airflow pipeline
                 
 
-                // const postProcessData = await this.fetchPostProcessData(processPath);
-                return processPath;
+                const postProcessData = await this.fetchPostProcessData(processPath);
+                return this.config.modelClass.fromJSON(postProcessData);
             } catch (error) {
             console.error(`Error executing postprocessing.`, error);
             throw new Error(`Failed to execute postprocessing.`);

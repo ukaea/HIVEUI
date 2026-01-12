@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 export const POST: RequestHandler = async ({ request, fetch }) => {
     try {
         const body = await request.json();
-        const { targetPath, metadata, requestType } = body;
+        const { targetPath, metadata, target } = body;
 
         if (!targetPath || !metadata) {
             throw error(400, 'targetPath and metadata are required');
@@ -62,7 +62,7 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
 
             const jqDir = `${env.BASE_JQ_PATH}/metacat-mapping/hive`;
             
-            const mappedData = jqMapping(requestType, metadata, jqDir);
+            const mappedData = jqMapping(target, metadata, jqDir);
             const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${targetPath.replace(/^\/remote\//, '')}`;
             const response = await fetch(remoteUrl, {
                 method: 'POST',

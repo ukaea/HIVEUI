@@ -41,7 +41,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   const endpoint = url.searchParams.get('endpoint');
   const isPulse = url.searchParams.get('isPulse');
   const id  = url.searchParams.get('id');
-  const requestType = url.searchParams.get('requestType') ?? '';
+  const target = url.searchParams.get('target') ?? '';
 
   if (!endpoint) {
     return json({ 
@@ -182,9 +182,9 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
       let mappedData: any;
       if (Array.isArray(data)) {
-        mappedData = data.map((obj) => jqMapping(obj, requestType, jqDir))
+        mappedData = data.map((obj) => jqMapping(obj, target, jqDir))
       } else {
-        mappedData = jqMapping(data, requestType, jqDir)
+        mappedData = jqMapping(data, target, jqDir)
       }
 
       return json(mappedData);
