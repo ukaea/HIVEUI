@@ -1,11 +1,10 @@
 import { env } from '$env/dynamic/private';
 //import { getDb } from '$lib/services/DatabaseService';
+import { jqMapping } from '$lib/services/mapping-jq';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
-import jq from 'node-jq';
 import path, { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
-
 
 async function findPulseFiles(rootDir: string): Promise<string[]> {
   const results:string[] = [];
@@ -178,12 +177,14 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       }
 
       const data = await response.json();
-      
+
+      const jqDir = `${env.BASE_JQ_PATH}/reverse-metacat-mapping/hive`;
+
       let mappedData: any;
       if (Array.isArray(data)) {
-        mappedData = data.map((obj) => reverseMapping(obj, requestType))
+        mappedData = data.map((obj) => jqMapping(obj, requestType, jqDir))
       } else {
-        mappedData = reverseMapping(data, requestType)
+        mappedData = jqMapping(data, requestType, jqDir)
       }
 
       return json(mappedData);
@@ -198,13 +199,3 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   // Default Fallback
   throw error(400, 'Invalid endpoint prefix. Use /local/, /db/, or /remote/');
 };
-
-async function reverseMapping(metadata:any, requestType:string) {
-      if (!(requestType && metadata)) {
-        throw error(400, 'request type and metadata required');
-    }
-  const jqFileRequest = await fetch(`${env.BASE_JQ_PATH}/reverse-metacat-mapping/hive/${requestType}.jq`)
-      const jqFile = await jqFileRequest.text();
-      const mappedData = await jq.run(jqFile, metadata, { input: 'json', output: 'json' });
-      return mappedData;
-}
