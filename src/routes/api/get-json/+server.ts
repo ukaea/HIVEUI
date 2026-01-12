@@ -2,9 +2,9 @@ import { env } from '$env/dynamic/private';
 //import { getDb } from '$lib/services/DatabaseService';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
+import jq from 'node-jq';
 import path, { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
-
 
 
 async function findPulseFiles(rootDir: string): Promise<string[]> {
@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   const endpoint = url.searchParams.get('endpoint');
   const isPulse = url.searchParams.get('isPulse');
   const id  = url.searchParams.get('id');
+  const requestType = url.searchParams.get('requestType') ?? '';
 
   if (!endpoint) {
     return json({ 
@@ -177,7 +178,15 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       }
 
       const data = await response.json();
-      return json(data);
+      
+      let mappedData: any;
+      if (Array.isArray(data)) {
+        mappedData = data.map((obj) => reverseMapping(obj, requestType))
+      } else {
+        mappedData = reverseMapping(data, requestType)
+      }
+
+      return json(mappedData);
 
     } catch (err: any) {
       console.error('Error fetching from Metacat:', err);
@@ -189,3 +198,13 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   // Default Fallback
   throw error(400, 'Invalid endpoint prefix. Use /local/, /db/, or /remote/');
 };
+
+async function reverseMapping(metadata:any, requestType:string) {
+      if (!(requestType && metadata)) {
+        throw error(400, 'request type and metadata required');
+    }
+  const jqFileRequest = await fetch(`${env.BASE_JQ_PATH}/reverse-metacat-mapping/hive/${requestType}.jq`)
+      const jqFile = await jqFileRequest.text();
+      const mappedData = await jq.run(jqFile, metadata, { input: 'json', output: 'json' });
+      return mappedData;
+}
