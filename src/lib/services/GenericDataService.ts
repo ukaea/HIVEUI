@@ -123,7 +123,8 @@ export class GenericDataService<T> {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     targetPath: targetPath,
-                    metadata: cleanedData
+                    metadata: cleanedData,
+                    target: this.config.displayName
                 })
             });
 
