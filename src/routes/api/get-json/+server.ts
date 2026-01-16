@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 //import { getDb } from '$lib/services/DatabaseService';
-import { jqMapping } from '$lib/services/mapping-jq';
+import { backwardJq } from '$lib/server/load-jq';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
 import path, { extname, join, normalize, resolve } from 'path';
@@ -178,13 +178,11 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
       const data = await response.json();
 
-      const jqDir = `${env.BASE_JQ_PATH}/reverse-metacat-mapping/hive`;
-
       let mappedData: any;
       if (Array.isArray(data)) {
-        mappedData = data.map((obj) => jqMapping(obj, target, jqDir))
+        mappedData = data.map((obj) => backwardJq.jqMap(obj, target))
       } else {
-        mappedData = jqMapping(data, target, jqDir)
+        mappedData = backwardJq.jqMap(data, target)
       }
 
       return json(mappedData);
