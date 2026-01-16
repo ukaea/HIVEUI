@@ -1,9 +1,10 @@
 // src/routes/api/save-json/+server.ts
 import { env } from '$env/dynamic/private';
+import { forwardJq } from '$lib/server/load-jq';
 import { getDb } from '$lib/services/DatabaseService';
-import { jqMapping } from '$lib/services/mapping-jq';
 import { error, json } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
+import jq from "node-jq";
 import { basename, dirname, extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
@@ -60,9 +61,8 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
             const metacatBaseUrl = env.METACAT_URL;
             if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
-            const jqDir = `${env.BASE_JQ_PATH}/metacat-mapping/hive`;
-            
-            const mappedData = jqMapping(target, metadata, jqDir);
+            const jqScript = forwardJq.get()[target]
+            const mappedData = await jq.run(jqScript, metadata, { input: 'json', output: 'json' })
             const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${targetPath.replace(/^\/remote\//, '')}`;
             const response = await fetch(remoteUrl, {
                 method: 'POST',
