@@ -1,10 +1,18 @@
-import { auth } from "$lib/auth";
-import { svelteKitHandler } from "better-auth/svelte-kit";
 import { building } from "$app/environment";
-import { redirect, type Handle } from "@sveltejs/kit";
 import { env } from '$env/dynamic/private';
+import { auth } from "$lib/auth";
+import { loadJqCaches } from "$lib/server/load-jq";
+import { redirect, type Handle } from "@sveltejs/kit";
+import { svelteKitHandler } from "better-auth/svelte-kit";
+
+let booted = false;
 
 export const handle: Handle = async ({ event, resolve }) => {
+  if (!booted) {
+    await loadJqCaches();
+    booted = true;
+  }
+
   if (event.url.pathname.startsWith("/api/auth")) {
     return svelteKitHandler({ event, resolve, auth, building });
   }
