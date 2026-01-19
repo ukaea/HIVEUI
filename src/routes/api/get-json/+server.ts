@@ -180,19 +180,22 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       const data = await response.json();
 
       const jqScript = backwardJq.get()[target]
-      
-      let mappedData: any;
-      if (Array.isArray(data)) {
-        mappedData = await Promise.all(
-          data.map(async (obj) => 
-            jq.run(jqScript, obj, { input: 'json', output: 'json' })
+      try {
+        let mappedData: any;
+        if (Array.isArray(data)) {
+          mappedData = await Promise.all(
+            data.map(async (obj) => 
+              jq.run(jqScript, obj, { input: 'json', output: 'json' })
+            )
           )
-        )
-      } else {
-        mappedData = await jq.run(jqScript, data, { input: 'json', output: 'json' })
+        } else {
+          mappedData = await jq.run(jqScript, data, { input: 'json', output: 'json' })
+        }
+        return json(mappedData);
+      } catch (error) {
+        console.error(`Error mapping ${target} with jq script:`, error);
+        throw new Error(`Forward mapping failed.`);
       }
-
-      return json(mappedData);
 
     } catch (err: any) {
       console.error('Error fetching from Metacat:', err);
