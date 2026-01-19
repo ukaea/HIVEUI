@@ -3,18 +3,18 @@ import { JqCache } from "./jq-cache";
 
 //Mapping for filenames
 const forwardFileMap: Record<string, string> = {
-  equipment: `${env.FORWARD_JQ_DIR}instrument.jq`,
-  experiments: `${env.FORWARD_JQ_DIR}experiment.jq`,
-  pulse: `${env.FORWARD_JQ_DIR}dataset.jq`
+  equipment: `${env.FORWARD_JQ_DIR}/instrument.jq`,
+  experiments: `${env.FORWARD_JQ_DIR}/experiment.jq`,
+  pulse: `${env.FORWARD_JQ_DIR}/dataset.jq`
 }
 
 const backwardFileMap: Record<string, string> = {
     pulse: `${env.BACKWARD_JQ_DIR}dataset.jq`,
-    experiments: `${env.BACKWARD_JQ_DIR}experiment.jq`,
-    camera: `${env.BACKWARD_JQ_DIR}instrument/camera.jq`,
-    flowmeter: `${env.BACKWARD_JQ_DIR}instrument/flowmeter.jq`,
-    pyrometer: `${env.BACKWARD_JQ_DIR}instrument/pyrometer.jq`,
-    thermocouple: `${env.BACKWARD_JQ_DIR}instrument/thermocouple.jq`,
+    experiments: `${env.BACKWARD_JQ_DIR}/experiment.jq`,
+    camera: `${env.BACKWARD_JQ_DIR}/instrument/camera.jq`,
+    flowmeter: `${env.BACKWARD_JQ_DIR}/instrument/flowmeter.jq`,
+    pyrometer: `${env.BACKWARD_JQ_DIR}/instrument/pyrometer.jq`,
+    thermocouple: `${env.BACKWARD_JQ_DIR}/instrument/thermocouple.jq`,
 }
 
 // creating forwardJq instance type
