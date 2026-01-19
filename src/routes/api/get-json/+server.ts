@@ -1,11 +1,11 @@
 import { env } from '$env/dynamic/private';
 //import { getDb } from '$lib/services/DatabaseService';
+import { backwardJq } from '$lib/server/load-jq';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
+import jq from "node-jq";
 import path, { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
-
-
 
 async function findPulseFiles(rootDir: string): Promise<string[]> {
   const results:string[] = [];
@@ -42,6 +42,7 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   const endpoint = url.searchParams.get('endpoint');
   const isPulse = url.searchParams.get('isPulse');
   const id  = url.searchParams.get('id');
+  const target = url.searchParams.get('target') ?? '';
 
   if (!endpoint) {
     return json({ 
@@ -177,7 +178,24 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
       }
 
       const data = await response.json();
-      return json(data);
+
+      const jqScript = backwardJq.get()[target]
+      try {
+        let mappedData: any;
+        if (Array.isArray(data)) {
+          mappedData = await Promise.all(
+            data.map(async (obj) => 
+              jq.run(jqScript, obj, { input: 'json', output: 'json' })
+            )
+          )
+        } else {
+          mappedData = await jq.run(jqScript, data, { input: 'json', output: 'json' })
+        }
+        return json(mappedData);
+      } catch (error) {
+        console.error(`Error mapping ${target} with jq script:`, error);
+        throw new Error(`Forward mapping failed.`);
+      }
 
     } catch (err: any) {
       console.error('Error fetching from Metacat:', err);
