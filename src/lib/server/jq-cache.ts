@@ -4,17 +4,17 @@ type Cache = Record<string, string>;
 
 export type Direction = "forward" | "backward";
 
-export interface DirrectionConfig {
+export interface DirectionConfig {
     direction: Direction;
     endpoints: Record<string, string>;
 }
 
 export class JqCache {
-  private readonly config: DirrectionConfig;
+  private readonly config: DirectionConfig;
   private cache: Cache = {};
   private loaded = false;
 
-  constructor(config:DirrectionConfig) {
+  constructor(config:DirectionConfig) {
     this.config = config
   }
 
