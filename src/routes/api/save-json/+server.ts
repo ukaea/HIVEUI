@@ -62,16 +62,22 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
             if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
             const jqScript = forwardJq.get()[target]
-            const mappedData = await jq.run(jqScript, metadata, { input: 'json', output: 'json' })
-            const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${targetPath.replace(/^\/remote\//, '')}`;
-            const response = await fetch(remoteUrl, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(mappedData)
-            });
 
-            if (!response.ok) throw error(response.status, 'Remote save failed');
-            return json(await response.json());
+            try {
+                const mappedData = await jq.run(jqScript, metadata, { input: 'json', output: 'json' })
+                const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${targetPath.replace(/^\/remote\//, '')}`;
+                const response = await fetch(remoteUrl, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(mappedData)
+                });
+
+                if (!response.ok) throw error(response.status, 'Remote save failed');
+                return json(await response.json());
+            } catch (error) {
+                console.error(`Error mapping ${target} with jq script:`, error);
+                throw new Error(`Forward mapping failed.`);
+            }
         }
 
         throw error(400, 'Invalid targetPath prefix');
