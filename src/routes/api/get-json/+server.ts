@@ -3,6 +3,7 @@ import { env } from '$env/dynamic/private';
 import { backwardJq } from '$lib/server/load-jq';
 import { error, json } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises'; // Added stat
+import jq from "node-jq";
 import path, { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
@@ -178,11 +179,17 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
 
       const data = await response.json();
 
+      const jqScript = backwardJq.get()[target]
+      
       let mappedData: any;
       if (Array.isArray(data)) {
-        mappedData = data.map((obj) => backwardJq.jqMap(obj, target))
+        mappedData = await Promise.all(
+          data.map(async (obj) => 
+            jq.run(jqScript, obj, { input: 'json', output: 'json' })
+          )
+        )
       } else {
-        mappedData = backwardJq.jqMap(data, target)
+        mappedData = await jq.run(jqScript, data, { input: 'json', output: 'json' })
       }
 
       return json(mappedData);
