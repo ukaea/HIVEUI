@@ -1,4 +1,4 @@
-import { env } from "better-auth";
+import { env } from "$env/dynamic/private";
 import { JqCache } from "./jq-cache";
 
 //Mapping for filenames
@@ -25,7 +25,7 @@ export const forwardJq = new JqCache ({
 
 // creating backwardJq instance type
 export const backwardJq = new JqCache ({
-    direction: "forward",
+    direction: "backward",
     endpoints: backwardFileMap,
 })
 
