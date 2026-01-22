@@ -177,6 +177,7 @@
 					label="Experiment Number"
 					type="integer"
 					value={draft.experimentNumber}
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
 						refresh();

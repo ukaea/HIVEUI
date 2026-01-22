@@ -1,100 +1,127 @@
 import Database from 'better-sqlite3';
+import { existsSync, mkdirSync } from 'fs';
+import { dirname } from 'path';
+import { env } from '$env/dynamic/private';
+let db: Database.Database | null = null;
 
-// Initialize DB file
-const db = new Database('exampleData/db/local.db', { verbose: console.log });
+/**
+ * Parse DB_URL and determine database type
+ */
+function parseDbUrl(dbUrl: string): { type: 'sqlite' | 'postgres'; path: string } {
+    if (dbUrl.startsWith('jdbc:postgresql://') || dbUrl.startsWith('postgresql://') || dbUrl.startsWith('postgres://')) {
+        return { type: 'postgres', path: dbUrl };
+    }
 
-export function initDb() {
+    if (dbUrl.startsWith('sqlite:')) {
+        return { type: 'sqlite', path: dbUrl.replace(/^sqlite:/, '') };
+    }
+
+    // Assume it's a file path for SQLite
+    return { type: 'sqlite', path: dbUrl };
+}
+
+/**
+ * Initialize the database connection using DB_URL from environment
+ */
+export function initDb(dbUrl?: string): Database.Database {
+    if (db) return db;
+
+    const url = dbUrl || env.DB_URL;
+
+    if (!url) {
+        throw new Error('DB_URL is not set in environment variables');
+    }
+
+    const { type, path: dbPath } = parseDbUrl(url);
+
+    if (type === 'postgres') {
+        throw new Error('PostgreSQL is not supported. Please use a SQLite database URL (e.g., sqlite:./data/local.db or just a file path)');
+    }
+
+    // Ensure the directory exists for SQLite
+    const dir = dirname(dbPath);
+    if (dir && dir !== '.' && !existsSync(dir)) {
+        mkdirSync(dir, { recursive: true });
+    }
+
+    // Create/open SQLite database
+    db = new Database(dbPath);
+
     // Enable Write-Ahead Logging for concurrency and performance
-    // db.exec('PRAGMA journal_mode = WAL;');
-    // db.exec('PRAGMA foreign_keys = ON;');
+    db.exec('PRAGMA journal_mode = WAL;');
 
-    // const createTables = `
-    //     CREATE TABLE IF NOT EXISTS configurations (
-    //         id INTEGER PRIMARY KEY,
-    //         name TEXT NOT NULL,
-    //         description TEXT
-    //     );
-
-    //     CREATE TABLE IF NOT EXISTS combinations (
-    //         id INTEGER PRIMARY KEY,
-    //         name TEXT NOT NULL
-    //     );
-
-    //     -- Link between Configs and Combinations
-    //     CREATE TABLE IF NOT EXISTS config_combinations (
-    //         config_id INTEGER,
-    //         combination_id INTEGER,
-    //         FOREIGN KEY(config_id) REFERENCES configurations(id),
-    //         FOREIGN KEY(combination_id) REFERENCES combinations(id),
-    //         PRIMARY KEY (config_id, combination_id)
-    //     );
-
-    //     -- Stores the equipment strings (e.g., "CAM_02")
-    //     CREATE TABLE IF NOT EXISTS combination_equipment (
-    //         combination_id INTEGER,
-    //         equipment_name TEXT,
-    //         FOREIGN KEY(combination_id) REFERENCES combinations(id)
-    //     );
-    // `;
-
-    // db.exec(createTables);
-
-    // // Check if DB is empty
-    // const stmt = db.prepare('SELECT count(*) as count FROM configurations');
-    // const result = stmt.get() as { count: number };
-    
-    // if (result.count === 0) {
-    //     console.log("Seeding database with initial data...");
-    //     //seedData();
-    // }
-}
-
-function seedData() {
-    // Use a transaction to ensure all data is inserted atomically
-    const insertTransaction = db.transaction(() => {
-        // --- 1. Create Combinations ---
-        const insertCombi = db.prepare('INSERT INTO combinations (id, name) VALUES (?, ?)');
-        insertCombi.run(1, 'Combi 1');
-        insertCombi.run(2, 'Combi 2');
-
-        // --- 2. Add Equipment to Combinations ---
-        const insertEq = db.prepare('INSERT INTO combination_equipment (combination_id, equipment_name) VALUES (?, ?)');
-        
-        // Combi 1: CAM_02, LENS_01
-        insertEq.run(1, 'CAM_02');
-        insertEq.run(1, 'LENS_01');
-
-        // Combi 2: CAM_02, LENS_03
-        insertEq.run(2, 'CAM_02');
-        insertEq.run(2, 'LENS_03');
-
-        // --- 3. Create Configurations ---
-        const insertConfig = db.prepare('INSERT INTO configurations (id, name, description) VALUES (?, ?, ?)');
-        
-        // Config 1
-        insertConfig.run(1, 'Config 1', 'Cameras');
-        
-        // Config 2
-        insertConfig.run(2, 'Config 2', 'test');
-
-        // --- 4. Link Configs to Combinations ---
-        const link = db.prepare('INSERT INTO config_combinations (config_id, combination_id) VALUES (?, ?)');
-        
-        // Config 1 has [1]
-        link.run(1, 1);
-
-        // Config 2 has [1, 2]
-        link.run(2, 1);
-        link.run(2, 2);
-    });
-
-    insertTransaction();
-    console.log("Seeding complete.");
-}
-
-export function getDb() {
     return db;
 }
 
-// Run init immediately
-initDb();
+/**
+ * Get the database instance, initializing if necessary
+ */
+export function getDb(): Database.Database {
+    if (!db) {
+        return initDb();
+    }
+    return db;
+}
+
+/**
+ * Ensures a table exists with the simplified schema: id (TEXT PRIMARY KEY) + data (JSON)
+ */
+export function ensureTable(tableName: string): void {
+    if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+        throw new Error('Invalid table name format');
+    }
+
+    const database = getDb();
+    const createTableSql = `
+        CREATE TABLE IF NOT EXISTS "${tableName}" (
+            id TEXT PRIMARY KEY,
+            data JSON NOT NULL
+        )
+    `;
+    database.exec(createTableSql);
+}
+
+/**
+ * Get all records from a table, returning the parsed JSON data with id included
+ */
+export function getAllRecords(tableName: string): any[] {
+    ensureTable(tableName);
+    const database = getDb();
+    const rows = database.prepare(`SELECT id, data FROM "${tableName}"`).all() as { id: string; data: string }[];
+    return rows.map(row => {
+        const parsed = JSON.parse(row.data);
+        return { ...parsed, _dbId: row.id };
+    });
+}
+
+/**
+ * Get a single record by id
+ */
+export function getRecordById(tableName: string, id: string): any | null {
+    ensureTable(tableName);
+    const database = getDb();
+    const row = database.prepare(`SELECT id, data FROM "${tableName}" WHERE id = ?`).get(id) as { id: string; data: string } | undefined;
+    if (!row) return null;
+    const parsed = JSON.parse(row.data);
+    return { ...parsed, _dbId: row.id };
+}
+
+/**
+ * Insert or update a record (upsert)
+ */
+export function upsertRecord(tableName: string, id: string, data: any): void {
+    ensureTable(tableName);
+    const database = getDb();
+    const jsonData = JSON.stringify(data);
+    const sql = `INSERT OR REPLACE INTO "${tableName}" (id, data) VALUES (?, ?)`;
+    database.prepare(sql).run(id, jsonData);
+}
+
+/**
+ * Delete a record by id
+ */
+export function deleteRecord(tableName: string, id: string): void {
+    ensureTable(tableName);
+    const database = getDb();
+    database.prepare(`DELETE FROM "${tableName}" WHERE id = ?`).run(id);
+}

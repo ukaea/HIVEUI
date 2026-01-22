@@ -8,10 +8,10 @@ import { svelteKitHandler } from "better-auth/svelte-kit";
 let booted = false;
 
 export const handle: Handle = async ({ event, resolve }) => {
-  if (!booted) {
-    await loadJqCaches();
-    booted = true;
-  }
+  // if (!booted) {
+  //   await loadJqCaches();
+  //   booted = true;
+  // }
 
   if (event.url.pathname.startsWith("/api/auth")) {
     return svelteKitHandler({ event, resolve, auth, building });

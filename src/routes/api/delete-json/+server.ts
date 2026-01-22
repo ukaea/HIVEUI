@@ -1,10 +1,10 @@
 // src/routes/api/delete-json/+server.ts
 import { json, error } from '@sveltejs/kit';
 import type { RequestHandler } from './$types';
-import { unlink } from 'fs/promises';
+import { rm } from 'fs/promises';
 import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
-import { getDb } from '$lib/services/DatabaseService';
+import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch }) => {
     try {
@@ -13,18 +13,39 @@ export const POST: RequestHandler = async ({ request, fetch }) => {
         // Local Branch
         if (targetPath.startsWith('/local/')) {
             const rootFolder = env.ROOT_FOLDER_LOCATION;
-            const absolutePath = resolve(rootFolder!, normalize(targetPath.replace(/^\/local\//, '')).replace(/^(\.\.[\/\\])+/, ''));
-            
-            await unlink(absolutePath);
-            return json({ success: true });
+            if (!rootFolder) throw error(500, 'ROOT_FOLDER_LOCATION not configured');
+            if (!id) throw error(400, 'ID is required for local delete');
+
+            // 1. Resolve the base directory
+            const baseDir = resolve(
+                rootFolder,
+                normalize(targetPath.replace(/^\/local\//, '')).replace(/^(\.\.[\/\\])+/, '')
+            );
+
+            // 2. Append the ID and extension (e.g., .json)
+            const absolutePath = resolve(baseDir, `${id}.json`);
+
+            console.log('Deleting local file:', absolutePath);
+
+            try {
+                await rm(absolutePath, { force: true });
+                return json({ success: true });
+            } catch (err: any) {
+                console.error('Local unlink error:', err);
+                throw error(500, `Failed to delete local file: ${err.message}`);
+            }
         }
 
         // DB Branch
         if (targetPath.startsWith('/db/')) {
-            // const tableName = targetPath.replace(/^\/db\//, '');
-            // const db = getDb();
-            // // Assumes a column named 'id' exists. Adjust if your idField varies.
-            // db.prepare(`DELETE FROM "${tableName}" WHERE id = ?`).run(id);
+            const tableName = targetPath.replace(/^\/db\//, '');
+            if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
+                throw error(400, 'Invalid table name format');
+            }
+            if (!id) {
+                throw error(400, 'id is required for database delete operations');
+            }
+            deleteRecord(tableName, id);
             return json({ success: true });
         }
 
