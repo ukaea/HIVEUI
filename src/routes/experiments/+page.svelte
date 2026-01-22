@@ -2,12 +2,12 @@
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
 	import { tableOrderStore, SelectField } from 'svelte-ux';
-	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
+	import { authClient } from '$lib/auth-client';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -34,6 +34,10 @@
 	async function fetchExperiments() {
 		try {
 			allExperiments = await experimentService.fetchAll();
+
+			//DEBUG
+			const session = await authClient.getSession();
+			console.log('Current session:', session);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
