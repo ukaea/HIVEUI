@@ -4,22 +4,14 @@
 
 	const session = authClient.useSession();
 
-	async function signIn() {
-		await authClient.signIn.social({
-			provider: 'keycloak-custom'
-		});
+	function signIn() {
+		window.location.href = '/';
 	}
 
-	async function signOut() {
-		await authClient.signOut({
-			fetchOptions: {
-				onSuccess: () => {
-                    window.location.href = '/login';
-				}
-			}
-		});
+	function signOut() {
+		// Points to our new route at /signout
+		window.location.href = '/signout';
 	}
-
 </script>
 
 <div>
@@ -29,9 +21,9 @@
 				{$session.data.user?.name ?? 'User'}
 			</Button>
 
-			<Menu {open} on:close={toggleOff} matchWidth>
-				<MenuItem>
-					<Button variant="text" on:click={signOut} fullWidth>Sign Out</Button>
+			<Menu {open} on:close={toggleOff} placement="bottom-start" matchWidth>
+				<MenuItem on:click={signOut}>
+					<span class="w-full text-left">Sign Out</span>
 				</MenuItem>
 			</Menu>
 		</Toggle>

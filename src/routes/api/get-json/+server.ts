@@ -7,74 +7,65 @@ import jq from "node-jq";
 import { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, fetch }) => {
+export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   const endpoint = url.searchParams.get('endpoint');
   const id = url.searchParams.get('id');
   const target = url.searchParams.get('target') ?? '';
 
+  // --- AUTHENTICATION CHECK ---
+  if (env.AUTHN_ENABLE === 'true' && !locals.user) {
+    throw error(401, 'Unauthorized: No active session');
+  }
+
+  // --- AUTHORIZATION CHECK ---
+  if (env.AUTHN_ENABLE === 'true' && env.AUTHZ_ENABLE === 'true') {
+    const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
+    const userGroups = (locals.user as any)?.groups || [];
+    if (requiredGroup && !userGroups.includes(requiredGroup)) {
+      throw error(403, 'Forbidden: Insufficient permissions');
+    }
+  }
+
+  const token = (locals.user as any)?.accessToken;
+
   if (!endpoint) {
-    return json({ 
-      success: false, 
-      message: 'No endpoint provided' 
-    }, { status: 400 });
+    return json({ success: false, message: 'No endpoint provided' }, { status: 400 });
   }
 
   // --- BRANCH 1: Local File System ---
   if (endpoint.startsWith('/local/')) {
     try {
       const rootFolder = env.ROOT_FOLDER_LOCATION;
-      if (!rootFolder) {
-        throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
-      }
+      if (!rootFolder) throw new Error('ROOT_FOLDER_LOCATION not set');
 
       const relativePath = endpoint.replace(/^\/local\//, '');
       const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-      let fullPath: string;
+      let fullPath = id ? resolve(rootFolder, sanitizedPath, `${id}.json`) : resolve(rootFolder, sanitizedPath);
 
-      if (id) {
-        fullPath = resolve(rootFolder, sanitizedPath, `${id}.json`);
-      } else {
-        fullPath = resolve(rootFolder, sanitizedPath);
-      }
-      // Security check: ensure we are still within the root folder
       if (!fullPath.startsWith(resolve(rootFolder))) {
         throw error(403, 'Access denied: Invalid file path');
       }
 
       const stats = await stat(fullPath);
 
-      // Scenario A: It's a single File
       if (stats.isFile()) {
-        if (extname(fullPath).toLowerCase() !== '.json') {
-          throw error(400, 'Only JSON files can be requested');
-        }
-        const fileContent = await readFile(fullPath, 'utf-8');
-        return json(JSON.parse(fileContent));
+        if (extname(fullPath).toLowerCase() !== '.json') throw error(400, 'Only JSON allowed');
+        return json(JSON.parse(await readFile(fullPath, 'utf-8')));
       }
 
-      // Scenario B: It's a Directory
       if (stats.isDirectory()) {
         const files = await readdir(fullPath);
         const jsonFiles = files.filter(file => extname(file).toLowerCase() === '.json');
-        const filePromises = jsonFiles.map(async (filename) => {
-          const filePath = join(fullPath, filename);
+        const results = await Promise.all(jsonFiles.map(async (filename) => {
           try {
-            const fileContent = await readFile(filePath, 'utf-8');
-            return JSON.parse(fileContent);
-          } catch (parseError) {
-            console.warn(`Failed to parse JSON file: ${filename}`, parseError);
-            return null;
-          }
-        });
-
-        const results = await Promise.all(filePromises);
+            return JSON.parse(await readFile(join(fullPath, filename), 'utf-8'));
+          } catch { return null; }
+        }));
         return json(results.filter(item => item !== null));
       }
-      throw error(400, 'Path is neither a file nor a directory');
-
+      throw error(400, 'Invalid path type');
     } catch (err: any) {
-      console.error('Error reading local path:', err);
-      if (err.status) throw err; 
+      if (err.status) throw err;
       if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
       throw error(500, 'Internal server error reading files');
     }
@@ -84,30 +75,17 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   if (endpoint.startsWith('/db/')) {
     try {
       const tableName = endpoint.replace(/^\/db\//, '');
-      if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
-        throw error(400, 'Invalid table name format');
-      }
+      if (!/^[a-zA-Z0-9_]+$/.test(tableName)) throw error(400, 'Invalid table name');
 
-      // If an id is provided, fetch a single record
       if (id) {
         const record = getRecordById(tableName, id);
-        if (!record) {
-          throw error(404, `Record with id '${id}' not found in table '${tableName}'`);
-        }
+        if (!record) throw error(404, `Record ${id} not found`);
         return json(record);
       }
-
-      // Otherwise, fetch all records
-      const rows = getAllRecords(tableName);
-      return json(rows);
-
+      return json(getAllRecords(tableName));
     } catch (err: any) {
-      console.error('Database Error:', err);
       if (err.status) throw err;
-      if (err.message?.includes('no such table')) {
-         throw error(404, `Table '${endpoint.replace(/^\/db\//, '')}' not found`);
-      }
-      throw error(500, 'Failed to retrieve data from database');
+      throw error(500, 'Database error');
     }
   }
 
@@ -115,54 +93,36 @@ export const GET: RequestHandler = async ({ url, fetch }) => {
   if (endpoint.startsWith('/remote/')) {
     try {
       const metacatBaseUrl = env.METACAT_URL;
-      if (!metacatBaseUrl) {
-        throw new Error('METACAT_URL is not set in environment variables');
-      }
+      if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
       const remotePath = endpoint.replace(/^\/remote\//, '');
       const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
       
-      const response = await fetch(remoteUrl);
-
-      if (!response.ok) {
-          throw error(response.status, `Remote API error: ${response.statusText}`);
+      // Injecting the Bearer Token here
+      const headers: HeadersInit = {};
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
       }
+
+      const response = await fetch(remoteUrl, { headers });
+
+      if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
 
       const data = await response.json();
 
-      // Check if jq mapping exists for this target
-      if (!target || !hasJqMapping('backward', target)) {
-        // No mapping needed, return raw data
-        return json(data);
-      }
+      if (!target || !hasJqMapping('backward', target)) return json(data);
 
-      try {
-        // Lazy load the jq script (fetches from remote only if not cached)
-        const jqScript = await getBackwardJqScript(target);
+      const jqScript = await getBackwardJqScript(target);
+      let mappedData = Array.isArray(data) 
+        ? await Promise.all(data.map(obj => jq.run(jqScript, obj, { input: 'json', output: 'json' })))
+        : await jq.run(jqScript, data, { input: 'json', output: 'json' });
 
-        let mappedData: any;
-        if (Array.isArray(data)) {
-          mappedData = await Promise.all(
-            data.map(async (obj) =>
-              jq.run(jqScript, obj, { input: 'json', output: 'json' })
-            )
-          );
-        } else {
-          mappedData = await jq.run(jqScript, data, { input: 'json', output: 'json' });
-        }
-        return json(mappedData);
-      } catch (jqError) {
-        console.error(`Error mapping ${target} with jq script:`, jqError);
-        throw new Error(`Backward mapping failed for ${target}`);
-      }
-
+      return json(mappedData);
     } catch (err: any) {
-      console.error('Error fetching from Metacat:', err);
       if (err.status) throw err;
       throw error(502, 'Failed to fetch from remote API');
     }
   }
 
-  // Default Fallback
-  throw error(400, 'Invalid endpoint prefix. Use /local/, /db/, or /remote/');
+  throw error(400, 'Invalid endpoint prefix');
 };

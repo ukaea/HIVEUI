@@ -34,10 +34,6 @@
 	async function fetchExperiments() {
 		try {
 			allExperiments = await experimentService.fetchAll();
-
-			//DEBUG
-			const session = await authClient.getSession();
-			console.log('Current session:', session);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
