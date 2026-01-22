@@ -33,7 +33,21 @@ async function findPulseFiles(rootDir: string): Promise<string[]> {
   return results;
 }
 
-export const GET: RequestHandler = async ({ url }) => {
+export const GET: RequestHandler = async ({ url, locals }) => {
+  // --- AUTHENTICATION CHECK ---
+  if (env.AUTHN_ENABLE === 'true' && !locals.user) {
+    throw error(401, 'Unauthorized: No active session');
+  }
+
+  // --- AUTHORIZATION CHECK ---
+  if (env.AUTHN_ENABLE === 'true' && env.AUTHZ_ENABLE === 'true') {
+    const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
+    const userGroups = (locals.user as any)?.groups || [];
+    if (requiredGroup && !userGroups.includes(requiredGroup)) {
+      throw error(403, 'Forbidden: Insufficient permissions');
+    }
+  }
+
   const endpoint = url.searchParams.get('endpoint');
 
   if (!endpoint) {

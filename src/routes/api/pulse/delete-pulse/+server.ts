@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { mkdir, writeFile } from 'fs/promises';
+import { rm } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
         if (env.AUTHZ_ENABLE === 'true') {
             const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
-            if (requiredGroup && !(locals.user as any).groups?.includes(requiredGroup)) {
+            if (requiredGroup && !locals.user.groups.includes(requiredGroup)) {
                 throw error(403, 'Forbidden: Insufficient permissions');
             }
         }
@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, pulseNumber, metadata } = body;
+        const { experimentNumber, sampleNumber, pulseNumber } = body;
 
-        if (!experimentNumber || !sampleNumber || !pulseNumber || !metadata) {
-            throw error(400, 'experimentNumber, sampleNumber, pulseNumber, and metadata are required');
+        if (!experimentNumber || !sampleNumber || !pulseNumber) {
+            throw error(400, 'experimentNumber, sampleNumber, and pulseNumber are required');
         }
 
         const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const experimentDir = `E-${experimentNumber}`;
         const sampleDir = `S-${sampleNumber}`;
         const pulseDir = `P-${pulseNumber}`;
-        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${pulseDir}/raw`;
+        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${pulseDir}/raw/manual-metadata.json`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);
@@ -46,19 +46,21 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw error(403, 'Access denied: Invalid file path');
         }
 
-        // Create directory and write file
-        await mkdir(fullPath, { recursive: true });
-        await writeFile(join(fullPath, 'manual-metadata.json'), JSON.stringify(metadata, null, 2));
+        // Delete the metadata file
+        await rm(fullPath, { force: true });
 
         return json({
             success: true,
-            message: 'Pulse metadata saved',
+            message: 'Pulse metadata deleted',
             path: fullPath
         });
 
     } catch (err: any) {
-        console.error('Error saving pulse metadata:', err);
+        console.error('Error deleting pulse metadata:', err);
         if (err.status) throw err;
+        if (err.code === 'ENOENT') {
+            throw error(404, 'Pulse metadata file not found');
+        }
         throw error(500, err.message);
     }
 };

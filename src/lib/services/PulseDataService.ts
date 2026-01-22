@@ -151,26 +151,24 @@ export class PulseDataService<T> {
      * Delete a pulse item.
      */
     async delete(item: T): Promise<void> {
-        const id = item[this.config.idField];
-
-        const experimentDir = `E-${item[this.config.experimentField]}`;
-        const sampleDir = `S-${item[this.config.sampleField]}`;
-        const pulseDir = `P-${item[this.config.idField]}`;
-
-        let targetPath = `${this.config.endpoint}${experimentDir}/${sampleDir}/${pulseDir}/raw/manual-metadata.json`;
+        const experimentNumber = item[this.config.experimentField];
+        const sampleNumber = item[this.config.sampleField];
+        const pulseNumber = item[this.config.idField];
 
         try {
-            const response = await fetch('/api/delete-json', {
+            const response = await fetch('/api/pulse/delete-pulse', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
-                    targetPath,
-                    id
+                    experimentNumber,
+                    sampleNumber,
+                    pulseNumber
                 })
             });
 
             if (!response.ok) {
-                throw new Error(`Failed to delete ${this.config.displayName}`);
+                const errorData = await response.json();
+                throw new Error(errorData.message || `Failed to delete ${this.config.displayName}`);
             }
         } catch (error) {
             console.error(`Error deleting ${this.config.displayName}:`, error);
