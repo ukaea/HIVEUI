@@ -44,6 +44,37 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
             const baseDir = resolve(rootFolder, sanitizedPath);
 
+            // Schema validation if SCHEMA_REGISTRY_URL is configured
+            const schemaRegistryUrl = env.SCHEMA_REGISTRY_URL;
+            if (schemaRegistryUrl) {
+                try {
+                    const schemaType = target || relativePath.split('/')[0] || 'default';
+                    const validationResponse = await fetch(schemaRegistryUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            schemaType,
+                            data: metadata
+                        })
+                    });
+
+                    if (!validationResponse.ok) {
+                        const errorText = await validationResponse.text();
+                        throw error(validationResponse.status, `Schema registry error: ${errorText}`);
+                    }
+
+                    const validationResult = await validationResponse.json();
+                    if (!validationResult.valid) {
+                        const errorMessages = validationResult.errors?.join(', ') || 'Unknown validation error';
+                        throw error(400, `Schema validation failed: ${errorMessages}`);
+                    }
+                } catch (err: any) {
+                    if (err.status) throw err;
+                    console.error('Schema validation error:', err);
+                    throw error(502, `Failed to validate against schema registry: ${err.message}`);
+                }
+            }
+
             // Security Check
             if (!baseDir.startsWith(resolve(rootFolder))) {
                 throw error(403, 'Access denied: Path out of bounds');
