@@ -1,49 +1,34 @@
 // $lib/models/ConfigurationMetadata.ts
 
 import { CombinationMetadata } from './CombinationMetadata';
-import { GenericDataService, type MetadataModel } from '$lib/services/GenericDataService';
+import type { MetadataModel } from '$lib/services/GenericDataService';
 
 export class ConfigurationMetadata {
-    configurationId: number;
+    configurationId: string;
     configurationName: string;
-    equipmentCombinations: CombinationMetadata[];
     configurationDescription: string;
+    equipmentCombinations: CombinationMetadata[];
 
     constructor() {
-        this.configurationId = 0;
+        this.configurationId = '';
         this.configurationName = '';
-        this.equipmentCombinations = [];
         this.configurationDescription = '';
+        this.equipmentCombinations = [];
     }
 
-    static async fromJSON(json: any): Promise<ConfigurationMetadata> {
+    static fromJSON(json: any): ConfigurationMetadata {
         const config = new ConfigurationMetadata();
-        config.configurationId = json.configurationId || 0;
-        config.configurationName = json.configurationName || '';
-        config.configurationDescription = json.configurationDescription || '';
+        config.configurationId = json.configurationId ?? '';
+        config.configurationName = json.configurationName ?? '';
+        config.configurationDescription = json.configurationDescription ?? '';
 
-        const combinationService = new GenericDataService<CombinationMetadata>({
-            modelClass: CombinationMetadata,
-            endpoint: '/local/combinations',
-            idField: 'combinationId',
-            displayName: 'combinations'
-        });
-
+        // Parse nested combinations - stored as full objects in JSONB
         if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
-            const combinationPromises = json.equipmentCombinations.map(async (combinationId: number) => {
-                try {
-                    const combinationData = await combinationService.fetchOne(`combi${combinationId}.json`);
-                    return await CombinationMetadata.fromJSON(combinationData);
-                } catch (error) {
-                    console.error(`Failed to load combination ${combinationId}:`, error);
-                    return null;
-                }
-            });
-
-            const combinations = await Promise.all(combinationPromises);
-            config.equipmentCombinations = combinations.filter(combination => combination !== null) as CombinationMetadata[];
+            config.equipmentCombinations = json.equipmentCombinations.map(
+                (combo: any) => CombinationMetadata.fromJSON(combo)
+            );
         }
-        
+
         return config;
     }
 
@@ -51,8 +36,11 @@ export class ConfigurationMetadata {
         return {
             configurationId: config.configurationId,
             configurationName: config.configurationName,
-            equipmentCombinations: config.equipmentCombinations.map(combination => combination.combinationId),
-            configurationDescription: config.configurationDescription
+            configurationDescription: config.configurationDescription,
+            // Store full combination objects for denormalized DB storage
+            equipmentCombinations: config.equipmentCombinations.map(
+                (combo) => CombinationMetadata.toJSON(combo)
+            )
         };
     }
 }

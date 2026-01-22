@@ -1,42 +1,27 @@
-import { GenericDataService, type MetadataModel } from "$lib/services/GenericDataService";
+import type { MetadataModel } from "$lib/services/GenericDataService";
 import { EquipmentMetadata } from './EquipmentMetadata';
 
 export class CombinationMetadata {
-    combinationId: number;
+    combinationId: string;
     combinationName: string;
     equipment: EquipmentMetadata[];
 
     constructor() {
-        this.combinationId = 0;
+        this.combinationId = '';
         this.combinationName = '';
         this.equipment = [];
     }
 
-    static async fromJSON(json: any): Promise<CombinationMetadata> {
+    static fromJSON(json: any): CombinationMetadata {
         const combination = new CombinationMetadata();
-        combination.combinationId = json.combinationId || 0;
-        combination.combinationName = json.combinationName || '';
+        combination.combinationId = json.combinationId ?? '';
+        combination.combinationName = json.combinationName ?? '';
 
-        const equipmentService = new GenericDataService<EquipmentMetadata>({
-            modelClass: EquipmentMetadata,
-            endpoint: '/local/equipment',
-            idField: 'equipmentName',
-            displayName: 'equipment'
-        });
-
+        // Parse nested equipment - stored as full objects in JSONB
         if (json.equipment && Array.isArray(json.equipment)) {
-            const equipmentPromises = json.equipment.map(async (equipmentName: string) => {
-                try {
-                    const equipmentData = await equipmentService.fetchOne(equipmentName);
-                    return EquipmentMetadata.fromJSON(equipmentData);
-                } catch (error) {
-                    console.error(`Failed to load equipment ${equipmentName}:`, error);
-                    return null;
-                }
-            });
-
-            const equipment = await Promise.all(equipmentPromises);
-            combination.equipment = equipment.filter(eq => eq !== null) as EquipmentMetadata[];
+            combination.equipment = json.equipment.map(
+                (eq: any) => EquipmentMetadata.fromJSON(eq)
+            );
         }
 
         return combination;
@@ -46,7 +31,10 @@ export class CombinationMetadata {
         return {
             combinationId: combination.combinationId,
             combinationName: combination.combinationName,
-            equipment: combination.equipment.map(eq => eq.equipmentName)
+            // Store full equipment objects for denormalized DB storage
+            equipment: combination.equipment.map(
+                (eq) => EquipmentMetadata.toJSON(eq)
+            )
         };
     }
 }

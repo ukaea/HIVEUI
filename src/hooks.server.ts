@@ -1,78 +1,77 @@
 import { building } from "$app/environment";
 import { env } from '$env/dynamic/private';
 import { auth } from "$lib/auth";
-import { loadJqCaches } from "$lib/server/load-jq";
 import { redirect, type Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 
-let booted = false;
-
 export const handle: Handle = async ({ event, resolve }) => {
-  if (!booted) {
-    await loadJqCaches();
-    booted = true;
-  }
+  const { pathname } = event.url;
 
-  if (event.url.pathname.startsWith("/api/auth")) {
+  // 1. Better Auth Handler
+  if (pathname.startsWith("/api/auth")) {
     return svelteKitHandler({ event, resolve, auth, building });
   }
 
+  // 2. Global Auth Bypass
+  if (env.AUTHN_ENABLE !== 'true') {
+    return resolve(event);
+  }
+
+  // 3. Asset & Public Path Guard
+  // Exclude common static files and the unauthorized page
+  const isAsset = pathname.includes('.') || pathname.startsWith('/fonts') || pathname.startsWith('/images');
+  const isPublic = pathname === '/unauthorized';
+  
+  if (isAsset || isPublic) {
+    return resolve(event);
+  }
+
+  // 4. Get Session
   const session = await auth.api.getSession({
     headers: event.request.headers,
   });
 
   if (session) {
     event.locals.session = session.session;
-    event.locals.user = session.user;
+    event.locals.user = session.user as App.Locals['user'];
   } else {
     event.locals.session = null;
     event.locals.user = null;
   }
 
-  // --- AUTHN BYPASS ---
-  if (env.AUTHN_ENABLE !== 'true') {
-    return resolve(event);
-  }
-
-  // --- PUBLIC PATHS ---
-  const publicPaths = ['/unauthorized'];
-  if (publicPaths.includes(event.url.pathname)) {
-    return resolve(event);
-  }
-
-  // --- AUTHENTICATION (Direct to Keycloak) ---
+  // 5. Authentication Challenge
   if (!event.locals.user) {
-    console.log('No active session found. Redirecting to Keycloak.');
+    // CRITICAL: Do not redirect if we are already in the middle of an auth flow
+    // Better Auth handles the callback via the svelteKitHandler above.
+    if (pathname.startsWith('/api/auth/callback')) {
+        return resolve(event);
+    }
+
+    console.log(`Unauthenticated access to ${pathname}. Redirecting to Keycloak.`);
 
     const result = await auth.api.signInSocial({
       body: {
         provider: 'keycloak-custom',
-        callbackURL: `${event.url.origin}`
+        // Omitting callbackURL allows Better Auth to use its default internal logic
+        // which is safer for state management.
+        callbackURL: '/' 
       },
     });
 
-    if (result && 'url' in result && result.url) {
+    if (result?.url) {
       throw redirect(302, result.url);
     }
 
-    console.error("Better Auth did not return a redirect URL", result);
+    throw redirect(302, '/unauthorized');
   }
 
-  // --- AUTHORIZATION (Group Check) ---
+  // 6. Authorization (Group Check)
   if (env.AUTHZ_ENABLE === 'true') {
     const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
+    const userGroups = event.locals.user?.groups || [];
 
-    if (!requiredGroup) {
-      console.error("AUTHZ_ENABLE is true, but AUTHZ_REQUIRED_GROUP is missing.");
-      throw new Error("Server misconfiguration: Missing required group.");
-    }
-
-    const userGroups = (event.locals.user as any).groups || [];
-    const hasAccess = userGroups.includes(requiredGroup);
-
-    if (!hasAccess) {
-      console.log(`User ${event.locals.user.email} denied access. Missing group: ${requiredGroup}`);
-
+    if (requiredGroup && !userGroups.includes(requiredGroup)) {
+      console.warn(`Access Denied for ${event.locals.user?.email}`);
       await auth.api.signOut({ headers: event.request.headers });
       throw redirect(303, '/unauthorized');
     }

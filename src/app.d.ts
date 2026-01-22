@@ -2,17 +2,15 @@
 import { type Session, type User } from "better-auth";
 
 declare global {
-	namespace App {
-		// interface Error {}
-		interface Locals {
+    namespace App {
+        interface Locals {
             session: Session | null;
-            // Extend the User type to include your custom group field
-            user: (User & { groups: string[] | null | undefined, accessToken: string | null | undefined} )| null;
+            user: (User & { 
+                groups: string[]; 
+                accessToken: string; 
+            }) | null;
         }
-		// interface PageData {}
-		// interface PageState {}
-		// interface Platform {}
-	}
+    }
 }
 
 export {};

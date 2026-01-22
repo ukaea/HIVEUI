@@ -2,8 +2,6 @@
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
-	import { page } from '$app/stores';
-	import { env } from '$env/dynamic/public';
 	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 
@@ -21,28 +19,25 @@
 	let allCombinations: CombinationMetadata[] = [];
 	let selectedCombination: CombinationMetadata | null = null;
 
-
 	// Main configuration dialog
 	let open = false;
 	let isNewEntry = false;
 
-	// Combination creation dialog
+	// Diagnostic creation dialog
 	let combinationDialogOpen = false;
 	let newCombination: CombinationMetadata | null = null;
 	let isNewCombination = false;
 
-	let localOnly = false;
-
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/local/configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/local/combinations',
+		endpoint: '/db/combinations',
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
@@ -67,7 +62,7 @@
 		try {
 			allCombinations = await combinationService.fetchAll();
 		} catch (error) {
-			console.error('Error fetching combinations:', error);
+			console.error('Error fetching diagnostics:', error);
 			alert((error as Error).message);
 		}
 	}
@@ -92,8 +87,7 @@
 			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 			handleModalClose();
 			await fetchConfigurations();
-		}
-		catch (error) {
+		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit configuration: ${(error as Error).message}`);
 		}
@@ -101,18 +95,18 @@
 
 	async function handleCombinationSubmit() {
 		if (!newCombination || !newCombination.combinationId) {
-			alert('Combination Id is required.');
+			alert('Diagnostic ID is required.');
 			return;
 		}
 
 		try {
 			await combinationService.submit(newCombination);
-			alert(isNewCombination ? 'New combination submitted successfully!' : 'Combination updated successfully!');
+			alert(isNewCombination ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
 			handleCombinationDialogClose();
 			await fetchCombinations();
 		} catch (error) {
 			console.error('Submission error:', error);
-			alert(`Failed to submit combination: ${(error as Error).message}`);
+			alert(`Failed to submit diagnostic: ${(error as Error).message}`);
 		}
 	}
 
@@ -120,7 +114,8 @@
 		if (!selectedConfiguration) return;
 
 		if (confirm(`Are you sure you want to delete configuration ${selectedConfiguration.configurationName}?`)) {
-			configurationService.delete(selectedConfiguration)
+			configurationService
+				.delete(selectedConfiguration)
 				.then(() => {
 					alert('Configuration deleted successfully');
 					handleModalClose();
@@ -192,9 +187,6 @@
 	}
 
 	onMount(() => {
-		if (env.PUBLIC_LOCAL_ONLY == 'true') {
-			localOnly = true;
-		}
 		fetchConfigurations();
 		fetchCombinations();
 		fetchEquipment();
@@ -218,8 +210,8 @@
 				{
 					name: 'equipmentCombinations',
 					align: 'left',
-					header: 'Equipment Combinations',
-					format: (value) => (Array.isArray(value) ? `${value.length} combinations` : '0 combinations')
+					header: 'Diagnostics',
+					format: (value) => (Array.isArray(value) ? `${value.length} diagnostics` : '0 diagnostics')
 				}
 			]}
 			order={configurationOrder}
@@ -293,13 +285,14 @@
 								}}
 								variant="outline"
 								color="danger"
-								size="sm">Remove</Button
+								size="sm"
+								class="w-20 h-12">Remove</Button
 							>
 						</div>
 					{/each}
 					<div class="flex gap-2">
 						<SelectField
-							label="Add Combination"
+							label="Add Diagnostic"
 							value={selectedCombination?.combinationId || ''}
 							options={allCombinations.map((combination) => ({ label: combination.combinationName, value: combination.combinationId }))}
 							on:change={(e) => {
@@ -312,9 +305,9 @@
 									// Check if combination is already added
 									if (!draft.equipmentCombinations.some((combination) => combination.combinationId === selectedCombination.combinationId)) {
 										draft.equipmentCombinations = [...draft.equipmentCombinations, selectedCombination];
-										console.log('Combination added:', selectedCombination);
+										console.log('Diagnostic added:', selectedCombination);
 									} else {
-										alert('Combination already added to this configuration.');
+										alert('Diagnostic already added to this configuration.');
 									}
 
 									selectedCombination = null;
@@ -323,7 +316,9 @@
 								}
 							}}
 							variant="fill"
-							color="primary">Add</Button
+							color="primary"
+							size="sm"
+							class="w-24 h-12">Add</Button
 						>
 					</div>
 				</div>
@@ -356,9 +351,9 @@
 	</div>
 </Dialog>
 
-<!-- Combination Creation Dialog -->
+<!-- Diagnostic Creation Dialog -->
 <Dialog open={combinationDialogOpen} on:close={handleCombinationDialogClose} class="combinationInputDialog">
-	<div slot="title">Create New Equipment Combination</div>
+	<div slot="title">Create New Diagnostic</div>
 	<div class="p-4">
 		<Form initial={newCombination} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
@@ -391,15 +386,17 @@
 				<h4 class="col-span-2 mt-1 mb-4">Equipment</h4>
 				<div class="space-y-3">
 					{#each draft.equipment as equipment, index (equipment.equipmentName)}
-						<div class="flex gap-2">
-							<TextField
-								label="Equipment Name"
-								value={equipment.equipmentName}
-								on:change={(e) => {
-									equipment.equipmentName = e.detail.value;
-									refresh();
-								}}
-							/>
+						<div class="flex items-center gap-2">
+							<div class="flex-grow">
+								<TextField
+									label="Equipment Name"
+									value={equipment.equipmentName}
+									on:change={(e) => {
+										equipment.equipmentName = e.detail.value;
+										refresh();
+									}}
+								/>
+							</div>
 							<Button
 								on:click={() => {
 									draft.equipment = draft.equipment.filter((_, i) => i !== index);
@@ -408,11 +405,13 @@
 								}}
 								variant="outline"
 								color="danger"
-								size="sm">Remove</Button
-							>
+								size="sm"
+								class="w-20 h-12"
+								>Remove
+							</Button>
 						</div>
 					{/each}
-					<div class="flex gap-2">
+					<div class="flex items-center gap-2">
 						<SelectField
 							label="Add Equipment"
 							value={selectedEquipment?.equipmentName || ''}
@@ -428,7 +427,7 @@
 									if (!draft.equipment.some((equipment) => equipment.equipmentName === selectedEquipment.equipmentName)) {
 										draft.equipment = [...draft.equipment, selectedEquipment];
 									} else {
-										alert('Equipment already added to this configuration.');
+										alert('Equipment already added to this diagnostic.');
 									}
 
 									selectedEquipment = null;
@@ -437,7 +436,9 @@
 								}
 							}}
 							variant="fill"
-							color="primary">Add</Button
+							color="primary"
+							size="sm"
+							class="w-24 h-12">Add</Button
 						>
 					</div>
 				</div>

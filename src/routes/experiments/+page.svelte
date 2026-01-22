@@ -2,12 +2,11 @@
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
 	import { tableOrderStore, SelectField } from 'svelte-ux';
-	import { page } from '$app/stores';
-	import { env } from '$env/dynamic/public';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
+	import { authClient } from '$lib/auth-client';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -15,7 +14,6 @@
 
 	let open = false;
 	let isNewEntry = false;
-	let localOnly = false;
 	let isManualEdit = false;
 
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
@@ -115,9 +113,6 @@
 	}
 
 	onMount(() => {
-		if (env.PUBLIC_LOCAL_ONLY == 'true') {
-			localOnly = true;
-		}
 		fetchExperiments();
 		fetchMembers();
 	});
@@ -177,6 +172,7 @@
 					label="Experiment Number"
 					type="integer"
 					value={draft.experimentNumber}
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
 						refresh();
