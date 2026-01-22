@@ -98,6 +98,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const remotePath = endpoint.replace(/^\/remote\//, '');
       const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
       
+      console.log(`Fetching remote URL: ${remoteUrl}`);
       // Injecting the Bearer Token here
       const headers: HeadersInit = {};
       if (token) {
