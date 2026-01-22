@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
 	import { tableOrderStore, SelectField } from 'svelte-ux';
-	import { env } from '$env/dynamic/public';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
@@ -15,7 +14,6 @@
 
 	let open = false;
 	let isNewEntry = false;
-	let localOnly = false;
 	let isManualEdit = false;
 
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
@@ -115,9 +113,6 @@
 	}
 
 	onMount(() => {
-		if (env.PUBLIC_LOCAL_ONLY == 'true') {
-			localOnly = true;
-		}
 		fetchExperiments();
 		fetchMembers();
 	});

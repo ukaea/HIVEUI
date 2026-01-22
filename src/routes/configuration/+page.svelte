@@ -2,7 +2,6 @@
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
-	import { env } from '$env/dynamic/public';
 	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 
@@ -28,8 +27,6 @@
 	let combinationDialogOpen = false;
 	let newCombination: CombinationMetadata | null = null;
 	let isNewCombination = false;
-
-	let localOnly = false;
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
@@ -190,9 +187,6 @@
 	}
 
 	onMount(() => {
-		if (env.PUBLIC_LOCAL_ONLY == 'true') {
-			localOnly = true;
-		}
 		fetchConfigurations();
 		fetchCombinations();
 		fetchEquipment();
