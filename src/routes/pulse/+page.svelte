@@ -47,10 +47,10 @@
 	const pulseService = new PulseDataService<CompiledPulseMetadata>({
 		modelClass: CompiledPulseMetadata,
 		endpoint: '/local/HIVE/',
-		idField: 'pulseNumber',
 		displayName: 'pulse',
-		experimentField: 'experimentNumber',
-		sampleField: 'sampleNumber',
+		idField: "pulseNumber",
+		experimentField: "experimentNumber",
+		sampleField: "sampleNumber",
 		isPulse: true
 	});
 
@@ -108,17 +108,17 @@
 		}
 	}
 
-	async function handlePostProcess(commitFn: () => void, current: CompiledPulseMetadata) {
-		if (!current) {
-			alert('Metadata required for post-processing');
+	async function handlePostProcess() {
+		if (!selectedMetadata) {
+			alert('No metadata selected.');
 			return;
 		}
 
 		try {
-			selectedMetadata = current;
-			commitFn();
+			await pulseService.executePostprocess(selectedMetadata)
+			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 
-			sortedPostProcessData = await pulseService.submitPulse(selectedMetadata, true) as CompiledPulseMetadata;
+			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata)
 
 			saveNotify = true;
 			setTimeout(() => {
@@ -127,7 +127,7 @@
 
 			await fetchPulses();
 		} catch (error) {
-			console.error('Error running post processing:', error);
+			console.error('Error executing post processing:', error);
 			alert(`Post processing failed: ${(error as Error).message}`);
 		}
 	}
@@ -567,119 +567,178 @@
 							label="Pulse Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.pulseStart}
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseStart = 
+											sortedPostProcessData.pulseStart) : '') :
+											draft?.pulseStart || ''}
 							disabled
 						/>
 						<DateField
 							label="Data Capture Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.dataCaptureStart}
+							value={sortedPostProcessData ? (draft ? 
+											(draft.dataCaptureStart =
+											sortedPostProcessData.dataCaptureStart) : '') :
+											draft.dataCaptureStart || ''}
 							disabled
 						/>
 						<TextField
 							label="Pulse Duration"
-							value={sortedPostProcessData.pulseDuration}
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseDuration = 
+											sortedPostProcessData.pulseDuration) : '') : 
+											draft.pulseDuration || ''}
 							disabled
 						/>
 						<DateField
 							label="Pulse End"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.pulseEnd}
+							value={sortedPostProcessData ? (draft ? 
+											(draft.pulseEnd =
+											sortedPostProcessData.pulseEnd) : '') :
+											draft.pulseEnd || ''}
 							disabled
 						/>
-
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
-							<TextField
-								label="Output Frequency"
-								value={sortedPostProcessData.heatingInformation.outputFrequency}
-								disabled
-							/>
-							<TextField
-								label="Measured Power"
-								value={sortedPostProcessData.heatingInformation.measuredPower}
-								disabled
-							/>
-							<TextField
-								label="Output Current"
-								value={sortedPostProcessData.heatingInformation.outputCurrent}
-								disabled
-							/>
-							<TextField
-								label="Output Voltage"
-								value={sortedPostProcessData.heatingInformation.outputVoltage}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
+						<TextField
+							label="Output Frequency"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.heatingInformation.outputFrequency = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.heatingInformation.outputFrequency || ''}
+							disabled
+						/>
+						<TextField
+							label="Measured Power"
+							value={sortedPostProcessData ? (draft ? 
+											(draft.heatingInformation.measuredPower = 
+											sortedPostProcessData.heatingInformation.inputPower) : '') :
+											draft?.heatingInformation.measuredPower || ''}
+							disabled
+						/>
+						<TextField
+							label="Output Current"
+							value={sortedPostProcessData ? (draft ? 
+											(draft.heatingInformation.outputCurrent = 
+											sortedPostProcessData.heatingInformation.inputPower) : '') :
+											draft?.heatingInformation.outputCurrent || ''}
+							disabled
+						/>
+						<TextField
+							label="Output Voltage"
+							value={sortedPostProcessData ? (draft ? 
+											(draft.heatingInformation.outputVoltage = 
+											sortedPostProcessData.heatingInformation.inputPower) : '') :
+											draft?.heatingInformation.outputVoltage || ''}
+							disabled
+						/>
 						</div>
 
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
-							<TextField
-								label="Measured Coolant Flow"
-								value={sortedPostProcessData.coolantInformation.measuredCoolantFlow}
-								disabled
-							/>
-							<TextField
-								label="Coolant Flow Variance"
-								value={sortedPostProcessData.coolantInformation.coolantFlowVariance}
-								disabled
-							/>
-							<TextField
-								label="Coolant Pressure In"
-								value={sortedPostProcessData.coolantInformation.coolantPressureIn}
-								disabled
-							/>
-							<TextField
-								label="Coolant Pressure Out"
-								value={sortedPostProcessData.coolantInformation.coolantPressureOut}
-								disabled
-							/>
-							<TextField
-								label="Delta Pressure"
-								value={sortedPostProcessData.coolantInformation.deltaPressure}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature In"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureIn}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature In Variance"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureInVariance}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature Out"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureOut}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature Out Variance"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureOutVariance}
-								disabled
-							/>
-							<TextField
-								label="Delta Temperature"
-								value={sortedPostProcessData.coolantInformation.deltaTemperature}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
+						<TextField
+							label="Measured Coolant Flow"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.measuredCoolantFlow = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.measuredCoolantFlow || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Flow Variance"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantFlowVariance = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantFlowVariance || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure In"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantPressureIn = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantPressureIn || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure Out"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantPressureOut = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantPressureOut || ''}
+							disabled
+						/>
+						<TextField
+							label="Delta Pressure"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.deltaPressure = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.deltaPressure || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantTemperatureIn = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantTemperatureIn || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In Variance"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantTemperatureInVariance = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantTemperatureInVariance || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantTemperatureOut = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantTemperatureOut || ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out Variance"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.coolantTemperatureOutVariance = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.coolantTemperatureOutVariance || ''}
+							disabled
+						/>
+						<TextField
+							label="Delta Temperature"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.coolantInformation.deltaPressure = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.coolantInformation.deltaPressure || ''}
+							disabled
+						/>
 						</div>
 
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
-							<TextField
-								label="Thermocouple ID"
-								value={sortedPostProcessData.thermocoupleInformation.thermocoupleID}
-								disabled
-							/>
-							<TextField
-								label="Max Value"
-								value={sortedPostProcessData.thermocoupleInformation.maxValue}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
+						<TextField
+							label="Thermocouple ID"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.thermocoupleInformation.thermocoupleID = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.thermocoupleInformation.thermocoupleID || ''}
+							disabled
+						/>
+						<TextField
+							label="Max Value"
+							value={sortedPostProcessData ? (draft ? 
+												(draft.thermocoupleInformation.maxValue = 
+												sortedPostProcessData.heatingInformation.inputPower) : '') : 
+												draft?.thermocoupleInformation.maxValue || ''}
+							disabled
+						/>
 						</div>
 					</div>
 				{/if}
@@ -714,7 +773,9 @@
 							handleMetadataSubmit();
 						}}>Save</Button
 					>
-					<Button variant="fill" on:click={() => handlePostProcess(() => {}, current)}>Pulse Completed</Button>
+					<Button variant="fill" on:click={() => {
+								selectedMetadata = current; 
+								handlePostProcess(); }}>Pulse Completed</Button>
 					<Button
 						on:click={() => {
 							revertAll();
@@ -734,23 +795,18 @@
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
-		overflow-x: auto;
+    	overflow-x: auto;
 	}
 
 	:global(.pulseInputDialog) {
 		max-height: 90vh;
-		overflow-y: auto;
-		display: flex;
-		flex-direction: column;
 	}
-
 	.bordered {
-		border: 1px solid grey;
-		padding: 10px;
+		border:1px solid grey; 
+		padding: 10px; 
 		border-radius: 5px;
 	}
-
-	.small-heading {
+	.small-heading{
 		font-size: 12px;
 		font-weight: 600;
 	}
