@@ -358,6 +358,7 @@
 					options={experimentOptions}
 					label="Experiment Number"
 					value={draft.experimentNumber}
+					disabled={!isNewEntry}
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
@@ -367,6 +368,7 @@
 				<TextField
 					label="Sample Number"
 					type="integer"
+					disabled={!isNewEntry}
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
