@@ -146,12 +146,22 @@ export class PulseDataService<T> {
         }
     }
 
-    async fetchProcessedData(item: T): Promise<T>{
+    async fetchProcessedData(processPath: string): Promise<T | null>{
         try {
             const filename = "processed-metadata"
 
-            const url = `/api/get-json?endpoint=${encodeURIComponent(item.processPath)}&id=${encodeURIComponent(filename)}`;
+            // if (!item.processPath) {
+            //     // treat as no data for case where the postprocess 
+            //     // has not been triggered and path not added to pulse metadata
+            //     return null
+            // }
+            const url = `/api/get-json?endpoint=${encodeURIComponent(processPath)}&id=${encodeURIComponent(filename)}`;
             const response = await fetch(url);
+
+            if (response.status === 404) {
+                // File not found / treat as no data. For cause where a pulse is saved but not postprocessing
+                return null;
+            }
 
             if (!response.ok) {
                 throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
@@ -192,4 +202,10 @@ export class PulseDataService<T> {
             throw error;
         }
     }
+}
+
+
+
+export async function great() {
+    return null
 }

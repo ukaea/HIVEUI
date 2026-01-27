@@ -118,7 +118,7 @@
 			await pulseService.executePostprocess(selectedMetadata)
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 
-			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata)
+			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath)
 
 			saveNotify = true;
 			setTimeout(() => {
@@ -227,11 +227,20 @@
 		}
 	}
 
-	function handleRowClick(row: CompiledPulseMetadata): void {
+	async function handleRowClick(row: CompiledPulseMetadata): void {
 		selectedMetadata = { ...row };
 		isNewEntry = false;
-		sortedPostProcessData = null;
 		open = true;
+
+		if (selectedMetadata.processPath) {
+			try {
+				sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath);
+			} catch (err) {
+				console.error("Failed to fetch processed data", err);
+			}
+		} else {
+			sortedPostProcessData = null;
+		}
 	}
 
 	function handleNewEntry(): void {
