@@ -17,7 +17,7 @@ async function findPulseFiles(rootDir: string): Promise<string[]> {
 
         if (stats.isDirectory()) {
           await walk(fullPath);
-        } else if (stats.isFile() && entry.name.endsWith("metadata.json")) {
+        } else if (stats.isFile() && entry.name.endsWith("manual-metadata.json")) {
           results.push(fullPath);
         }
       }
