@@ -1,3 +1,4 @@
+import Zod from "zod";
 import { PersonMetadata } from "./PersonMetadata";
 
 export class HeatingInformation {
@@ -198,6 +199,57 @@ export class CompiledPulseMetadata {
     processPath: string;
     status: string;
     
+    static schema = Zod.object({
+        pulseNumber: Zod.number().min(1, 'Pulse Number is required'),
+        sampleNumber: Zod.number().min(1, 'Sample Number is required'),
+        dataCaptureStart: Zod.date(),
+        pulseStart: Zod.date(),
+        pulseEnd: Zod.date(),
+        operator1: Zod.object({
+            firstName: Zod.string().min(1, "Operator 1 First Name is required"),
+            lastName: Zod.string().min(1, "Operator 1 Last Name is required"),
+            email: Zod.string().email('Invalid email address')
+        }),
+        operator2: Zod.object({
+            firstName: Zod.string().min(1, "Operator 2 First Name is required"),
+            lastName: Zod.string().min(1, "Operator 2 Last Name is required"),
+            email: Zod.string().email('Invalid email address')
+        }),
+        heatingInformation: Zod.object({
+            heatingType: Zod.enum(["Induction", "DC"]),
+            currentType: Zod.enum(["AC", "DC"]),
+            inputPower: Zod.number().optional(),
+            inputCurrent: Zod.number().optional(),
+            inputVoltage: Zod.number().optional(),
+            outputFrequency: Zod.number().min(1, 'Output Frequency is required'),
+            outputVoltage: Zod.number().min(1, 'Output Voltage is required'),
+            outputCurrent: Zod.number().min(1, 'Output Current is required'),
+        }),
+        coolantInformation: Zod.object({
+            sampleCooling: Zod.boolean(),
+            coolantType: Zod.string().min(1, "Coolant Type is required"),
+            targetCoolantFlow: Zod.number().min(1, 'Target Coolant Flow is required'),
+            targetCoolantTemperature: Zod.number().min(1, 'Target Coolant Temperature is required'),
+            measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required'),
+            coolantFlowVariance: Zod.number().min(1, 'Coolant Flow Variance is required'),
+            coolantPressureIn: Zod.number().min(1, 'Coolant Pressure In is required'),
+            coolantPressureOut: Zod.number().min(1, 'Coolant Pressure Out is required'),
+            deltaPressure: Zod.number().min(1, 'Delta Pressure is required'),
+            coolantTemperatureIn: Zod.number().min(1, 'Coolant Temperature In is required'),
+            coolantTemperatureInVariance: Zod.number().min(1, 'Coolant Temperature In Variance is required'),
+            coolantTemperatureOut: Zod.number().min(1, 'Coolant Temperature Out is required'),
+            coolantTemperatureOutVariance: Zod.number().min(1, 'Coolant Temperature Out Variance is required'),
+            deltaTemperature: Zod.number().min(1, 'Delta Temperature is required'),
+        }),
+        thermocoupleInformation: Zod.object({
+            thermocoupleId: Zod.string().min(1, 'Thermocouple ID is required'),
+            maxValue: Zod.number().min(1, 'Maximum Temperature value is required')
+        }),
+        pulseQuality: Zod.enum(["Success", "Fail"]),
+        experimentNumber: Zod.number().min(1, "Experiment Number is required"),
+        configurationId: Zod.string().min(1, "Configuration ID is required")
+    });
+
     constructor() {
         this.pulseNumber = 0;
         this.sampleNumber = 0;
