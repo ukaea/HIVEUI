@@ -837,7 +837,7 @@
 							handleMetadataSubmit();
 						}}>Save</Button
 					>
-					<Button variant="fill" on:click={() => {
+					<Button type="submit" variant="fill" on:click={() => {
 								selectedMetadata = current; 
 								handlePostProcess(); }}>Pulse Completed</Button>
 					<Button
