@@ -7,7 +7,7 @@ export class HeatingInformation {
     inputPower: number;
     inputCurrent: number;
     inputVoltage: number;
-    outputCurrent: string; ////////
+    outputCurrent: number;
 
     constructor() {
         this.heatingType = '';
@@ -15,7 +15,7 @@ export class HeatingInformation {
         this.inputPower = 0.0;
         this.inputCurrent = 0.0;
         this.inputVoltage = 0.0;
-        this.outputCurrent = ''; ///////
+        this.outputCurrent = 0.0; 
     }
 
     static fromJSON(json: any): HeatingInformation {
