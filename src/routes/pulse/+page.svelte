@@ -98,6 +98,14 @@
 		}
 
 		try {
+
+			//Validate against zod schema
+			const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata)
+			if (!parseResult.success) {
+				console.error('Validation errors:', parseResult.error.errors);
+				return;
+			}
+
 			await pulseService.submitPulse(selectedMetadata);
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 			handleModalClose();
@@ -115,6 +123,12 @@
 		}
 
 		try {
+			//Validate against zod schema
+			const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata)
+			if (!parseResult.success) {
+				console.error('Validation errors:', parseResult.error.errors);
+				return;
+			}
 			await pulseService.executePostprocess(selectedMetadata)
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 
@@ -351,7 +365,7 @@
 		</div>
 	</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
+		<Form initial={selectedMetadata} schema={CompiledPulseMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<SelectField
@@ -364,6 +378,7 @@
 						draft.experimentNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.experimentNumber}
 				/>
 				<TextField
 					label="Sample Number"
@@ -374,6 +389,7 @@
 						draft.sampleNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.sampleNumber}
 				/>
 				<TextField
 					label="Pulse Number"
@@ -384,6 +400,7 @@
 						draft.pulseNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.pulseNumber}
 				/>
 				<SelectField
 					options={configurationOptions}
@@ -394,6 +411,7 @@
 						draft.configurationId = e.detail.value;
 						refresh();
 					}}
+					error={errors.configurationId}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
@@ -404,6 +422,7 @@
 						draft.operator1.firstName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.firstName}
 				/>
 				<TextField
 					label="Last Name"
@@ -412,6 +431,7 @@
 						draft.operator1.lastName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.lastName}
 				/>
 				<TextField
 					label="Email"
@@ -420,6 +440,7 @@
 						draft.operator1.email = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.email}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
@@ -430,6 +451,7 @@
 						draft.operator2.firstName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.firstName}
 				/>
 				<TextField
 					label="Last Name"
@@ -438,6 +460,7 @@
 						draft.operator2.lastName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.lastName}
 				/>
 				<TextField
 					label="Email"
@@ -446,6 +469,7 @@
 						draft.operator2.email = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.email}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
@@ -458,6 +482,7 @@
 						draft.heatingInformation.heatingType = e.detail.value;
 						refresh();
 					}}
+					error={errors.heatingInformation?.heatingType}
 				/>
 				<SelectField
 					options={coilCurrentTypeOptions}
@@ -473,6 +498,7 @@
 						}
 						refresh();
 					}}
+					error={errors.heatingInformation?.currentType}
 				/>
 				<TextField
 					label="Input Power"
@@ -483,6 +509,7 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputPower}
 				/>
 				<TextField
 					label="Input Current"
@@ -493,6 +520,7 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputCurrent}
 				/>
 				<TextField
 					label="Input Voltage"
@@ -503,6 +531,17 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputVoltage}
+				/>
+				<TextField
+					label="Output Current"
+					value={draft.heatingInformation.outputCurrent}
+					type="integer"
+					on:change={(e) => {
+						draft.heatingInformation.outputCurrent = e.detail.value;
+						refresh();
+					}}
+					error={errors.heatingInformation?.outputCurrent}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
@@ -515,6 +554,7 @@
 						draft.coolantInformation.sampleCooling = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.sampleCooling}
 				/>
 				<SelectField
 					options={coolantTypeOptions}
@@ -525,6 +565,7 @@
 						draft.coolantInformation.coolantType = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.coolantType}
 				/>
 				<TextField
 					label="Target Coolant Flow"
@@ -534,6 +575,7 @@
 						draft.coolantInformation.targetCoolantFlow = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.targetCoolantFlow}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
@@ -543,6 +585,17 @@
 						draft.coolantInformation.targetCoolantTemperature = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.targetCoolantTemperature}
+				/>
+				<TextField
+					label="Measured Coolant Flow"
+					value={draft.coolantInformation.measuredCoolantFlow}
+					type="integer"
+					on:change={(e) => {
+						draft.coolantInformation.measuredCoolantFlow = e.detail.value;
+						refresh();
+					}}
+					error={errors.coolantInformation?.measuredCoolantFlow}
 				/>
 
 				<div class="col-span-3 grid grid-cols-3 gap-4">
