@@ -135,6 +135,7 @@
 			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath)
 
 			saveNotify = true;
+			isNewEntry = false;
 			setTimeout(() => {
 				saveNotify = false;
 			}, 3000);
