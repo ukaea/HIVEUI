@@ -181,7 +181,6 @@ export class CoolantInformation {
 	// Includes the experiment and configurations
 export class CompiledPulseMetadata {
     pulseNumber: number;
-    
     sampleNumber: number;
     dataCaptureStart: Date;
     pulseStart: Date;
@@ -196,6 +195,7 @@ export class CompiledPulseMetadata {
     pulseQuality: string;
     experimentNumber: string;
     configurationId: number;
+    processPath: string;
     status: string;
     
     constructor() {
@@ -214,6 +214,7 @@ export class CompiledPulseMetadata {
         this.comment = '';
         this.pulseQuality = '';
         this.configurationId = 0;
+        this.processPath = '';
         this.status = '';
     }
 
@@ -244,6 +245,7 @@ export class CompiledPulseMetadata {
         pulse.pulseQuality = json.pulseQuality;
         pulse.experimentNumber = json.experimentNumber;
         pulse.configurationId = json.configurationId;
+        pulse.processPath = json.processPath;
         pulse.status = json.status;
         return pulse
     }
@@ -265,6 +267,7 @@ export class CompiledPulseMetadata {
             pulseQuality: metaData.pulseQuality,
             experimentNumber: metaData.experimentNumber,
             configurationId: metaData.configurationId,
+            processPath: metaData.processPath,
             status: metaData.status
         }
     }
