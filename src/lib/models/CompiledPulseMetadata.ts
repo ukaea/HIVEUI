@@ -171,8 +171,6 @@ export class CompiledPulseMetadata {
             inputPower: Zod.number().optional(),
             inputCurrent: Zod.number().optional(),
             inputVoltage: Zod.number().optional(),
-            outputFrequency: Zod.number().min(1, 'Output Frequency is required'),
-            outputVoltage: Zod.number().min(1, 'Output Voltage is required'),
             outputCurrent: Zod.number().min(1, 'Output Current is required'),
         }),
         coolantInformation: Zod.object({
@@ -180,16 +178,7 @@ export class CompiledPulseMetadata {
             coolantType: Zod.string().min(1, "Coolant Type is required"),
             targetCoolantFlow: Zod.number().min(1, 'Target Coolant Flow is required'),
             targetCoolantTemperature: Zod.number().min(1, 'Target Coolant Temperature is required'),
-            measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required'),
-            coolantFlowVariance: Zod.number().min(1, 'Coolant Flow Variance is required'),
-            coolantPressureIn: Zod.number().min(1, 'Coolant Pressure In is required'),
-            coolantPressureOut: Zod.number().min(1, 'Coolant Pressure Out is required'),
-            deltaPressure: Zod.number().min(1, 'Delta Pressure is required'),
-            coolantTemperatureIn: Zod.number().min(1, 'Coolant Temperature In is required'),
-            coolantTemperatureInVariance: Zod.number().min(1, 'Coolant Temperature In Variance is required'),
-            coolantTemperatureOut: Zod.number().min(1, 'Coolant Temperature Out is required'),
-            coolantTemperatureOutVariance: Zod.number().min(1, 'Coolant Temperature Out Variance is required'),
-            deltaTemperature: Zod.number().min(1, 'Delta Temperature is required'),
+            measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required')
         }),
         thermocoupleInformation: Zod.object({
             thermocoupleId: Zod.string().min(1, 'Thermocouple ID is required'),
