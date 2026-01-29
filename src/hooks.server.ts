@@ -4,6 +4,7 @@ import { auth, refreshAccessToken } from "$lib/auth";
 import { redirect, type Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 
+
 // Buffer time before expiry to trigger refresh (30 seconds)
 const TOKEN_REFRESH_BUFFER_MS = 30 * 1000;
 
@@ -49,7 +50,6 @@ export const handle: Handle = async ({ event, resolve }) => {
         console.log('Access token expired or expiring soon, attempting refresh...');
 
         const newTokens = await refreshAccessToken(user.refreshToken);
-
         if (newTokens) {
           // Update user record with new tokens
           try {
