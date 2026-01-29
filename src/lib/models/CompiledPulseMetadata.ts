@@ -157,6 +157,7 @@ export class CompiledPulseMetadata {
             targetCoolantTemperature: Zod.number().min(1, 'Target Coolant Temperature is required'),
             measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required')
         }),
+        comment: Zod.string().min(1, "Comment field is required"),
         pulseQuality: Zod.enum(["Success", "Fail"]),
         experimentNumber: Zod.number().min(1, "Experiment Number is required"),
         //configurationUUID: Zod.string().min(1, "Configuration UUID is required")

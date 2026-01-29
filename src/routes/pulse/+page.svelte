@@ -97,15 +97,14 @@
 			return;
 		}
 
+		// validate pulse metadata against zod schema
+		const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
+			return;
+		}
+
 		try {
-
-			//Validate against zod schema
-			const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata)
-			if (!parseResult.success) {
-				console.error('Validation errors:', parseResult.error.errors);
-				return;
-			}
-
 			await pulseService.submitPulse(selectedMetadata);
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 			handleModalClose();
@@ -122,20 +121,23 @@
 			return;
 		}
 
+		// validate pulse metadata against zod schema
+		const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
+			return;
+		}
+
 		try {
-			//Validate against zod schema
-			const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata)
-			if (!parseResult.success) {
-				console.error('Validation errors:', parseResult.error.errors);
-				return;
-			}
 			await pulseService.executePostprocess(selectedMetadata)
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 
+			isNewEntry = false;
+			
 			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath)
 
 			saveNotify = true;
-			//isNewEntry = false;
+
 			setTimeout(() => {
 				saveNotify = false;
 			}, 3000);
@@ -610,6 +612,7 @@
 								refresh();
 							}}
 							multiline
+							error={errors.comment}
 						/>
 					</div>
 					<SelectField
@@ -621,6 +624,7 @@
 							draft.pulseQuality = e.detail.value;
 							refresh();
 						}}
+						error={errors.pulseQuality}
 					/>
 				</div>
 
@@ -736,18 +740,12 @@
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
 						<TextField
 							label="Thermocouple ID"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.thermocoupleInformation.thermocoupleID = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.thermocoupleInformation.thermocoupleID || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.operator1.firstName) : ''}
 							disabled
 						/>
 						<TextField
 							label="Max Value"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.thermocoupleInformation.maxValue = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.thermocoupleInformation.maxValue || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						</div>
