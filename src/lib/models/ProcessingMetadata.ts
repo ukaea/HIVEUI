@@ -32,6 +32,31 @@ export class HeatingInformation {
     }
 }
 
+export class ThermocoupleInformation {
+    thermocoupleID: string;
+    maxValue: number;
+
+    constructor() {
+        this.thermocoupleID = '';
+        this.maxValue = 0;
+    }
+
+    static fromJSON(json: any): ThermocoupleInformation {
+        const thermocouple = new ThermocoupleInformation();
+        thermocouple.thermocoupleID = json.thermocoupleID || '';
+        thermocouple.maxValue = json.maxValue || 0;
+        return thermocouple
+    }
+
+    static toJSON(metadata: ThermocoupleInformation): any {
+        return {
+            thermocoupleID: metadata.thermocoupleID,
+            maxValue: metadata.maxValue,
+        };
+    }
+}
+
+
 export class coolantInformation {
     coolantFlow: number;
     coolantFlowVariance: number;
@@ -43,6 +68,7 @@ export class coolantInformation {
     coolantTemperatureOut: number;
     coolantTemperatureOutVariance: number;
     deltaTemperature: number
+    thermocoupleInformation: ThermocoupleInformation;
 
     constructor() {
         this.coolantFlow = 0;
@@ -54,7 +80,8 @@ export class coolantInformation {
         this.coolantTemperatureInVariance = 0;
         this.coolantTemperatureOut = 0;
         this.coolantTemperatureOutVariance = 0;
-        this.deltaTemperature = 0
+        this.deltaTemperature = 0;
+        this.thermocoupleInformation = new ThermocoupleInformation();
     }
 
     static fromJSON(json: any): coolantInformation {
@@ -69,6 +96,9 @@ export class coolantInformation {
         coolant.coolantTemperatureOut = json.coolantTemperatureOut || 0;
         coolant.coolantTemperatureOutVariance = json.coolantTemperatureOutVariance || 0;
         coolant.deltaTemperature = json.deltaTemperature || 0;
+        coolant.thermocoupleInformation = json.thermocoupleInformation ?
+            ThermocoupleInformation.fromJSON(json.thermocoupleInformation) :
+            new ThermocoupleInformation();
         return coolant;
     }
 
@@ -84,6 +114,7 @@ export class coolantInformation {
             coolantTemperatureOut: coolant.coolantTemperatureOut,
             coolantTemperatureOutVariance: coolant.coolantTemperatureOutVariance,
             deltaTemperature: coolant.deltaTemperature,
+            thermocoupleInformation: coolant.thermocoupleInformation
         };
     }
 }
