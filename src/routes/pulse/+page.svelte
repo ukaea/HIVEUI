@@ -135,7 +135,7 @@
 			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath)
 
 			saveNotify = true;
-			isNewEntry = false;
+			//isNewEntry = false;
 			setTimeout(() => {
 				saveNotify = false;
 			}, 3000);
@@ -632,72 +632,48 @@
 							label="Pulse Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseStart = 
-											sortedPostProcessData.pulseStart) : '') :
-											draft?.pulseStart || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseStart) : ''}
 							disabled
 						/>
 						<DateField
 							label="Data Capture Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.dataCaptureStart =
-											sortedPostProcessData.dataCaptureStart) : '') :
-											draft.dataCaptureStart || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.dataCaptureStart) : ''}
 							disabled
 						/>
 						<TextField
 							label="Pulse Duration"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseDuration = 
-											sortedPostProcessData.pulseDuration) : '') : 
-											draft.pulseDuration || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseDuration) : ''}
 							disabled
 						/>
 						<DateField
 							label="Pulse End"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData ? (draft ? 
-											(draft.pulseEnd =
-											sortedPostProcessData.pulseEnd) : '') :
-											draft.pulseEnd || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseEnd) : ''}
 							disabled
 						/>
 						<div class="col-span-3 grid grid-cols-3 gap-4">
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
 						<TextField
 							label="Output Frequency"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.heatingInformation.outputFrequency = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.heatingInformation.outputFrequency || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Measured Power"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.measuredPower = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.measuredPower || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Output Current"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.outputCurrent = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.outputCurrent || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Output Voltage"
-							value={sortedPostProcessData ? (draft ? 
-											(draft.heatingInformation.outputVoltage = 
-											sortedPostProcessData.heatingInformation.inputPower) : '') :
-											draft?.heatingInformation.outputVoltage || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						</div>
@@ -706,82 +682,52 @@
 						<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
 						<TextField
 							label="Measured Coolant Flow"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.measuredCoolantFlow = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.measuredCoolantFlow || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Flow Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantFlowVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantFlowVariance || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Pressure In"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantPressureIn = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantPressureIn || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Pressure Out"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantPressureOut = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantPressureOut || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Delta Pressure"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.deltaPressure = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.deltaPressure || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Temperature In"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureIn = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureIn || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Temperature In Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureInVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureInVariance || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Temperature Out"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureOut = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureOut || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Coolant Temperature Out Variance"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.coolantTemperatureOutVariance = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.coolantTemperatureOutVariance || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
 							disabled
 						/>
 						<TextField
 							label="Delta Temperature"
-							value={sortedPostProcessData ? (draft ? 
-												(draft.coolantInformation.deltaPressure = 
-												sortedPostProcessData.heatingInformation.inputPower) : '') : 
-												draft?.coolantInformation.deltaPressure || ''}
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : '' }
 							disabled
 						/>
 						</div>
