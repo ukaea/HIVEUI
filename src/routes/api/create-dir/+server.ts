@@ -19,23 +19,21 @@ async function createProcessedDir(processedDir: string) {
       const seqDirs = entries.filter((e) => e.isDirectory() && e.name.startsWith('seq'))
                   .map((e) => e.name);
 
+      // create seq1 directory if non exit in processed directory
       if (seqDirs.length === 0) {
         const newSeqPath = join(processedDir, "seq1")
         await mkdir(newSeqPath, { recursive: true });
         return newSeqPath;
       }
+
+      // create new incremental seq directory if one or more exit in processed directory
       const seqNumbers = seqDirs.map((name) => Number(name.slice(3)))
                   .filter((n) => !Number.isNaN(n));
       const nextSeqNum = Math.max(...seqNumbers) + 1;
       const newSeqPath = join(processedDir, `seq${nextSeqNum}`);
-
       await mkdir(newSeqPath, { recursive: true });
       
-      return json({
-          success: true,
-          message: 'Process directory created',
-          path: newSeqPath
-      });
+      return newSeqPath
 
     } catch (err: any) {
         if (err.status) throw err;
