@@ -47,10 +47,10 @@
 	const pulseService = new PulseDataService<CompiledPulseMetadata>({
 		modelClass: CompiledPulseMetadata,
 		endpoint: '/local/HIVE/',
-		idField: 'pulseNumber',
 		displayName: 'pulse',
-		experimentField: 'experimentNumber',
-		sampleField: 'sampleNumber',
+		idField: "pulseNumber",
+		experimentField: "experimentNumber",
+		sampleField: "sampleNumber",
 		isPulse: true
 	});
 
@@ -97,6 +97,13 @@
 			return;
 		}
 
+		// validate pulse metadata against zod schema
+		const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
+			return;
+		}
+
 		try {
 			await pulseService.submitPulse(selectedMetadata);
 			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
@@ -108,26 +115,36 @@
 		}
 	}
 
-	async function handlePostProcess(commitFn: () => void, current: CompiledPulseMetadata) {
-		if (!current) {
-			alert('Metadata required for post-processing');
+	async function handlePostProcess() {
+		if (!selectedMetadata) {
+			alert('No metadata selected.');
+			return;
+		}
+
+		// validate pulse metadata against zod schema
+		const parseResult = CompiledPulseMetadata.schema.safeParse(selectedMetadata);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.errors);
 			return;
 		}
 
 		try {
-			selectedMetadata = current;
-			commitFn();
+			await pulseService.executePostprocess(selectedMetadata)
+			alert(isNewEntry ? 'New pulse submitted successfully!' : 'Pulse updated successfully!');
 
-			sortedPostProcessData = await pulseService.submitPulse(selectedMetadata, true) as CompiledPulseMetadata;
+			isNewEntry = false;
+			
+			sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath)
 
 			saveNotify = true;
+
 			setTimeout(() => {
 				saveNotify = false;
 			}, 3000);
 
 			await fetchPulses();
 		} catch (error) {
-			console.error('Error running post processing:', error);
+			console.error('Error executing post processing:', error);
 			alert(`Post processing failed: ${(error as Error).message}`);
 		}
 	}
@@ -227,11 +244,20 @@
 		}
 	}
 
-	function handleRowClick(row: CompiledPulseMetadata): void {
+	async function handleRowClick(row: CompiledPulseMetadata): void {
 		selectedMetadata = { ...row };
 		isNewEntry = false;
-		sortedPostProcessData = null;
 		open = true;
+
+		if (selectedMetadata.processPath) {
+			try {
+				sortedPostProcessData = await pulseService.fetchProcessedData(selectedMetadata.processPath);
+			} catch (err) {
+				console.error("Failed to fetch processed data", err);
+			}
+		} else {
+			sortedPostProcessData = null;
+		}
 	}
 
 	function handleNewEntry(): void {
@@ -342,27 +368,31 @@
 		</div>
 	</div>
 	<div class="p-4">
-		<Form initial={selectedMetadata} let:draft let:refresh let:current let:revertAll>
+		<Form initial={selectedMetadata} schema={CompiledPulseMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-3 gap-4">
 				<h3 class="col-span-3 font-bold mt-4">Pulse Information</h3>
 				<SelectField
 					options={experimentOptions}
 					label="Experiment Number"
 					value={draft.experimentNumber}
+					disabled={!isNewEntry}
 					autoplacement={false}
 					on:change={(e) => {
 						draft.experimentNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.experimentNumber}
 				/>
 				<TextField
 					label="Sample Number"
 					type="integer"
+					disabled={!isNewEntry}
 					value={draft.sampleNumber}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.sampleNumber}
 				/>
 				<TextField
 					label="Pulse Number"
@@ -373,6 +403,7 @@
 						draft.pulseNumber = e.detail.value;
 						refresh();
 					}}
+					error={errors.pulseNumber}
 				/>
 				<SelectField
 					options={configurationOptions}
@@ -383,6 +414,7 @@
 						draft.configurationId = e.detail.value;
 						refresh();
 					}}
+					error={errors.configurationId}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
@@ -393,6 +425,7 @@
 						draft.operator1.firstName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.firstName}
 				/>
 				<TextField
 					label="Last Name"
@@ -401,6 +434,7 @@
 						draft.operator1.lastName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.lastName}
 				/>
 				<TextField
 					label="Email"
@@ -409,6 +443,7 @@
 						draft.operator1.email = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator1?.email}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
@@ -419,6 +454,7 @@
 						draft.operator2.firstName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.firstName}
 				/>
 				<TextField
 					label="Last Name"
@@ -427,6 +463,7 @@
 						draft.operator2.lastName = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.lastName}
 				/>
 				<TextField
 					label="Email"
@@ -435,6 +472,7 @@
 						draft.operator2.email = e.detail.value;
 						refresh();
 					}}
+					error={errors.operator2?.email}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
@@ -447,6 +485,7 @@
 						draft.heatingInformation.heatingType = e.detail.value;
 						refresh();
 					}}
+					error={errors.heatingInformation?.heatingType}
 				/>
 				<SelectField
 					options={coilCurrentTypeOptions}
@@ -462,6 +501,7 @@
 						}
 						refresh();
 					}}
+					error={errors.heatingInformation?.currentType}
 				/>
 				<TextField
 					label="Input Power"
@@ -472,6 +512,7 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputPower}
 				/>
 				<TextField
 					label="Input Current"
@@ -482,6 +523,7 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputCurrent}
 				/>
 				<TextField
 					label="Input Voltage"
@@ -492,6 +534,17 @@
 						refresh();
 					}}
 					disabled={inputPowerToggle}
+					error={errors.heatingInformation?.inputVoltage}
+				/>
+				<TextField
+					label="Output Current"
+					value={draft.heatingInformation.outputCurrent}
+					type="integer"
+					on:change={(e) => {
+						draft.heatingInformation.outputCurrent = e.detail.value;
+						refresh();
+					}}
+					error={errors.heatingInformation?.outputCurrent}
 				/>
 
 				<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
@@ -504,6 +557,7 @@
 						draft.coolantInformation.sampleCooling = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.sampleCooling}
 				/>
 				<SelectField
 					options={coolantTypeOptions}
@@ -514,6 +568,7 @@
 						draft.coolantInformation.coolantType = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.coolantType}
 				/>
 				<TextField
 					label="Target Coolant Flow"
@@ -523,6 +578,7 @@
 						draft.coolantInformation.targetCoolantFlow = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.targetCoolantFlow}
 				/>
 				<TextField
 					label="Target Coolant Temperature"
@@ -532,6 +588,17 @@
 						draft.coolantInformation.targetCoolantTemperature = e.detail.value;
 						refresh();
 					}}
+					error={errors.coolantInformation?.targetCoolantTemperature}
+				/>
+				<TextField
+					label="Measured Coolant Flow"
+					value={draft.coolantInformation.measuredCoolantFlow}
+					type="integer"
+					on:change={(e) => {
+						draft.coolantInformation.measuredCoolantFlow = e.detail.value;
+						refresh();
+					}}
+					error={errors.coolantInformation?.measuredCoolantFlow}
 				/>
 
 				<div class="col-span-3 grid grid-cols-3 gap-4">
@@ -545,6 +612,7 @@
 								refresh();
 							}}
 							multiline
+							error={errors.comment}
 						/>
 					</div>
 					<SelectField
@@ -556,6 +624,7 @@
 							draft.pulseQuality = e.detail.value;
 							refresh();
 						}}
+						error={errors.pulseQuality}
 					/>
 				</div>
 
@@ -567,119 +636,118 @@
 							label="Pulse Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.pulseStart}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseStart) : ''}
 							disabled
 						/>
 						<DateField
 							label="Data Capture Start"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.dataCaptureStart}
+							value={sortedPostProcessData ? (sortedPostProcessData.dataCaptureStart) : ''}
 							disabled
 						/>
 						<TextField
 							label="Pulse Duration"
-							value={sortedPostProcessData.pulseDuration}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseDuration) : ''}
 							disabled
 						/>
 						<DateField
 							label="Pulse End"
 							format="dd/MM/yyyy HH:mm"
 							picker
-							value={sortedPostProcessData.pulseEnd}
+							value={sortedPostProcessData ? (sortedPostProcessData.pulseEnd) : ''}
 							disabled
 						/>
-
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
-							<TextField
-								label="Output Frequency"
-								value={sortedPostProcessData.heatingInformation.outputFrequency}
-								disabled
-							/>
-							<TextField
-								label="Measured Power"
-								value={sortedPostProcessData.heatingInformation.measuredPower}
-								disabled
-							/>
-							<TextField
-								label="Output Current"
-								value={sortedPostProcessData.heatingInformation.outputCurrent}
-								disabled
-							/>
-							<TextField
-								label="Output Voltage"
-								value={sortedPostProcessData.heatingInformation.outputVoltage}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Heating Information</h6>
+						<TextField
+							label="Output Frequency"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Measured Power"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Output Current"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Output Voltage"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
 						</div>
 
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
-							<TextField
-								label="Measured Coolant Flow"
-								value={sortedPostProcessData.coolantInformation.measuredCoolantFlow}
-								disabled
-							/>
-							<TextField
-								label="Coolant Flow Variance"
-								value={sortedPostProcessData.coolantInformation.coolantFlowVariance}
-								disabled
-							/>
-							<TextField
-								label="Coolant Pressure In"
-								value={sortedPostProcessData.coolantInformation.coolantPressureIn}
-								disabled
-							/>
-							<TextField
-								label="Coolant Pressure Out"
-								value={sortedPostProcessData.coolantInformation.coolantPressureOut}
-								disabled
-							/>
-							<TextField
-								label="Delta Pressure"
-								value={sortedPostProcessData.coolantInformation.deltaPressure}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature In"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureIn}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature In Variance"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureInVariance}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature Out"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureOut}
-								disabled
-							/>
-							<TextField
-								label="Coolant Temperature Out Variance"
-								value={sortedPostProcessData.coolantInformation.coolantTemperatureOutVariance}
-								disabled
-							/>
-							<TextField
-								label="Delta Temperature"
-								value={sortedPostProcessData.coolantInformation.deltaTemperature}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Coolant Information</h6>
+						<TextField
+							label="Measured Coolant Flow"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Flow Variance"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure In"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Pressure Out"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Delta Pressure"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature In Variance"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Coolant Temperature Out Variance"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
+						<TextField
+							label="Delta Temperature"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : '' }
+							disabled
+						/>
 						</div>
 
 						<div class="col-span-3 grid grid-cols-3 gap-4">
-							<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
-							<TextField
-								label="Thermocouple ID"
-								value={sortedPostProcessData.thermocoupleInformation.thermocoupleID}
-								disabled
-							/>
-							<TextField
-								label="Max Value"
-								value={sortedPostProcessData.thermocoupleInformation.maxValue}
-								disabled
-							/>
+						<h6 class="col-span-3 font-bold mt-4 small-heading">Thermocouple Information</h6>
+						<TextField
+							label="Thermocouple ID"
+							value={sortedPostProcessData ? (sortedPostProcessData.operator1.firstName) : ''}
+							disabled
+						/>
+						<TextField
+							label="Max Value"
+							value={sortedPostProcessData ? (sortedPostProcessData.heatingInformation.inputPower) : ''}
+							disabled
+						/>
 						</div>
 					</div>
 				{/if}
@@ -714,7 +782,9 @@
 							handleMetadataSubmit();
 						}}>Save</Button
 					>
-					<Button variant="fill" on:click={() => handlePostProcess(() => {}, current)}>Pulse Completed</Button>
+					<Button type="submit" variant="fill" on:click={() => {
+								selectedMetadata = current; 
+								handlePostProcess(); }}>Pulse Completed</Button>
 					<Button
 						on:click={() => {
 							revertAll();
@@ -734,23 +804,18 @@
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
-		overflow-x: auto;
+    	overflow-x: auto;
 	}
 
 	:global(.pulseInputDialog) {
 		max-height: 90vh;
-		overflow-y: auto;
-		display: flex;
-		flex-direction: column;
 	}
-
 	.bordered {
-		border: 1px solid grey;
-		padding: 10px;
+		border:1px solid grey; 
+		padding: 10px; 
 		border-radius: 5px;
 	}
-
-	.small-heading {
+	.small-heading{
 		font-size: 12px;
 		font-weight: 600;
 	}
