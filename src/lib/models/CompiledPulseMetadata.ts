@@ -1,3 +1,4 @@
+import Zod from "zod";
 import { PersonMetadata } from "./PersonMetadata";
 
 export class HeatingInformation {
@@ -6,10 +7,7 @@ export class HeatingInformation {
     inputPower: number;
     inputCurrent: number;
     inputVoltage: number;
-    outputFrequency: string;
-    measuredPower: string;
-    outputCurrent: string;
-    outputVoltage: string;
+    outputCurrent: number;
 
     constructor() {
         this.heatingType = '';
@@ -17,10 +15,7 @@ export class HeatingInformation {
         this.inputPower = 0.0;
         this.inputCurrent = 0.0;
         this.inputVoltage = 0.0;
-        this.outputFrequency = '';
-        this.measuredPower = '';
-        this.outputCurrent = '';
-        this.outputVoltage = '';
+        this.outputCurrent = 0.0; 
     }
 
     static fromJSON(json: any): HeatingInformation {
@@ -30,10 +25,7 @@ export class HeatingInformation {
         heat.inputPower = json.inputPower || '';
         heat.inputCurrent = json.inputCurrent || '';
         heat.inputVoltage = json.inputVoltage || '';
-        heat.outputFrequency = json.outputFrequency || '';
-        heat.measuredPower = json.measuredPower || '';
         heat.outputCurrent = json.outputCurrent || '';
-        heat.outputVoltage = json.outputVoltage || '';
         return heat
     }
 
@@ -44,37 +36,11 @@ export class HeatingInformation {
             inputPower: metadata.inputPower,
             inputCurrent: metadata.inputCurrent,
             inputVoltage: metadata.inputVoltage,
-            outputFrequency: metadata.outputFrequency,
-            measuredPower: metadata.measuredPower,
-            outputCurrent: metadata.outputCurrent,
-            outputVoltage: metadata.outputVoltage
+            outputCurrent: metadata.outputCurrent
         };
     }
 }
 
-export class ThermocoupleInformation {
-    thermocoupleID: string;
-    maxValue: string;
-
-    constructor() {
-        this.thermocoupleID = '';
-        this.maxValue = '';
-    }
-
-    static fromJSON(json: any): ThermocoupleInformation {
-        const thermocouple = new ThermocoupleInformation();
-        thermocouple.thermocoupleID = json.thermocoupleID || '';
-        thermocouple.maxValue = json.maxValue || '';
-        return thermocouple
-    }
-
-    static toJSON(metadata: ThermocoupleInformation): any {
-        return {
-            thermocoupleID: metadata.thermocoupleID,
-            maxValue: metadata.maxValue,
-        };
-    }
-}
 
 
 export class CoolantPressure {
@@ -111,32 +77,14 @@ export class CoolantInformation {
     coolantType: string;
     targetCoolantFlow: number;
     targetCoolantTemperature: number;
-    measuredCoolantFlow: string;
-    coolantFlowVariance:string;
-    coolantPressureIn: string;
-    coolantPressureOut: string;
-    deltaPressure: string;
-    coolantTemperatureIn: string;
-    coolantTemperatureInVariance: string;
-    coolantTemperatureOut: string;
-    coolantTemperatureOutVariance: string;
-    deltaTemperature: string;
+    measuredCoolantFlow: number;
 
     constructor() {
         this.sampleCooling = null;
         this.coolantType = '';
         this.targetCoolantFlow = 0.0;
         this.targetCoolantTemperature = 0.0;
-        this.measuredCoolantFlow = '';
-        this.coolantFlowVariance = '';
-        this.coolantPressureIn = '';
-        this.coolantPressureOut = '';
-        this.deltaPressure = '';
-        this.coolantTemperatureIn = '';
-        this.coolantTemperatureInVariance = '';
-        this.coolantTemperatureOut = '';
-        this.coolantTemperatureOutVariance = '';
-        this.deltaTemperature = '';
+        this.measuredCoolantFlow = 0.0;
     }
     static fromJSON(json: any): CoolantInformation{
         const coolant = new CoolantInformation();
@@ -144,16 +92,7 @@ export class CoolantInformation {
         coolant.coolantType = json.coolantType || '';
         coolant.targetCoolantFlow = json.targetCoolantFlow || '';
         coolant.targetCoolantTemperature = json.targetCoolantTemperature || '';
-        coolant.measuredCoolantFlow = json.measuredCoolantFlow || '';
-        coolant.coolantFlowVariance = json.coolantFlowVariance || '';
-        coolant.coolantPressureIn = json.coolantPressureIn || '';
-        coolant.coolantPressureOut = json.coolantPressureOut || '';
-        coolant.deltaPressure = json.deltaPressure || '';
-        coolant.coolantTemperatureIn = json.coolantTemperatureIn || '';
-        coolant.coolantTemperatureInVariance = json.coolantTemperatureInVariance || '';
-        coolant.coolantTemperatureOut = json.coolantTemperatureOut || '';
-        coolant.coolantTemperatureOutVariance = json.coolantTemperatureOutVariance || '';
-        coolant.deltaTemperature = json.coolantTemperatureOutVariance || '';
+        coolant.measuredCoolantFlow = json.measuredCoolantFlow || 0.0;
         return coolant
     }
 
@@ -163,16 +102,7 @@ export class CoolantInformation {
         coolantType: metadata.coolantType,
         targetCoolantFlow: metadata.targetCoolantFlow,
         targetCoolantTemperature: metadata.targetCoolantTemperature,
-        measuredCoolantFlow: metadata.measuredCoolantFlow,
-        coolantFlowVariance: metadata.coolantFlowVariance,
-        coolantPressureIn: metadata.coolantPressureIn,
-        coolantPressureOut: metadata.coolantPressureOut,
-        deltaPressure: metadata.deltaPressure,
-        coolantTemperatureIn: metadata.coolantTemperatureIn,
-        coolantTemperatureInVariance: metadata.coolantTemperatureInVariance,
-        coolantTemperatureOut: metadata.coolantTemperatureOut,
-        coolantTemperatureOutVariance: metadata.coolantTemperatureOutVariance,
-        deltaTemperature: metadata.coolantTemperatureOutVariance,
+        measuredCoolantFlow: metadata.measuredCoolantFlow
         }
     }
 
@@ -181,23 +111,58 @@ export class CoolantInformation {
 	// Includes the experiment and configurations
 export class CompiledPulseMetadata {
     pulseNumber: number;
-    
     sampleNumber: number;
     dataCaptureStart: Date;
     pulseStart: Date;
     pulseEnd: Date;
-    pulseDuration: string;
     operator1: PersonMetadata;
     operator2: PersonMetadata;
     heatingInformation: HeatingInformation;
     coolantInformation: CoolantInformation;
-    thermocoupleInformation: ThermocoupleInformation;
     comment: string;
     pulseQuality: string;
     experimentNumber: string;
-    configurationId: number;
+    configurationUUID: string;
+    processPath: string;
     status: string;
     
+    static schema = Zod.object({
+        pulseNumber: Zod.number().min(1, 'Pulse Number is required'),
+        sampleNumber: Zod.number().min(1, 'Sample Number is required'),
+        dataCaptureStart: Zod.date(),
+        pulseStart: Zod.date(),
+        pulseEnd: Zod.date(),
+        operator1: Zod.object({
+            firstName: Zod.string().min(1, "Operator 1 First Name is required"),
+            lastName: Zod.string().min(1, "Operator 1 Last Name is required"),
+            email: Zod.string().email('Invalid email address')
+        }),
+        operator2: Zod.object({
+            firstName: Zod.string().min(1, "Operator 2 First Name is required"),
+            lastName: Zod.string().min(1, "Operator 2 Last Name is required"),
+            email: Zod.string().email('Invalid email address')
+        }),
+        heatingInformation: Zod.object({
+            heatingType: Zod.enum(["Induction", "DC"]),
+            currentType: Zod.enum(["AC", "DC"]),
+            inputPower: Zod.number().optional(),
+            inputCurrent: Zod.number().optional(),
+            inputVoltage: Zod.number().optional(),
+            outputCurrent: Zod.number().min(1, 'Output Current is required'),
+        }),
+        coolantInformation: Zod.object({
+            sampleCooling: Zod.boolean(),
+            coolantType: Zod.string().min(1, "Coolant Type is required"),
+            targetCoolantFlow: Zod.number().min(1, 'Target Coolant Flow is required'),
+            targetCoolantTemperature: Zod.number().min(1, 'Target Coolant Temperature is required'),
+            measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required')
+        }),
+        comment: Zod.string().min(1, "Comment field is required"),
+        pulseQuality: Zod.enum(["Success", "Fail"]),
+        experimentNumber: Zod.number().min(1, "Experiment Number is required"),
+        //configurationUUID: Zod.string().min(1, "Configuration UUID is required")
+    });
+
     constructor() {
         this.pulseNumber = 0;
         this.sampleNumber = 0;
@@ -205,15 +170,14 @@ export class CompiledPulseMetadata {
         this.dataCaptureStart = new Date();
         this.pulseStart = new Date();
         this.pulseEnd = new Date();
-        this.pulseDuration = '';
         this.operator1 = new PersonMetadata();
         this.operator2 = new PersonMetadata();
         this.heatingInformation = new HeatingInformation();
         this.coolantInformation = new CoolantInformation();
-        this.thermocoupleInformation = new ThermocoupleInformation();
         this.comment = '';
         this.pulseQuality = '';
-        this.configurationId = 0;
+        this.configurationUUID = '';
+        this.processPath = '';
         this.status = '';
     }
 
@@ -224,7 +188,6 @@ export class CompiledPulseMetadata {
         pulse.dataCaptureStart = json.dataCaptureStart;
         pulse.pulseStart = json.pulseStart;
         pulse.pulseEnd = json.pulseEnd;
-        pulse.pulseDuration = json.pulseDuration;
         pulse.operator1 = json.operator1 ?
             PersonMetadata.fromJSON(json.operator1) :
             new PersonMetadata();
@@ -237,13 +200,11 @@ export class CompiledPulseMetadata {
         pulse.coolantInformation = json.coolantInformation ?
             CoolantInformation.fromJSON(json.coolantInformation) :
             new CoolantInformation();
-        pulse.thermocoupleInformation = json.thermocoupleInformation ?
-            ThermocoupleInformation.fromJSON(json.thermocoupleInformation) :
-            new ThermocoupleInformation();
         pulse.comment = json.comment;
         pulse.pulseQuality = json.pulseQuality;
         pulse.experimentNumber = json.experimentNumber;
-        pulse.configurationId = json.configurationId;
+        pulse.configurationUUID = json.configurationUUID;
+        pulse.processPath = json.processPath;
         pulse.status = json.status;
         return pulse
     }
@@ -255,16 +216,15 @@ export class CompiledPulseMetadata {
             dataCaptureStart: metaData.dataCaptureStart,
             pulseStart: metaData.pulseStart,
             pulseEnd: metaData.pulseEnd,
-            pulseDuration: metaData.pulseDuration,
             operator1: metaData.operator1,
             operator2: metaData.operator2,
             heatingInformation: metaData.heatingInformation,
             coolantInformation: metaData.coolantInformation,
-            thermocoupleInformation: metaData.thermocoupleInformation,
             comment: metaData.comment,
             pulseQuality: metaData.pulseQuality,
             experimentNumber: metaData.experimentNumber,
-            configurationId: metaData.configurationId,
+            configurationUUID: metaData.configurationUUID,
+            processPath: metaData.processPath,
             status: metaData.status
         }
     }
