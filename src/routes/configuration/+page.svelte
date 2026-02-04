@@ -4,6 +4,7 @@
 	import { tableOrderStore, SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
 	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { env } from '$env/dynamic/public';
 
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let selectedConfiguration: ConfigurationMetadata | null = null;
@@ -44,7 +45,7 @@
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/local/equipment',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/equipment' : '/remote/equipment',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});

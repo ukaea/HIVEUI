@@ -7,6 +7,7 @@ import { mkdir, writeFile } from 'fs/promises';
 import jq from "node-jq";
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
+import { object } from 'better-auth';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---
@@ -27,7 +28,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
 
     try {
         const body = await request.json();
-        const { targetPath, metadata, target, id } = body;
+        const { targetPath, metadata, id } = body;
+        const target = targetPath.split('/')[2];
 
         if (!targetPath || !metadata) {
             throw error(400, 'targetPath and metadata are required');
@@ -86,7 +88,6 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 await mkdir(baseDir, { recursive: true });
                 await writeFile(absolutePath, JSON.stringify(metadata, null, 2));
 
-                console.log('Saved local file:', absolutePath);
                 return json({ success: true, message: 'Saved to local' });
             } catch (err: any) {
                 console.error('Local save error:', err);
@@ -118,15 +119,19 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 // Apply jq mapping if available
                 if (target && hasJqMapping('forward', target)) {
                     const jqScript = await getForwardJqScript(target);
+
                     dataToSend = await jq.run(jqScript, metadata, { input: 'json', output: 'json' });
+
+                    dataToSend["facilityExperimentId"] = String(dataToSend["facilityExperimentId"]);
+                    dataToSend["schema_version"] = "1.0.0";
                 }
 
                 const remotePath = targetPath.replace(/^\/remote\//, '');
                 const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
-                
+
                 // Injecting the Bearer Token
-                const headers: HeadersInit = { 
-                    'Content-Type': 'application/json' 
+                const headers: HeadersInit = {
+                    'Content-Type': 'application/json'
                 };
                 if (token) {
                     headers['Authorization'] = `Bearer ${token}`;
@@ -139,7 +144,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 });
 
                 if (!response.ok) throw error(response.status, `Remote save failed: ${response.statusText}`);
-                
+
                 const result = await response.json();
                 return json(result);
             } catch (jqError: any) {
