@@ -10,7 +10,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   const endpoint = url.searchParams.get('endpoint');
   const id = url.searchParams.get('id');
-  const target = url.searchParams.get('target') ?? '';
+  const target = endpoint?.split('/')[2] ?? '';
 
   // --- AUTHENTICATION CHECK ---
   if (env.AUTHN_ENABLE === 'true' && !locals.user) {
