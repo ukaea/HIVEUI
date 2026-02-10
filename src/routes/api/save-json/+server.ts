@@ -111,6 +111,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
         // --- BRANCH 3: Remote API (Metacat) ---
         if (targetPath.startsWith('/remote/')) {
             const metacatBaseUrl = env.METACAT_URL;
+            console.log("TARGETPATH: ", targetPath)
+            console.log("TARGET: ", target)
             if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
             try {
@@ -119,11 +121,18 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 // Apply jq mapping if available
                 if (target && hasJqMapping('forward', target)) {
                     const jqScript = await getForwardJqScript(target);
-
+                    console.log("JQSCRIPT: ", jqScript)
                     dataToSend = await jq.run(jqScript, metadata, { input: 'json', output: 'json' });
 
-                    dataToSend["facilityExperimentId"] = String(dataToSend["facilityExperimentId"]);
+                    if (target == "experiments")
+                    {
+                        dataToSend["facilityExperimentId"] = String(dataToSend["facilityExperimentId"]);
+                    }
+
                     dataToSend["schema_version"] = "1.0.0";
+
+                    //DEBUG 
+                    console.log("DATATOSEND: ", dataToSend)
                 }
 
                 const remotePath = targetPath.replace(/^\/remote\//, '');

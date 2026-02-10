@@ -97,15 +97,41 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       const remotePath = endpoint.replace(/^\/remote\//, '');
       const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
-      
+
       console.log(`Fetching remote URL: ${remoteUrl}`);
-      // Injecting the Bearer Token here
+
+      interface QueryFilter {
+        where: {
+          [key: string]: string | number | boolean | object;
+        };
+      }
+
       const headers: HeadersInit = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(remoteUrl, { headers });
+      const url = new URL(remoteUrl);
+
+      if (target == "experiments") {
+        const filterFields: QueryFilter = {
+          where: { facility: 'HIVE' }
+        };
+        url.searchParams.append('filter', JSON.stringify(filterFields));
+      }
+
+      if (target == "instruments") {
+        const filterFields: QueryFilter = {
+          where: {
+            'additional.equipmentName': { $regex: '^HIVE' }
+          }
+        };
+        
+        url.searchParams.append('filter', JSON.stringify(filterFields));
+      }
+
+      // 3. Execute the fetch call
+      const response: Response = await fetch(url.toString(), { headers });
 
       if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
 
@@ -114,7 +140,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       if (!target || !hasJqMapping('backward', target)) return json(data);
 
       const jqScript = await getBackwardJqScript(target);
-      let mappedData = Array.isArray(data) 
+      let mappedData = Array.isArray(data)
         ? await Promise.all(data.map(obj => jq.run(jqScript, obj, { input: 'json', output: 'json' })))
         : await jq.run(jqScript, data, { input: 'json', output: 'json' });
 
