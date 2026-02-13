@@ -3,7 +3,8 @@ import { env } from '$env/dynamic/private';
 
 export async function POST({ request }) {
     try {
-        const { directory, inputfile } = await request.json();
+        const body = await request.json();
+        const { directory, inputfile, experimentNumber, sampleNumber, runNumber } = body;
         const credentials = btoa(`${env.AIRFLOW_USERNAME}:${env.AIRFLOW_PASSWORD}`);
         const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns`;
 
@@ -11,6 +12,9 @@ export async function POST({ request }) {
             conf: {
                 directory,
                 inputfile,
+                ...(experimentNumber && { experimentNumber }),
+                ...(sampleNumber && { sampleNumber }),
+                ...(runNumber && { runNumber }),
             },
         };
 
@@ -21,8 +25,7 @@ export async function POST({ request }) {
                 "Cache-Control": "no-cache",
                 "Authorization": `Basic ${credentials}`
             },
-            body: JSON.stringify({}) // empty body, parameters not currently being parsed
-            //body: JSON.stringify(payload), 
+            body: JSON.stringify(payload),
         });
 
         if (!response.ok) {

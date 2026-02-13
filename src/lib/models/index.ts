@@ -11,6 +11,8 @@ export { HeatingTypeMetadata } from './HeatingTypeMetadata';
 export { IrCameraMetadata } from './IrCameraMetadata';
 export { LensMetadata } from './LensMetadata';
 export { PersonMetadata } from './PersonMetadata';
+export { PulseAnnotation } from './PulseAnnotation';
 export { PyrometerMetadata } from './PyrometerMetadata';
+export { RunMetadata } from './RunMetadata';
 export { ThermocoupleMetadata } from './ThermocoupleMetadata';
 

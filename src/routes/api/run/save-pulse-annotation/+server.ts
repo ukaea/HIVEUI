@@ -1,0 +1,58 @@
+import { env } from '$env/dynamic/private';
+import { error, json } from '@sveltejs/kit';
+import { mkdir, writeFile } from 'fs/promises';
+import { join, normalize, resolve } from 'path';
+import type { RequestHandler } from './$types';
+
+export const POST: RequestHandler = async ({ request, locals }) => {
+    // --- AUTHENTICATION & AUTHORIZATION ---
+    if (env.AUTHN_ENABLE === 'true') {
+        if (!locals.user) {
+            throw error(401, 'Unauthorized: No active session');
+        }
+
+        if (env.AUTHZ_ENABLE === 'true') {
+            const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
+            if (requiredGroup && !(locals.user as any).groups?.includes(requiredGroup)) {
+                throw error(403, 'Forbidden: Insufficient permissions');
+            }
+        }
+    }
+
+    try {
+        const body = await request.json();
+        const { experimentNumber, sampleNumber, runNumber, pulseNumber, annotation } = body;
+
+        if (!experimentNumber || !sampleNumber || !runNumber || !pulseNumber || !annotation) {
+            throw error(400, 'experimentNumber, sampleNumber, runNumber, pulseNumber, and annotation are required');
+        }
+
+        const rootFolder = env.ROOT_FOLDER_LOCATION;
+        if (!rootFolder) {
+            throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
+        }
+
+        const relativePath = `HIVE/E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseNumber}`;
+
+        const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+        const fullPath = resolve(rootFolder, sanitizedPath);
+
+        if (!fullPath.startsWith(resolve(rootFolder))) {
+            throw error(403, 'Access denied: Invalid file path');
+        }
+
+        await mkdir(fullPath, { recursive: true });
+        await writeFile(join(fullPath, 'pulse-annotation.json'), JSON.stringify(annotation, null, 2));
+
+        return json({
+            success: true,
+            message: 'Pulse annotation saved',
+            path: fullPath
+        });
+
+    } catch (err: any) {
+        console.error('Error saving pulse annotation:', err);
+        if (err.status) throw err;
+        throw error(500, err.message);
+    }
+};
