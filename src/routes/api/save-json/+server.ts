@@ -7,7 +7,6 @@ import { mkdir, writeFile } from 'fs/promises';
 import jq from "node-jq";
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
-import { object } from 'better-auth';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---
@@ -129,9 +128,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                         dataToSend["facilityExperimentId"] = String(dataToSend["facilityExperimentId"]);
                     }
 
-                    dataToSend["schema_version"] = "1.0.0";
 
-                    //DEBUG 
+                    //DEBUG
                     console.log("DATATOSEND: ", dataToSend)
                 }
 

@@ -137,6 +137,21 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       const data = await response.json();
 
+      // Instruments: apply per-instrument backward mapping based on equipmentType
+      if (target === 'instruments') {
+        const mappedData = await Promise.all(
+          (Array.isArray(data) ? data : [data]).map(async (item) => {
+            const equipType = item?.additional?.equipmentType?.toLowerCase();
+            if (equipType && hasJqMapping('backward', equipType)) {
+              const jqScript = await getBackwardJqScript(equipType);
+              return jq.run(jqScript, item, { input: 'json', output: 'json' });
+            }
+            return item; // no mapping available, return as-is
+          })
+        );
+        return json(mappedData);
+      }
+
       if (!target || !hasJqMapping('backward', target)) return json(data);
 
       const jqScript = await getBackwardJqScript(target);
