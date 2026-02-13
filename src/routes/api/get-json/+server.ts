@@ -115,25 +115,26 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       if (target == "experiments") {
         const filterFields: QueryFilter = {
-          where: { facility: 'HIVE' }
+          where: {}
         };
         url.searchParams.append('filter', JSON.stringify(filterFields));
       }
 
       if (target == "instruments") {
         const filterFields: QueryFilter = {
-          where: {
-            'additional.equipmentName': { $regex: '^HIVE' }
-          }
+          where: {}
         };
-        
         url.searchParams.append('filter', JSON.stringify(filterFields));
       }
 
       // 3. Execute the fetch call
       const response: Response = await fetch(url.toString(), { headers });
 
-      if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Metacat error for ${target} (${response.status}):`, errorBody);
+        throw error(response.status, `Remote API error: ${errorBody}`);
+      }
 
       const data = await response.json();
 
@@ -162,7 +163,8 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       return json(mappedData);
     } catch (err: any) {
       if (err.status) throw err;
-      throw error(502, 'Failed to fetch from remote API');
+      console.error(`Error fetching remote data for ${target}:`, err);
+      throw error(502, `Failed to fetch from remote API: ${err.message}`);
     }
   }
 

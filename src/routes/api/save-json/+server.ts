@@ -117,6 +117,9 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             try {
                 let dataToSend = metadata;
 
+                // Add schemaVersion before mapping
+                metadata["schemaVersion"] = "1.0.0";
+
                 // Apply jq mapping if available
                 if (target && hasJqMapping('forward', target)) {
                     const jqScript = await getForwardJqScript(target);
@@ -150,13 +153,18 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                     body: JSON.stringify(dataToSend)
                 });
 
-                if (!response.ok) throw error(response.status, `Remote save failed: ${response.statusText}`);
+                if (!response.ok) {
+                    const errorBody = await response.text();
+                    console.error(`Metacat error for ${target} (${response.status}):`, errorBody);
+                    throw error(response.status, `Remote save failed: ${errorBody}`);
+                }
 
                 const result = await response.json();
                 return json(result);
-            } catch (jqError: any) {
-                console.error(`Error in remote save for ${target}:`, jqError);
-                throw error(500, `Forward mapping failed for ${target}: ${jqError.message}`);
+            } catch (err: any) {
+                if (err.status) throw err;
+                console.error(`Error in remote save for ${target}:`, err);
+                throw error(500, `Remote save failed for ${target}: ${err.message}`);
             }
         }
 
