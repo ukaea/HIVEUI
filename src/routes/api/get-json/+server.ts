@@ -113,19 +113,10 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       const url = new URL(remoteUrl);
 
-      if (target == "experiments") {
-        const filterFields: QueryFilter = {
-          where: {}
-        };
-        url.searchParams.append('filter', JSON.stringify(filterFields));
-      }
-
-      if (target == "instruments") {
-        const filterFields: QueryFilter = {
-          where: {}
-        };
-        url.searchParams.append('filter', JSON.stringify(filterFields));
-      }
+      const filterFields: QueryFilter = {
+        where: { ownerGroup: 'HIVE' }
+      };
+      url.searchParams.append('filter', JSON.stringify(filterFields));
 
       // 3. Execute the fetch call
       const response: Response = await fetch(url.toString(), { headers });
