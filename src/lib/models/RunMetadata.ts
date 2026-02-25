@@ -13,6 +13,7 @@ export class RunMetadata {
     coolantInformation: CoolantInformation;
     status: string;
     dagRunId: string;
+    currentStep: number;
     createdAt: string;
 
     static schema = Zod.object({
@@ -57,6 +58,7 @@ export class RunMetadata {
         this.coolantInformation = new CoolantInformation();
         this.status = 'draft';
         this.dagRunId = '';
+        this.currentStep = 0;
         this.createdAt = new Date().toISOString();
     }
 
@@ -80,6 +82,7 @@ export class RunMetadata {
             new CoolantInformation();
         run.status = json.status || 'draft';
         run.dagRunId = json.dagRunId || '';
+        run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
         return run;
     }
@@ -96,6 +99,7 @@ export class RunMetadata {
             coolantInformation: CoolantInformation.toJSON(metadata.coolantInformation),
             status: metadata.status,
             dagRunId: metadata.dagRunId,
+            currentStep: metadata.currentStep,
             createdAt: metadata.createdAt
         };
     }
