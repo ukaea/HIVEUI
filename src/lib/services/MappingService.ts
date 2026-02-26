@@ -3,7 +3,6 @@ import { env } from '$env/dynamic/private';
 // Mapping of target names to their jq script filenames
 const BACKWARD_JQ_FILES: Record<string, string> = {
     pulse: 'dataset.jq',
-    run: 'run.jq',
     experiments: 'experiment.jq',
     camera: 'instrument/camera.jq',
     flowmeter: 'instrument/flowmeter.jq',
@@ -15,7 +14,6 @@ const FORWARD_JQ_FILES: Record<string, string> = {
     equipment: 'instrument.jq',
     experiments: 'experiment.jq',
     pulse: 'dataset.jq',
-    run: 'run.jq',
 };
 
 // In-memory cache for loaded scripts
