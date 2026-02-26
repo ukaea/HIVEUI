@@ -74,12 +74,12 @@
 
 		const runId = `${newExperimentNumber}-${newSampleNumber}-${newRunNumber}`;
 		handleModalClose();
-		goto(`/run/${runId}`);
+		goto(`/runs/${runId}`);
 	}
 
 	function handleRowClick(row: RunMetadata) {
 		const runId = `${row.experimentNumber}-${row.sampleNumber}-${row.runNumber}`;
-		goto(`/run/${runId}`);
+		goto(`/runs/${runId}`);
 	}
 
 	function formatDate(value: string) {

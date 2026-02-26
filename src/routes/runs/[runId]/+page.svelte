@@ -140,7 +140,7 @@
 			case 'processed': return 2; // show annotation
 			case 'annotated': return 3; // show ingest
 			case 'ingested': return 3; // read-only ingest
-			default: return 0; // new run, show metadata form
+			default: return 0;
 		}
 	}
 
