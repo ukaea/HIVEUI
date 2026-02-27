@@ -2,27 +2,16 @@
 
 Ingestion frontend for the HIVE experiment at UKAEA
 
+## Features
+
+- **Experiment & Configuration Management** - Create and manage experiments, samples, and configurations
+- **Run Workflow** - Multi-step workflow for runs: Metadata entry, Processing (Airflow DAG trigger), Pulse Annotation, and Ingestion to SciCat
+- **Airflow Integration** - Trigger and monitor analysis pipelines via Apache Airflow (all credentials stay server-side)
+- **Authentication & Authorization** - Keycloak-based auth with group-level access control
+
 ## Docker
 
-To run the UI with Docker, clone the repository and add Keycloak credentials to the `docker-compose.yaml` file:
-
-```yaml
-AUTH_SECRET="<openssl rand -hex 32>"
-AUTH_KEYCLOAK_ID="<KeycloakClientID>"
-AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
-AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
-PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
-PUBLIC_METACAT_URL="<Full URL to Metacat>"
-AIRFLOW_URL="<AirflowURL>"
-AIRFLOW_DAG_ID="<DAGID>"
-AIRFLOW_USERNAME="<AirflowUsername>"
-AIRFLOW_PASSWORD="<AirflowPassword>"
-PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
-PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"
-PUBLIC_LOCAL_ONLY="<true or false>"
-```
-
-Then run the following command:
+To run the UI with Docker, clone the repository and configure environment variables in the `docker-compose.yaml` file (see `.env.example` for reference):
 
 ```sh
 docker-compose up -d
@@ -57,23 +46,13 @@ Developed with Node.js v21.1.0 and npm v10.2.0
    npm install
    ```
 
-4. Create a `.env` file in the root directory with the following content:
+4. Create a `.env` file in the root directory. Copy `.env.example` and fill in your values:
 
-   ```yaml
-   AUTH_SECRET="<openssl rand -hex 32>"
-   AUTH_KEYCLOAK_ID="<KeycloakClientID>"
-   AUTH_KEYCLOAK_SECRET="<KeycloakClientSecret>"
-   AUTH_KEYCLOAK_ISSUER="http://<KeycloakURL>/realms/<realm name>"
-   PUBLIC_ROOT_FOLDER_LOCATION="<Full path to the root folder (no slash at end)>"
-   PUBLIC_METACAT_URL="<Full URL to Metacat>"
-   AIRFLOW_URL="<AirflowURL>"
-   AIRFLOW_DAG_ID="<DAGID>"
-   AIRFLOW_USERNAME="<AirflowUsername>"
-   AIRFLOW_PASSWORD="<AirflowPassword>"
-   PUBLIC_AIRFLOW_DIRECTORY="<AirflowDirectory>"
-   PUBLIC_AIRFLOW_INPUT_FILE="<AirflowInputFile>"   
-   PUBLIC_LOCAL_ONLY="<true or false>"
+   ```sh
+   cp .env.example .env
    ```
+
+   See `.env.example` for all available configuration options and descriptions.
 
 ## Running HiveUI (Development)
 
