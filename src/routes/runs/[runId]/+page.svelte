@@ -61,7 +61,6 @@
 		loadingProcessedData = true;
 		selectedProcessedData = null;
 		try {
-			// TODO: fetch via PulseDataService.fetchProcessedData() using the pulse's processPath
 			selectedProcessedData = null;
 		} catch (error) {
 			console.error('Error loading processed data:', error);
