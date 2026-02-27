@@ -13,7 +13,6 @@
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
-	import { env } from '$env/dynamic/public';
 
 	// Parse runId from URL: {exp}-{sample}-{run}
 	let experimentNumber = '';
@@ -247,7 +246,7 @@
 			dagError = '';
 			dagStatusText = 'Triggering pipeline...';
 
-			const result = await triggerDAG(env.PUBLIC_AIRFLOW_DIRECTORY ?? '', env.PUBLIC_AIRFLOW_INPUT_FILE ?? '');
+			const result = await triggerDAG(experimentNumber, sampleNumber, runNumber);
 
 			runMetadata.dagRunId = result.dag_run_id;
 			runMetadata.status = 'processing';

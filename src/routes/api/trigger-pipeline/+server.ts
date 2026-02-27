@@ -4,14 +4,14 @@ import { env } from '$env/dynamic/private';
 export async function POST({ request }) {
     try {
         const body = await request.json();
-        const { directory, inputfile, experimentNumber, sampleNumber, runNumber } = body;
+        const { experimentNumber, sampleNumber, runNumber } = body;
         const credentials = btoa(`${env.AIRFLOW_USERNAME}:${env.AIRFLOW_PASSWORD}`);
         const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns`;
 
         const payload = {
             conf: {
-                directory,
-                inputfile,
+                directory: env.AIRFLOW_DIRECTORY,
+                inputfile: env.AIRFLOW_INPUT_FILE,
                 ...(experimentNumber && { experimentNumber }),
                 ...(sampleNumber && { sampleNumber }),
                 ...(runNumber && { runNumber }),
