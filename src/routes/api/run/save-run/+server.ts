@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { rm } from 'fs/promises';
+import { mkdir, writeFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
@@ -13,7 +13,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
         if (env.AUTHZ_ENABLE === 'true') {
             const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
-            if (requiredGroup && !locals.user.groups.includes(requiredGroup)) {
+            if (requiredGroup && !(locals.user as any).groups?.includes(requiredGroup)) {
                 throw error(403, 'Forbidden: Insufficient permissions');
             }
         }
@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, pulseNumber } = body;
+        const { experimentNumber, sampleNumber, runNumber, metadata } = body;
 
-        if (!experimentNumber || !sampleNumber || !pulseNumber) {
-            throw error(400, 'experimentNumber, sampleNumber, and pulseNumber are required');
+        if (!experimentNumber || !sampleNumber || !runNumber || !metadata) {
+            throw error(400, 'experimentNumber, sampleNumber, runNumber, and metadata are required');
         }
 
         const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -32,35 +32,30 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        // Construct pulse-specific directory path
         const experimentDir = `E-${experimentNumber}`;
         const sampleDir = `S-${sampleNumber}`;
-        const pulseDir = `P-${pulseNumber}`;
-        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${pulseDir}/raw/manual-metadata.json`;
+        const runDir = `R-${runNumber}`;
+        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${runDir}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);
 
-        // Security check: ensure we are still within the root folder
         if (!fullPath.startsWith(resolve(rootFolder))) {
             throw error(403, 'Access denied: Invalid file path');
         }
 
-        // Delete the metadata file
-        await rm(fullPath, { force: true });
+        await mkdir(fullPath, { recursive: true });
+        await writeFile(join(fullPath, 'run-metadata.json'), JSON.stringify(metadata, null, 2));
 
         return json({
             success: true,
-            message: 'Pulse metadata deleted',
+            message: 'Run metadata saved',
             path: fullPath
         });
 
     } catch (err: any) {
-        console.error('Error deleting pulse metadata:', err);
+        console.error('Error saving run metadata:', err);
         if (err.status) throw err;
-        if (err.code === 'ENOENT') {
-            throw error(404, 'Pulse metadata file not found');
-        }
         throw error(500, err.message);
     }
 };

@@ -5,13 +5,13 @@ export interface TriggerDAGResponse {
     execution_date: string;
 }
 
-export async function triggerDAG(directory: string, inputfile: string): Promise<TriggerDAGResponse> {
+export async function triggerDAG(experimentNumber?: string, sampleNumber?: number, runNumber?: number): Promise<TriggerDAGResponse> {
     const response = await fetch('/api/trigger-pipeline', {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ directory, inputfile }),
+        body: JSON.stringify({ experimentNumber, sampleNumber, runNumber }),
     });
 
     if (!response.ok) {

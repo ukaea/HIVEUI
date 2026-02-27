@@ -34,7 +34,7 @@
 		<NavItem text="Experiments" currentUrl={$page.url} path="/experiments" icon={mdiBookOpenVariantOutline} class="mb-2 ml-3 mt-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Equipment" currentUrl={$page.url} path="/equipment" icon={mdiMagnify} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 		<NavItem text="Configuration" currentUrl={$page.url} path="/configuration" icon={mdiContentSaveCog} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
-		<NavItem text="Pulse" currentUrl={$page.url} path="/pulse" icon={mdiPulse} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
+		<NavItem text="Runs" currentUrl={$page.url} path="/runs" icon={mdiPulse} class="mb-2 ml-3 hover:bg-gray-700 transition-colors duration-200" classes={{ active: 'bg-surface-300 text-primary-500' }} />
 	</svelte:fragment>
 
 	<main>

@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { error, json } from '@sveltejs/kit';
-import { mkdir, writeFile } from 'fs/promises';
-import { join, normalize, resolve } from 'path';
+import { rm } from 'fs/promises';
+import { normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, pulseNumber, metadata } = body;
+        const { experimentNumber, sampleNumber, runNumber } = body;
 
-        if (!experimentNumber || !sampleNumber || !pulseNumber || !metadata) {
-            throw error(400, 'experimentNumber, sampleNumber, pulseNumber, and metadata are required');
+        if (!experimentNumber || !sampleNumber || !runNumber) {
+            throw error(400, 'experimentNumber, sampleNumber, and runNumber are required');
         }
 
         const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -32,33 +32,32 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        // Construct pulse-specific directory path
         const experimentDir = `E-${experimentNumber}`;
         const sampleDir = `S-${sampleNumber}`;
-        const pulseDir = `P-${pulseNumber}`;
-        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${pulseDir}/raw`;
+        const runDir = `R-${runNumber}`;
+        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${runDir}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);
 
-        // Security check: ensure we are still within the root folder
         if (!fullPath.startsWith(resolve(rootFolder))) {
             throw error(403, 'Access denied: Invalid file path');
         }
 
-        // Create directory and write file
-        await mkdir(fullPath, { recursive: true });
-        await writeFile(join(fullPath, 'manual-metadata.json'), JSON.stringify(metadata, null, 2));
+        await rm(fullPath, { recursive: true, force: true });
 
         return json({
             success: true,
-            message: 'Pulse metadata saved',
+            message: 'Run deleted',
             path: fullPath
         });
 
     } catch (err: any) {
-        console.error('Error saving pulse metadata:', err);
+        console.error('Error deleting run:', err);
         if (err.status) throw err;
+        if (err.code === 'ENOENT') {
+            throw error(404, 'Run directory not found');
+        }
         throw error(500, err.message);
     }
 };
