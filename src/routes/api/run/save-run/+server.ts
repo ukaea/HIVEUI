@@ -45,7 +45,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         }
 
         await mkdir(fullPath, { recursive: true });
-        await writeFile(join(fullPath, 'run-metadata.json'), JSON.stringify(metadata, null, 2));
+        await writeFile(join(fullPath, 'manual_metadata.json'), JSON.stringify(metadata, null, 2));
 
         return json({
             success: true,

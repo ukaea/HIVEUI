@@ -1,7 +1,12 @@
 import { RunMetadata } from '$lib/models/RunMetadata';
 import { PulseAnnotation } from '$lib/models/PulseAnnotation';
+import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 
 export class RunDataService {
+
+    // ─── Run endpoints (local disk) ─────────────────────────────────────
+    // Runs contain top-level metadata and are persisted to the local filesystem.
+
     async fetchAll(sortHandler?: (a: RunMetadata, b: RunMetadata) => number): Promise<RunMetadata[]> {
         try {
             const response = await fetch('/api/run/get-runs');
@@ -68,6 +73,11 @@ export class RunDataService {
         }
     }
 
+    // ─── Pulse endpoints (local disk + data catalogue) ──────────────────
+    // Pulses combine top-level run metadata, post-processing results from
+    // the Airflow DAG, and the user's pulse annotation. The compiled pulse
+    // JSON is what gets sent to the backend data catalogue during ingestion.
+
     async fetchPulses(experimentNumber: string, sampleNumber: number, runNumber: number): Promise<PulseAnnotation[]> {
         try {
             const params = new URLSearchParams({
@@ -118,6 +128,95 @@ export class RunDataService {
             }
         } catch (error) {
             console.error('Error saving pulse annotation:', error);
+            throw error;
+        }
+    }
+
+    async fetchProcessedData(
+        experimentNumber: string,
+        sampleNumber: number,
+        runNumber: number,
+        pulseNumber: number
+    ): Promise<ProcessMetadata[]> {
+        try {
+            const params = new URLSearchParams({
+                experimentNumber,
+                sampleNumber: String(sampleNumber),
+                runNumber: String(runNumber),
+                pulseNumber: String(pulseNumber)
+            });
+
+            const response = await fetch(`/api/run/get-processed-data?${params}`);
+
+            if (!response.ok) {
+                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            const rawItems = Array.isArray(data) ? data : [data];
+            return rawItems.map((json: any) => ProcessMetadata.fromJSON(json));
+        } catch (error) {
+            console.error('Error fetching processed data:', error);
+            throw new Error('Failed to load processed data.');
+        }
+    }
+
+    async seedTestData(
+        experimentNumber: string,
+        sampleNumber: number,
+        runNumber: number,
+        pulseCount: number = 3,
+        sequenceCount: number = 2
+    ): Promise<{ pulseCount: number; sequenceCount: number }> {
+        try {
+            const response = await fetch('/api/run/seed-test-data', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    experimentNumber,
+                    sampleNumber,
+                    runNumber,
+                    pulseCount,
+                    sequenceCount
+                })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Seed test data failed');
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error seeding test data:', error);
+            throw error;
+        }
+    }
+
+    /**
+     * Ingest compiled pulses to the backend data catalogue.
+     *
+     * Sends the pre-compiled pulse array to the dedicated ingest-pulses
+     * endpoint, which applies the dataset jq mapping and forwards each
+     * pulse to the /datasets endpoint of the data catalogue.
+     */
+    async ingestToDataCatalogue(compiledPulses: any[], run: RunMetadata): Promise<void> {
+        try {
+            const response = await fetch('/api/run/ingest-pulses', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ pulses: compiledPulses })
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.message || 'Ingestion failed');
+            }
+
+            run.status = 'ingested';
+            await this.submitRun(run);
+        } catch (error) {
+            console.error('Error ingesting to Data Catalogue:', error);
             throw error;
         }
     }

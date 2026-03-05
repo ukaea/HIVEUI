@@ -17,7 +17,7 @@ async function findRunMetadataFiles(rootDir: string): Promise<string[]> {
 
                 if (stats.isDirectory()) {
                     await walk(fullPath);
-                } else if (stats.isFile() && entry.name === 'run-metadata.json') {
+                } else if (stats.isFile() && entry.name === 'manual_metadata.json') {
                     results.push(fullPath);
                 }
             }

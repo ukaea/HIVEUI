@@ -13,6 +13,7 @@
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
+	import { env } from '$env/dynamic/public';
 
 	// Parse runId from URL: {exp}-{sample}-{run}
 	let experimentNumber = '';
@@ -22,7 +23,7 @@
 	let runMetadata: any = toPlainObject(new RunMetadata());
 	let pulses: PulseAnnotation[] = [];
 	let currentStep = 0;
-	const testMode = true; // TODO: set to false for production
+	const testMode = env.PUBLIC_RUNS_TEST_MODE === 'true';
 
 	function toPlainObject(obj: RunMetadata): any {
 		return JSON.parse(JSON.stringify(RunMetadata.toJSON(obj)));
@@ -38,30 +39,24 @@
 	let selectedPulseIndex: number | null = null;
 	let selectedProcessedData: ProcessMetadata | null = null;
 	let loadingProcessedData = false;
-
-	function generateTestProcessedData(): ProcessMetadata {
-		const data = new ProcessMetadata();
-		data.powerSupplyReportedPower = '4500W';
-		data.pulseStartTimestamp = new Date('2025-06-15T10:30:00');
-		data.pulseEndTimestamp = new Date('2025-06-15T10:30:45');
-		data.dataCaptureStartTimestamp = new Date('2025-06-15T10:29:55');
-		data.heatingInformation.measuredPower = 4200;
-		data.heatingInformation.outputFrequency = 150;
-		data.heatingInformation.outputVoltage = 380;
-		data.heatingInformation.outputCurrent = 12;
-		return data;
-	}
+	let processedDataByPulse = new Map<number, ProcessMetadata>();
+	let processedSequences: ProcessMetadata[] = [];
 
 	async function handleSelectPulse(index: number) {
 		selectedPulseIndex = index;
-		if (testMode) {
-			selectedProcessedData = generateTestProcessedData();
-			return;
-		}
+		const pulseNumber = pulses[index].pulseNumber;
 		loadingProcessedData = true;
 		selectedProcessedData = null;
+		processedSequences = [];
 		try {
-			selectedProcessedData = null;
+			const sequences = await runService.fetchProcessedData(
+				experimentNumber, sampleNumber, runNumber, pulseNumber
+			);
+			processedSequences = sequences;
+			if (sequences.length > 0) {
+				selectedProcessedData = sequences[0];
+				processedDataByPulse.set(pulseNumber, sequences[0]);
+			}
 		} catch (error) {
 			console.error('Error loading processed data:', error);
 		} finally {
@@ -73,7 +68,7 @@
 		{ label: 'Metadata', description: 'Fill in run details' },
 		{ label: 'Processing', description: 'Start analysis pipeline' },
 		{ label: 'Annotation', description: 'Annotate pulses' },
-		{ label: 'Ingestion', description: 'Submit to Metacat' }
+		{ label: 'Ingestion', description: 'Ingest to Data Catalogue' }
 	];
 
 	const runService = new RunDataService();
@@ -124,11 +119,9 @@
 	function setStep(step: number) {
 		currentStep = step;
 		runMetadata.currentStep = step;
-		if (!testMode) {
-			runService.submitRun(runMetadata).catch((err) => {
-				console.error('Error persisting step:', err);
-			});
-		}
+		runService.submitRun(runMetadata).catch((err) => {
+			console.error('Error persisting step:', err);
+		});
 	}
 
 	function determineStepFromStatus(status: string): number {
@@ -143,10 +136,6 @@
 	}
 
 	async function loadRunData() {
-		if (testMode) {
-			loading = false;
-			return;
-		}
 		try {
 			const allRuns = await runService.fetchAll();
 			const existing = allRuns.find(
@@ -201,12 +190,6 @@
 	let metadataSaved = false;
 
 	async function handleSaveMetadata() {
-		if (testMode) {
-			metadataSaved = true;
-			saveNotify = true;
-			setTimeout(() => { saveNotify = false; }, 3000);
-			return;
-		}
 		saving = true;
 		try {
 			runMetadata.status = 'draft';
@@ -227,18 +210,18 @@
 	async function handleTriggerDAG() {
 		if (testMode) {
 			dagStatusText = 'Triggering pipeline...';
-			setTimeout(() => {
+			try {
+				await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
+				runMetadata.status = 'processed';
+				await runService.submitRun(runMetadata);
+				await loadPulses();
 				dagStatusText = '';
 				processingDone = true;
-				pulses = [
-					new PulseAnnotation(),
-					new PulseAnnotation(),
-					new PulseAnnotation()
-				];
-				pulses[0].pulseNumber = 1;
-				pulses[1].pulseNumber = 2;
-				pulses[2].pulseNumber = 3;
-			}, 1500);
+			} catch (error) {
+				console.error('Error seeding test data:', error);
+				dagError = (error as Error).message;
+				dagStatusText = '';
+			}
 			return;
 		}
 		try {
@@ -282,12 +265,6 @@
 	let annotationsSaved = false;
 
 	async function handleSaveAnnotations() {
-		if (testMode) {
-			annotationsSaved = true;
-			saveNotify = true;
-			setTimeout(() => { saveNotify = false; }, 3000);
-			return;
-		}
 		saving = true;
 		try {
 			for (const pulse of pulses) {
@@ -313,41 +290,25 @@
 	}
 
 	async function handleIngest() {
-		if (testMode) {
-			runMetadata.status = 'ingested';
-			saveNotify = true;
-			setTimeout(() => { saveNotify = false; }, 3000);
-			return;
-		}
 		saving = true;
 		try {
-			const metadata = RunMetadata.toJSON(runMetadata);
-			const pulseAnnotations = pulses.map((p) => PulseAnnotation.toJSON(p));
+			const runData = RunMetadata.toJSON(runMetadata);
 
-			const response = await fetch('/api/save-json', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify({
-					targetPath: '/remote/metacat/runs',
-					metadata: {
-						...metadata,
-						pulses: pulseAnnotations
-					},
-					id: String(runMetadata.runNumber)
-				})
+			const compiledPulses = pulses.map((pulse) => {
+				const processed = processedDataByPulse.get(pulse.pulseNumber);
+				return {
+					...runData,
+					...PulseAnnotation.toJSON(pulse),
+					...(processed ? ProcessMetadata.toJSON(processed) : {})
+				};
 			});
 
-			if (!response.ok) {
-				const errorData = await response.json();
-				throw new Error(errorData.message || 'Ingestion failed');
-			}
-
+			await runService.ingestToDataCatalogue(compiledPulses, runMetadata);
 			runMetadata.status = 'ingested';
-			await runService.submitRun(runMetadata);
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
 		} catch (error) {
-			console.error('Error ingesting to Metacat:', error);
+			console.error('Error ingesting to Data Catalogue:', error);
 			alert(`Failed to ingest: ${(error as Error).message}`);
 		} finally {
 			saving = false;
@@ -801,7 +762,7 @@
 		<!-- Step 4: Ingest -->
 		{#if currentStep === 3}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content mt-4">
-				<h3 class="text-lg font-bold mb-4">Ingest to SciCat</h3>
+				<h3 class="text-lg font-bold mb-4">Ingest to Data Catalogue</h3>
 				<div class="mb-4">
 					<h4 class="font-semibold mb-2">Run Summary</h4>
 					<div class="grid grid-cols-3 gap-2 text-sm">
@@ -843,7 +804,7 @@
 					<div class="flex justify-between">
 						<Button on:click={() => setStep(2)}>Back</Button>
 						<Button variant="fill" color="success" disabled={saving} on:click={handleIngest}>
-							{saving ? 'Ingesting...' : 'Ingest to Metacat'}
+							{saving ? 'Ingesting...' : 'Ingest to Data Catalogue'}
 						</Button>
 					</div>
 				{:else}
@@ -851,7 +812,7 @@
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 						</svg>
-						Successfully ingested to Metacat
+						Successfully ingested to Data Catalogue
 					</div>
 				{/if}
 			</div>

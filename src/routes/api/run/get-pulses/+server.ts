@@ -47,7 +47,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         const pulses = await Promise.all(
             pulseDirs.map(async (dir) => {
                 const pulseNumber = parseInt(dir.name.replace('P-', ''), 10);
-                const annotationPath = join(runPath, dir.name, 'pulse-annotation.json');
+                const annotationPath = join(runPath, dir.name, 'pulse_manual_metadata.json');
 
                 let annotation = null;
                 try {
