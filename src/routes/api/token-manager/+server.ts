@@ -1,6 +1,5 @@
 import { env } from '$env/dynamic/private';
 
-
 type Credentials = {
     username: string,
     password: string
@@ -11,24 +10,15 @@ type tokenResponse = {
 }
 
 export class TokenManger {
-    private static instance: TokenManger;
     private creds: Credentials;
     private token: string | null = null;
     private expiry = 0;
+    private refresh: string | null = null;
 
-    private constructor (creds: Credentials){
+    constructor (creds: Credentials){
         this.creds = creds
     }   
 
-    public static getInstance (creds: Credentials): TokenManger {
-        if (!TokenManger.instance) {
-            if (!creds) {
-                throw new Error("Token Manger requires credentials")
-            }
-            TokenManger.instance = new TokenManger(creds)
-        }
-        return TokenManger.instance
-    }
 
     private async fetchToken(): Promise<string> {
         try {
@@ -45,7 +35,9 @@ export class TokenManger {
             const data = (await response.json()) as tokenResponse
 
             this.token = data.access_token
-            this.expiry = Date.now() + 600 * 1000;
+
+            // expiry time set to 50 min.
+            this.expiry = Date.now() + 3000 * 1000;
             return this.token
 
         } catch (error) {
@@ -58,7 +50,19 @@ export class TokenManger {
         if (this.token && this.expiry < Date.now()) {
             return this.token;
         }
-        const token = await this.fetchToken();
+
+        if (!this.refresh) {
+            // refreshing token.
+            this.refresh = await this.fetchToken()
+        }
+        const token = await this.refresh;
+        this.refresh = null;
+
         return this.token;
     }
 }
+
+export const airflowTokenManager = new TokenManger(
+        {username: env.AIRFLOW_USERNAME, 
+        password: env.AIRFLOW_PASSWORD}
+        )
