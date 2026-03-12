@@ -3,9 +3,10 @@ import { PersonMetadata } from "./PersonMetadata";
 import { HeatingInformation, CoolantInformation } from "./CompiledPulseMetadata";
 
 export class RunMetadata {
+    runId: string;
     runNumber: number;
     sampleNumber: number;
-    experimentNumber: string;
+    experimentNumber: number;
     configurationId: string;
     operator1: PersonMetadata;
     operator2: PersonMetadata;
@@ -48,9 +49,10 @@ export class RunMetadata {
     });
 
     constructor() {
+        this.runId = crypto.randomUUID();
         this.runNumber = 0;
         this.sampleNumber = 0;
-        this.experimentNumber = '';
+        this.experimentNumber = 0;
         this.configurationId = '';
         this.operator1 = new PersonMetadata();
         this.operator2 = new PersonMetadata();
@@ -64,9 +66,10 @@ export class RunMetadata {
 
     static fromJSON(json: any): RunMetadata {
         const run = new RunMetadata();
+        run.runId = json.runId || run.runId;
         run.runNumber = json.runNumber || 0;
         run.sampleNumber = json.sampleNumber || 0;
-        run.experimentNumber = json.experimentNumber || '';
+        run.experimentNumber = json.experimentNumber || 0;
         run.configurationId = json.configurationId || '';
         run.operator1 = json.operator1 ?
             PersonMetadata.fromJSON(json.operator1) :
@@ -89,6 +92,7 @@ export class RunMetadata {
 
     static toJSON(metadata: RunMetadata): any {
         return {
+            runId: metadata.runId,
             runNumber: metadata.runNumber,
             sampleNumber: metadata.sampleNumber,
             experimentNumber: metadata.experimentNumber,

@@ -5,7 +5,7 @@ export interface TriggerDAGResponse {
     execution_date: string;
 }
 
-export async function triggerDAG(experimentNumber?: string, sampleNumber?: number, runNumber?: number): Promise<TriggerDAGResponse> {
+export async function triggerDAG(experimentNumber?: number, sampleNumber?: number, runNumber?: number): Promise<TriggerDAGResponse> {
     const response = await fetch('/api/trigger-pipeline', {
         method: "POST",
         headers: {

@@ -15,8 +15,7 @@
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
 	import { env } from '$env/dynamic/public';
 
-	// Parse runId from URL: {exp}-{sample}-{run}
-	let experimentNumber = '';
+	let experimentNumber = 0;
 	let sampleNumber = 0;
 	let runNumber = 0;
 
@@ -119,7 +118,7 @@
 	function setStep(step: number) {
 		currentStep = step;
 		runMetadata.currentStep = step;
-		runService.submitRun(runMetadata).catch((err) => {
+		runService.saveRun(runMetadata).catch((err) => {
 			console.error('Error persisting step:', err);
 		});
 	}
@@ -137,40 +136,38 @@
 
 	async function loadRunData() {
 		try {
+			const runId = $page.params.runId;
 			const allRuns = await runService.fetchAll();
-			const existing = allRuns.find(
-				(r) =>
-					String(r.experimentNumber) === String(experimentNumber) &&
-					r.sampleNumber === sampleNumber &&
-					r.runNumber === runNumber
-			);
+			const existing = allRuns.find((r) => r.runId === runId);
 
-			if (existing) {
-				runMetadata = toPlainObject(existing);
-				currentStep = existing.currentStep ?? determineStepFromStatus(existing.status);
-				runMetadata.currentStep = currentStep;
+			if (!existing) {
+				console.error('Run not found:', runId);
+				loading = false;
+				return;
+			}
+
+			runMetadata = toPlainObject(existing);
+			experimentNumber = existing.experimentNumber;
+			sampleNumber = existing.sampleNumber;
+			runNumber = existing.runNumber;
+			currentStep = existing.currentStep ?? determineStepFromStatus(existing.status);
+			runMetadata.currentStep = currentStep;
+
+			if (existing.status !== 'draft' || existing.currentStep > 0) {
 				metadataSaved = true;
+			}
 
-				if (existing.status === 'processing' && existing.dagRunId) {
-					startPolling(existing.dagRunId);
-				}
+			if (existing.status === 'processing' && existing.dagRunId) {
+				startPolling(existing.dagRunId);
+			}
 
-				if (['processed', 'annotated', 'ingested'].includes(existing.status)) {
-					processingDone = true;
-					await loadPulses();
-				}
+			if (['processed', 'annotated', 'ingested'].includes(existing.status)) {
+				processingDone = true;
+				await loadPulses();
+			}
 
-				if (['annotated', 'ingested'].includes(existing.status)) {
-					annotationsSaved = true;
-				}
-			} else {
-				// New run - pre-fill identifiers
-				const newRun = new RunMetadata();
-				newRun.experimentNumber = experimentNumber;
-				newRun.sampleNumber = sampleNumber;
-				newRun.runNumber = runNumber;
-				runMetadata = toPlainObject(newRun);
-				setStep(0);
+			if (['annotated', 'ingested'].includes(existing.status)) {
+				annotationsSaved = true;
 			}
 		} catch (error) {
 			console.error('Error loading run data:', error);
@@ -193,7 +190,7 @@
 		saving = true;
 		try {
 			runMetadata.status = 'draft';
-			await runService.submitRun(runMetadata);
+			await runService.saveRun(runMetadata);
 			metadataSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
@@ -213,7 +210,7 @@
 			try {
 				await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
 				runMetadata.status = 'processed';
-				await runService.submitRun(runMetadata);
+				await runService.saveRun(runMetadata);
 				await loadPulses();
 				dagStatusText = '';
 				processingDone = true;
@@ -232,7 +229,7 @@
 
 			runMetadata.dagRunId = result.dag_run_id;
 			runMetadata.status = 'processing';
-			await runService.submitRun(runMetadata);
+			await runService.saveRun(runMetadata);
 
 			startPolling(result.dag_run_id);
 		} catch (error) {
@@ -253,7 +250,7 @@
 				dagStatusText = '';
 				processingDone = true;
 				runMetadata.status = 'processed';
-				await runService.submitRun(runMetadata);
+				await runService.saveRun(runMetadata);
 				await loadPulses();
 			})
 			.catch((err) => {
@@ -277,7 +274,7 @@
 			}
 
 			runMetadata.status = 'annotated';
-			await runService.submitRun(runMetadata);
+			await runService.saveRun(runMetadata);
 			annotationsSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
@@ -340,12 +337,6 @@
 	}
 
 	onMount(() => {
-		const runId = $page.params.runId;
-		const parts = runId.split('-');
-		experimentNumber = parts[0];
-		sampleNumber = parseInt(parts[1], 10);
-		runNumber = parseInt(parts[2], 10);
-
 		loadRunData();
 		fetchExperiments();
 		fetchConfigurations();
@@ -561,7 +552,7 @@
 								variant="fill"
 								disabled={saving}
 								on:click={() => {
-									runMetadata = current;
+									runMetadata = { ...runMetadata, ...current };
 									handleSaveMetadata();
 								}}
 							>
