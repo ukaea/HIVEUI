@@ -27,7 +27,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
 
     try {
         const body = await request.json();
-        const { targetPath, metadata, target, id } = body;
+        const { targetPath, metadata, id } = body;
 
         if (!targetPath || !metadata) {
             throw error(400, 'targetPath and metadata are required');
@@ -48,7 +48,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             const schemaRegistryUrl = env.SCHEMA_REGISTRY_URL;
             if (schemaRegistryUrl) {
                 try {
-                    const schemaType = target || relativePath.split('/')[0] || 'default';
+                    const schemaType = relativePath.split('/')[0] || 'default';
                     const validationResponse = await fetch(schemaRegistryUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -115,17 +115,27 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             try {
                 let dataToSend = metadata;
 
+                //Add schemaVersion if it doesn't exist
+                if (!dataToSend.schemaVersion) {
+                    dataToSend.schemaVersion = '1.0.0';
+                }
+
                 // Apply jq mapping if available
+                let target = targetPath.replace(/^\/remote\//, '').split('/')[0];
                 if (target && hasJqMapping('forward', target)) {
                     const jqScript = await getForwardJqScript(target);
                     dataToSend = await jq.run(jqScript, metadata, { input: 'json', output: 'json' });
                 }
 
+                // Post mapping fixes
+                if (dataToSend.facilityExperimentId && typeof dataToSend.facilityExperimentId === 'number') {
+                    dataToSend.facilityExperimentId = dataToSend.facilityExperimentId.toString();
+                }
+
                 const remotePath = targetPath.replace(/^\/remote\//, '');
                 const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
-                
-                // Injecting the Bearer Token
-                const headers: HeadersInit = { 
+
+                const headers: HeadersInit = {
                     'Content-Type': 'application/json' 
                 };
                 if (token) {
@@ -138,13 +148,16 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                     body: JSON.stringify(dataToSend)
                 });
 
-                if (!response.ok) throw error(response.status, `Remote save failed: ${response.statusText}`);
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    throw error(response.status, `Remote save failed for ${target}: ${errorText}`);
+                }
                 
                 const result = await response.json();
                 return json(result);
-            } catch (jqError: any) {
-                console.error(`Error in remote save for ${target}:`, jqError);
-                throw error(500, `Forward mapping failed for ${target}: ${jqError.message}`);
+            } catch (err: any) {
+                if (err.status) throw err;
+                throw error(500, `Remote save failed for ${targetPath}: ${err.message}`);
             }
         }
 

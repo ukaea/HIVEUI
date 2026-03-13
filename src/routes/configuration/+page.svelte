@@ -44,7 +44,7 @@
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/local/equipment',
+		endpoint: '/remote/equipment',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});

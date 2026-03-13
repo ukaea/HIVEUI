@@ -24,7 +24,7 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/local/experiments',
+		endpoint: '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});

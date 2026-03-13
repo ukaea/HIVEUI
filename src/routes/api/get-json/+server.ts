@@ -10,7 +10,6 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   const endpoint = url.searchParams.get('endpoint');
   const id = url.searchParams.get('id');
-  const target = url.searchParams.get('target') ?? '';
 
   // --- AUTHENTICATION CHECK ---
   if (env.AUTHN_ENABLE === 'true' && !locals.user) {
@@ -94,26 +93,45 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const metacatBaseUrl = env.METACAT_URL;
       if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
+      type QueryFilter = { where?: Record<string, unknown> };
+
       const remotePath = endpoint.replace(/^\/remote\//, '');
-      const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
-      
-      console.log(`Fetching remote URL: ${remoteUrl}`);
-      // Injecting the Bearer Token here
+      const remoteUrlObj = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`);
+
+      const filterFields: QueryFilter = { where: { ownerGroup: 'HIVE' } };
+      remoteUrlObj.searchParams.append('filter', JSON.stringify(filterFields));
+
       const headers: HeadersInit = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(remoteUrl, { headers });
+      const response = await fetch(remoteUrlObj.toString(), { headers });
 
       if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
 
       const data = await response.json();
 
+      const target = remotePath.split('/')[0];
+
+      if (target === 'instruments') {
+        const mappedData = await Promise.all(
+          (Array.isArray(data) ? data : [data]).map(async (item) => {
+            const equipType = item?.additional?.equipmentType?.toLowerCase();
+            if (equipType && hasJqMapping('backward', equipType)) {
+              const jqScript = await getBackwardJqScript(equipType);
+              return jq.run(jqScript, item, { input: 'json', output: 'json' });
+            }
+            return item;
+          })
+        );
+        return json(mappedData);
+      }
+
       if (!target || !hasJqMapping('backward', target)) return json(data);
 
       const jqScript = await getBackwardJqScript(target);
-      let mappedData = Array.isArray(data) 
+      const mappedData = Array.isArray(data)
         ? await Promise.all(data.map(obj => jq.run(jqScript, obj, { input: 'json', output: 'json' })))
         : await jq.run(jqScript, data, { input: 'json', output: 'json' });
 
