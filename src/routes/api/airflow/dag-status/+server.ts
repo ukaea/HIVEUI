@@ -27,7 +27,7 @@ export const GET: RequestHandler = async ({ url }) => {
 
     try {
         const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns/${dagRunId}`;
-        const token = airflowTokenManager.getToken()
+        const token = await airflowTokenManager.getToken()
         const response = await fetch(endpoint, {
             method: 'GET',
             headers: {

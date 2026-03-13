@@ -29,7 +29,7 @@ export class TokenManger {
             })
 
             if (!response.ok) {
-                const text = response.text()
+                const text = await response.text()
                 throw new Error (`Failed to fetch token ${response.status} - ${text}`)
             }
             const data = (await response.json()) as tokenResponse
