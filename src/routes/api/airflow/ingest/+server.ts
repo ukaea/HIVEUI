@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import { json } from '@sveltejs/kit';
 import { getRecordById } from '$lib/services/DatabaseService';
-import { airflowTokenManager } from '../../token-manager/+server.js';
+import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';

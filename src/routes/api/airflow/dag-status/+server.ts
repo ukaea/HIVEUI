@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import { airflowTokenManager } from '../../token-manager/+server';
+import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 import type { RequestHandler } from './$types';
 
 

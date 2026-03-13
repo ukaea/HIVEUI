@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import { airflowTokenManager } from '../../token-manager/+server.js';
+import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 
 export async function POST({ request }) {
     try {
