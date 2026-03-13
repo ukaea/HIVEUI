@@ -47,7 +47,7 @@ export class TokenManger {
     }
 
     public async getToken() {
-        if (this.token && this.expiry < Date.now()) {
+        if (this.token && this.expiry > Date.now()) {
             return this.token;
         }
 
