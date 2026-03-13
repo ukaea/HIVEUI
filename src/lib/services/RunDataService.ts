@@ -26,7 +26,7 @@ export class RunDataService {
         }
     }
 
-    async submitRun(run: RunMetadata): Promise<void> {
+    async saveRun(run: RunMetadata): Promise<void> {
         const cleanedData = RunMetadata.toJSON(run);
 
         try {
@@ -78,10 +78,10 @@ export class RunDataService {
     // the Airflow DAG, and the user's pulse annotation. The compiled pulse
     // JSON is what gets sent to the backend data catalogue during ingestion.
 
-    async fetchPulses(experimentNumber: string, sampleNumber: number, runNumber: number): Promise<PulseAnnotation[]> {
+    async fetchPulses(experimentNumber: number, sampleNumber: number, runNumber: number): Promise<PulseAnnotation[]> {
         try {
             const params = new URLSearchParams({
-                experimentNumber,
+                experimentNumber: String(experimentNumber),
                 sampleNumber: String(sampleNumber),
                 runNumber: String(runNumber)
             });
@@ -102,7 +102,7 @@ export class RunDataService {
     }
 
     async savePulseAnnotation(
-        experimentNumber: string,
+        experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
         annotation: PulseAnnotation
@@ -133,14 +133,14 @@ export class RunDataService {
     }
 
     async fetchProcessedData(
-        experimentNumber: string,
+        experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
         pulseNumber: number
     ): Promise<ProcessMetadata[]> {
         try {
             const params = new URLSearchParams({
-                experimentNumber,
+                experimentNumber: String(experimentNumber),
                 sampleNumber: String(sampleNumber),
                 runNumber: String(runNumber),
                 pulseNumber: String(pulseNumber)
@@ -162,7 +162,7 @@ export class RunDataService {
     }
 
     async seedTestData(
-        experimentNumber: string,
+        experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
         pulseCount: number = 3,
@@ -214,7 +214,7 @@ export class RunDataService {
             }
 
             run.status = 'ingested';
-            await this.submitRun(run);
+            await this.saveRun(run);
         } catch (error) {
             console.error('Error ingesting to Data Catalogue:', error);
             throw error;

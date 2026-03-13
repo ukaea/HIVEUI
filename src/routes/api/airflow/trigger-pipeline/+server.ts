@@ -1,20 +1,18 @@
-import { json } from '@sveltejs/kit';
 import { env } from '$env/dynamic/private';
+import { json } from '@sveltejs/kit';
+import { airflowTokenManager } from '../../token-manager/+server.js';
 
 export async function POST({ request }) {
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, runNumber } = body;
-        const credentials = btoa(`${env.AIRFLOW_USERNAME}:${env.AIRFLOW_PASSWORD}`);
+        const { runDir } = body;
         const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns`;
+        const inputDir = `${env.ROOT_FOLDER_LOCATION}/${runDir}/csv`
+        const token = await airflowTokenManager.getToken()
 
         const payload = {
             conf: {
-                directory: env.AIRFLOW_DIRECTORY,
-                inputfile: env.AIRFLOW_INPUT_FILE,
-                ...(experimentNumber && { experimentNumber }),
-                ...(sampleNumber && { sampleNumber }),
-                ...(runNumber && { runNumber }),
+                ...(inputDir && { inputDir })
             },
         };
 
@@ -23,7 +21,7 @@ export async function POST({ request }) {
             headers: {
                 "Content-Type": "application/json",
                 "Cache-Control": "no-cache",
-                "Authorization": `Basic ${credentials}`
+                "Authorization": `Bearer ${token}`
             },
             body: JSON.stringify(payload),
         });

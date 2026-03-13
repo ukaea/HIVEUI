@@ -4,17 +4,20 @@
 	import { Button, Table, Dialog, TextField } from 'svelte-ux';
 	import { tableOrderStore, SelectField, type MenuOption } from 'svelte-ux';
 	import { RunMetadata } from '$lib/models/RunMetadata';
-	import { ExperimentMetadata } from '$lib/models';
+	import { ExperimentMetadata, ConfigurationMetadata } from '$lib/models';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
+	import { ConfigurationMetadataModel } from '$lib/models/ConfigurationMetadata';
 
 	let allRuns: RunMetadata[] = [];
 	let allExperiments: ExperimentMetadata[] = [];
+	let allConfigurations: ConfigurationMetadata[] = [];
 	let open = false;
 	let newRunNumber = 0;
 	let newSampleNumber = 0;
-	let newExperimentNumber: number | string = '';
+	let newExperimentNumber: number = 0;
+	let newConfigurationId: string = '';
 
 	const order = tableOrderStore({ initialBy: 'runNumber', initialDirection: 'asc' });
 
@@ -31,7 +34,15 @@
 		displayName: 'experiments'
 	});
 
+	const configurationService = new GenericDataService<ConfigurationMetadata>({
+		modelClass: ConfigurationMetadataModel,
+		endpoint: '/db/configurations',
+		idField: 'configurationId',
+		displayName: 'configurations'
+	});
+
 	let experimentOptions: MenuOption[] = [];
+	let configurationOptions: MenuOption[] = [];
 
 	async function fetchRuns() {
 		try {
@@ -55,10 +66,24 @@
 		}
 	}
 
+	async function fetchConfigurations() {
+		try {
+			allConfigurations = await configurationService.fetchAll();
+			configurationOptions = allConfigurations.map((config) => ({
+				label: `${config.configurationId} - ${config.configurationName}`,
+				value: config.configurationId
+			}));
+		} catch (error) {
+			console.error('Error fetching configurations:', error);
+			alert((error as Error).message);
+		}
+	}
+
 	function handleNewRun() {
 		newRunNumber = 0;
 		newSampleNumber = 0;
-		newExperimentNumber = '';
+		newExperimentNumber = 0;
+		newConfigurationId = '';
 		open = true;
 	}
 
@@ -67,19 +92,29 @@
 	}
 
 	async function handleCreateRun() {
-		if (!newExperimentNumber || !newSampleNumber || !newRunNumber) {
+		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationId) {
 			alert('All fields are required');
 			return;
 		}
 
-		const runId = `${newExperimentNumber}-${newSampleNumber}-${newRunNumber}`;
-		handleModalClose();
-		goto(`/runs/${runId}`);
+		const newRun = new RunMetadata();
+		newRun.experimentNumber = newExperimentNumber;
+		newRun.sampleNumber = newSampleNumber;
+		newRun.runNumber = newRunNumber;
+		newRun.configurationId = newConfigurationId;
+
+		try {
+			await runService.saveRun(newRun);
+			handleModalClose();
+			goto(`/runs/${newRun.runId}`);
+		} catch (error) {
+			console.error('Error creating run:', error);
+			alert(`Failed to create run: ${(error as Error).message}`);
+		}
 	}
 
 	function handleRowClick(row: RunMetadata) {
-		const runId = `${row.experimentNumber}-${row.sampleNumber}-${row.runNumber}`;
-		goto(`/runs/${runId}`);
+		goto(`/runs/${row.runId}`);
 	}
 
 	function formatDate(value: string) {
@@ -109,6 +144,7 @@
 	onMount(() => {
 		fetchRuns();
 		fetchExperiments();
+		fetchConfigurations();
 	});
 </script>
 
@@ -152,6 +188,14 @@
 	</div>
 	<div class="p-4">
 		<div class="grid grid-cols-1 gap-4">
+			<TextField
+				label="Run Number"
+				type="integer"
+				value={newRunNumber}
+				on:change={(e) => {
+					newRunNumber = e.detail.value;
+				}}
+			/>		
 			<SelectField
 				options={experimentOptions}
 				label="Experiment Number"
@@ -169,12 +213,13 @@
 					newSampleNumber = e.detail.value;
 				}}
 			/>
-			<TextField
-				label="Run Number"
-				type="integer"
-				value={newRunNumber}
+			<SelectField
+				options={configurationOptions}
+				label="Configuration"
+				value={newConfigurationId}
+				autoplacement={false}
 				on:change={(e) => {
-					newRunNumber = e.detail.value;
+					newConfigurationId = e.detail.value;
 				}}
 			/>
 		</div>
