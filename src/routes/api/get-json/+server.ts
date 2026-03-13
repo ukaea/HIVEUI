@@ -95,8 +95,10 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       type QueryFilter = { where?: Record<string, unknown> };
 
-      const remotePath = endpoint.replace(/^\/remote\//, '');
+      const rawPath = endpoint.replace(/^\/remote\//, '');
+      const remotePath = rawPath === 'equipment' ? 'instruments' : rawPath;
       const remoteUrlObj = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`);
+      const target = rawPath.split('/')[0];
 
       const filterFields: QueryFilter = { where: { ownerGroup: 'HIVE' } };
       remoteUrlObj.searchParams.append('filter', JSON.stringify(filterFields));
@@ -111,8 +113,8 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
 
       const data = await response.json();
+      console.log('Fetched data from remote API:', data);
 
-      const target = remotePath.split('/')[0];
 
       if (target === 'instruments') {
         const mappedData = await Promise.all(
