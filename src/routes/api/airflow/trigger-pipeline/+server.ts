@@ -6,7 +6,7 @@ export async function POST({ request }) {
     try {
         const body = await request.json();
         const { runDir } = body;
-        const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_DAG_ID}/dagRuns`;
+        const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_POSTPROCESSING_DAG_ID}/dagRuns`;
         const inputDir = `${env.ROOT_FOLDER_LOCATION}/${runDir}/csv`
         const token = await airflowTokenManager.getToken()
 
