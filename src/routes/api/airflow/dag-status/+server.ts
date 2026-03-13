@@ -33,7 +33,7 @@ export const GET: RequestHandler = async ({ url }) => {
             headers: {
                 'Content-Type': 'application/json',
                 'Cache-Control': 'no-cache',
-                'Authorization': `Basic ${token}`
+                'Authorization': `Bearer ${token}`
             }
         });
         if (!response.ok) {
