@@ -13,7 +13,7 @@ export class TokenManger {
     private creds: Credentials;
     private token: string | null = null;
     private expiry = 0;
-    private refresh: string | null = null;
+    private refresh: Promise<string> | null = null;
 
     constructor (creds: Credentials){
         this.creds = creds
@@ -53,7 +53,7 @@ export class TokenManger {
 
         if (!this.refresh) {
             // refreshing token.
-            this.refresh = await this.fetchToken()
+            this.refresh = this.fetchToken()
         }
         const token = await this.refresh;
         this.refresh = null;
