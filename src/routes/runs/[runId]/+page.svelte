@@ -15,6 +15,7 @@
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
 	import { env } from '$env/dynamic/public';
 
+	const testMode = env.PUBLIC_RUNS_TEST_MODE === 'true';
 	let experimentNumber = 0;
 	let sampleNumber = 0;
 	let runNumber = 0;
@@ -22,7 +23,6 @@
 	let runMetadata: any = toPlainObject(new RunMetadata());
 	let pulses: PulseAnnotation[] = [];
 	let currentStep = 0;
-	const testMode = env.PUBLIC_RUNS_TEST_MODE === 'true';
 
 	function toPlainObject(obj: RunMetadata): any {
 		return JSON.parse(JSON.stringify(RunMetadata.toJSON(obj)));
@@ -243,7 +243,7 @@
 		dagStatusText = 'Processing...';
 		dagError = '';
 
-		waitForDAGCompletion(dagRunId, 5000, (status: DAGStatus) => {
+		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, (status: DAGStatus) => {
 			dagStatusText = `State: ${status.state}`;
 		})
 			.then(async () => {
@@ -289,18 +289,27 @@
 	async function handleIngest() {
 		saving = true;
 		try {
-			const runData = RunMetadata.toJSON(runMetadata);
+			// Ensure processed data is loaded for every pulse
+			for (const pulse of pulses) {
+				if (!processedDataByPulse.has(pulse.pulseNumber)) {
+					const sequences = await runService.fetchProcessedData(
+						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber
+					);
+					if (sequences.length > 0) {
+						processedDataByPulse.set(pulse.pulseNumber, sequences[0]);
+					}
+				}
+			}
 
-			const compiledPulses = pulses.map((pulse) => {
-				const processed = processedDataByPulse.get(pulse.pulseNumber);
-				return {
-					...runData,
-					...PulseAnnotation.toJSON(pulse),
-					...(processed ? ProcessMetadata.toJSON(processed) : {})
-				};
-			});
+			// Combine each pulse annotation with its processed data
+			const pulsesMetadata = pulses.map((pulse) => ({
+				annotation: PulseAnnotation.toJSON(pulse),
+				processedData: processedDataByPulse.has(pulse.pulseNumber)
+					? ProcessMetadata.toJSON(processedDataByPulse.get(pulse.pulseNumber)!)
+					: null
+			}));
 
-			await runService.ingestToDataCatalogue(compiledPulses, runMetadata);
+			await runService.ingestToDataCatalogue(runMetadata, pulsesMetadata);
 			runMetadata.status = 'ingested';
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
@@ -326,8 +335,8 @@
 
 	async function fetchConfigurations() {
 		try {
-			const allConfigurations = await configurationService.fetchAll();
-			configurationOptions = allConfigurations.map((config) => ({
+			const configurations = await configurationService.fetchAll();
+			configurationOptions = configurations.map((config) => ({
 				label: `${config.configurationId} - ${config.configurationName}`,
 				value: config.configurationId
 			}));

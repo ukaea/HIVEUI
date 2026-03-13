@@ -27,7 +27,6 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   }
 
   const token = (locals.user as any)?.accessToken;
-  console.log('Token:', token);
   if (!endpoint) {
     return json({ success: false, message: 'No endpoint provided' }, { status: 400 });
   }

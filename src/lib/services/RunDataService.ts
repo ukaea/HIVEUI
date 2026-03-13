@@ -193,19 +193,18 @@ export class RunDataService {
         }
     }
 
-    /**
-     * Ingest compiled pulses to the backend data catalogue.
-     *
-     * Sends the pre-compiled pulse array to the dedicated ingest-pulses
-     * endpoint, which applies the dataset jq mapping and forwards each
-     * pulse to the /datasets endpoint of the data catalogue.
-     */
-    async ingestToDataCatalogue(compiledPulses: any[], run: RunMetadata): Promise<void> {
+    async ingestToDataCatalogue(
+        runMetadata: RunMetadata,
+        pulsesMetadata: Array<{ annotation: any; processedData: any }>
+    ): Promise<void> {
         try {
-            const response = await fetch('/api/run/ingest-pulses', {
+            const response = await fetch('/api/airflow/ingest', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ pulses: compiledPulses })
+                body: JSON.stringify({
+                    runMetadata: RunMetadata.toJSON(runMetadata),
+                    pulsesMetadata
+                })
             });
 
             if (!response.ok) {
@@ -213,8 +212,8 @@ export class RunDataService {
                 throw new Error(errorData.message || 'Ingestion failed');
             }
 
-            run.status = 'ingested';
-            await this.saveRun(run);
+            runMetadata.status = 'ingested';
+            await this.saveRun(runMetadata);
         } catch (error) {
             console.error('Error ingesting to Data Catalogue:', error);
             throw error;
