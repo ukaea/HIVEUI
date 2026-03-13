@@ -7,7 +7,7 @@ export interface TriggerDAGResponse {
 
 export async function triggerDAG(experimentNumber?: number, sampleNumber?: number, runNumber?: number): Promise<TriggerDAGResponse> {
     const runDir = `${experimentNumber}/${sampleNumber}/${runNumber}`
-    const response = await fetch('/api/trigger-pipeline', {
+    const response = await fetch('/api/airflow/trigger-pipeline', {
         method: "POST",
         headers: {
             "Content-Type": "application/json",

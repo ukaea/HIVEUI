@@ -7,22 +7,25 @@ export interface DAGStatus {
 }
 
 export async function pollDAGStatus(dagRunId: string): Promise<DAGStatus> {
-    const response = await fetch(`/api/dag-status?dagRunId=${encodeURIComponent(dagRunId)}`);
+    const response = await fetch(`/api/airflow/dag-status?dagRunId=${encodeURIComponent(dagRunId)}`);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch DAG status: ${response.status} ${response.statusText}`);
     }
 
-    return response.json();
+    const dagResponse = (await response.json()) as DAGStatus
+    return dagResponse;
 }
 
 export async function waitForDAGCompletion(
     dagRunId: string,
     intervalMs: number = 5000,
+    timeoutMs: number = 10 * 60 * 1000,
     onStatusUpdate?: (status: DAGStatus) => void
 ): Promise<DAGStatus> {
     return new Promise((resolve, reject) => {
         const poll = async () => {
+            const start = Date.now()
             try {
                 const status = await pollDAGStatus(dagRunId);
                 if (onStatusUpdate) {
@@ -33,6 +36,8 @@ export async function waitForDAGCompletion(
                     resolve(status);
                 } else if (status.state === 'failed') {
                     reject(new Error('DAG run failed'));
+                } else if (Date.now() - start > timeoutMs){
+                    reject(new Error(`Timeout waiting for Dag: ${dagRunId} run, last_state=${status.state}`))
                 } else {
                     setTimeout(poll, intervalMs);
                 }
