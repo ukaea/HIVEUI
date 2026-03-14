@@ -113,9 +113,10 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       const url = new URL(remoteUrl);
 
-      const filterFields: QueryFilter = {
-        where: { ownerGroup: 'HIVE' }
-      };
+      const filterWhere: Record<string, string> = target === 'experiments'
+        ? { facility: 'HIVE' }
+        : { ownerGroup: 'HIVE' };
+      const filterFields: QueryFilter = { where: filterWhere };
       url.searchParams.append('filter', JSON.stringify(filterFields));
 
       // 3. Execute the fetch call
