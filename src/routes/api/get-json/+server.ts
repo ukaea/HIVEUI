@@ -100,8 +100,11 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const remoteUrlObj = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`);
       const target = rawPath.split('/')[0];
 
-      const filterFields: QueryFilter = { where: { ownerGroup: 'HIVE' } };
+      const filterFields: QueryFilter = { where: { facility: 'HIVE' } };
       remoteUrlObj.searchParams.append('filter', JSON.stringify(filterFields));
+
+      //DEBUG LOGGING
+      console.log(token)
 
       const headers: HeadersInit = {};
       if (token) {

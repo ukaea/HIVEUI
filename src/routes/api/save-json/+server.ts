@@ -113,6 +113,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
             try {
+                      //DEBUG LOGGING
+                console.log(token)
                 let dataToSend = metadata;
 
                 //Add schemaVersion if it doesn't exist
