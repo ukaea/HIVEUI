@@ -5,18 +5,19 @@ export interface TriggerDAGResponse {
     execution_date: string;
 }
 
-export async function triggerDAG(directory: string, inputfile: string): Promise<TriggerDAGResponse> {
-    const response = await fetch('/api/trigger-pipeline', {
+export async function triggerDAG(experimentNumber?: number, sampleNumber?: number, runNumber?: number): Promise<TriggerDAGResponse> {
+    const runDir = `${experimentNumber}/${sampleNumber}/${runNumber}`
+    const response = await fetch('/api/airflow/trigger-pipeline', {
         method: "POST",
         headers: {
             "Content-Type": "application/json",
         },
-        body: JSON.stringify({ directory, inputfile }),
+        body: JSON.stringify({ runDir }),
     });
 
     if (!response.ok) {
         throw new Error(`Failed to trigger DAG: ${response.status} ${response.statusText}`);
     }
-
-    return response.json();
+    const dagResponse = (await response.json() as TriggerDAGResponse);
+    return dagResponse;
 }

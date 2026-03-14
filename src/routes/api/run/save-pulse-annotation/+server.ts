@@ -21,10 +21,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, pulseNumber, metadata } = body;
+        const { experimentNumber, sampleNumber, runNumber, pulseNumber, annotation } = body;
 
-        if (!experimentNumber || !sampleNumber || !pulseNumber || !metadata) {
-            throw error(400, 'experimentNumber, sampleNumber, pulseNumber, and metadata are required');
+        if (!experimentNumber || !sampleNumber || !runNumber || !pulseNumber || !annotation) {
+            throw error(400, 'experimentNumber, sampleNumber, runNumber, pulseNumber, and annotation are required');
         }
 
         const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -32,32 +32,26 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        // Construct pulse-specific directory path
-        const experimentDir = `E-${experimentNumber}`;
-        const sampleDir = `S-${sampleNumber}`;
-        const pulseDir = `P-${pulseNumber}`;
-        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${pulseDir}/raw`;
+        const relativePath = `HIVE/E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseNumber}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);
 
-        // Security check: ensure we are still within the root folder
         if (!fullPath.startsWith(resolve(rootFolder))) {
             throw error(403, 'Access denied: Invalid file path');
         }
 
-        // Create directory and write file
         await mkdir(fullPath, { recursive: true });
-        await writeFile(join(fullPath, 'manual-metadata.json'), JSON.stringify(metadata, null, 2));
+        await writeFile(join(fullPath, 'pulse_manual_metadata.json'), JSON.stringify(annotation, null, 2));
 
         return json({
             success: true,
-            message: 'Pulse metadata saved',
+            message: 'Pulse annotation saved',
             path: fullPath
         });
 
     } catch (err: any) {
-        console.error('Error saving pulse metadata:', err);
+        console.error('Error saving pulse annotation:', err);
         if (err.status) throw err;
         throw error(500, err.message);
     }
