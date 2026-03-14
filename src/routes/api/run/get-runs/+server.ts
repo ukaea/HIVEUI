@@ -52,8 +52,7 @@ export const GET: RequestHandler = async ({ locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        const hivePath = resolve(rootFolder, 'HIVE');
-        const jsonPaths = await findRunMetadataFiles(hivePath);
+        const jsonPaths = await findRunMetadataFiles(rootFolder);
 
         const results = await Promise.all(
             jsonPaths.map(async (jsonPath) => {

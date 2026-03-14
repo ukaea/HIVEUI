@@ -27,7 +27,6 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   }
 
   const token = (locals.user as any)?.accessToken;
-  console.log('Token:', token);
   if (!endpoint) {
     return json({ success: false, message: 'No endpoint provided' }, { status: 400 });
   }
@@ -95,67 +94,71 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const metacatBaseUrl = env.METACAT_URL;
       if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
-      const remotePath = endpoint.replace(/^\/remote\//, '');
-      const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
+      // Map client-facing target to Metacat path (equipment → instruments)
+      const metacatPath = target === 'equipment' ? 'instruments' : target;
+      const remoteUrl = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${metacatPath}`);
 
-      console.log(`Fetching remote URL: ${remoteUrl}`);
+      // Per-target filter
+      const filterWhere = target === 'experiments' ? { facility: 'HIVE' } : { ownerGroup: 'HIVE' };
+      remoteUrl.searchParams.append('filter', JSON.stringify({ where: filterWhere }));
 
-      interface QueryFilter {
-        where: {
-          [key: string]: string | number | boolean | object;
-        };
-      }
+      console.log(`[get-json] remote fetch target=${target} metacatPath=${metacatPath} url=${remoteUrl}`);
 
-      const headers: HeadersInit = {};
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
-      }
-
-      const url = new URL(remoteUrl);
-
-      const filterWhere: Record<string, string> = target === 'experiments'
-        ? { facility: 'HIVE' }
-        : { ownerGroup: 'HIVE' };
-      const filterFields: QueryFilter = { where: filterWhere };
-      url.searchParams.append('filter', JSON.stringify(filterFields));
-
-      // 3. Execute the fetch call
-      const response: Response = await fetch(url.toString(), { headers });
+      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
+      const response = await fetch(remoteUrl.toString(), { headers });
 
       if (!response.ok) {
         const errorBody = await response.text();
-        console.error(`Metacat error for ${target} (${response.status}):`, errorBody);
+        console.error(`[get-json] Metacat error for ${target} (${response.status}):`, errorBody);
         throw error(response.status, `Remote API error: ${errorBody}`);
       }
 
       const data = await response.json();
+      const items: unknown[] = Array.isArray(data) ? data : [data];
 
-      // Instruments: apply per-instrument backward mapping based on equipmentType
-      if (target === 'instruments') {
-        const mappedData = await Promise.all(
-          (Array.isArray(data) ? data : [data]).map(async (item) => {
-            const equipType = item?.additional?.equipmentType?.toLowerCase();
-            if (equipType && hasJqMapping('backward', equipType)) {
-              const jqScript = await getBackwardJqScript(equipType);
-              return jq.run(jqScript, item, { input: 'json', output: 'json' });
-            }
-            return item; // no mapping available, return as-is
-          })
-        );
-        return json(mappedData);
+      // Instruments / equipment: per-item mapping keyed on equipmentType
+      if (target === 'equipment' || target === 'instruments') {
+        console.log(`[get-json] instruments raw (${items.length} items):`, JSON.stringify(items, null, 2));
+
+        const results: unknown[] = [];
+        for (const item of items as Record<string, any>[]) {
+          // Flatten .additional.equipment fields up to .additional
+          const { equipment, ...restAdditional } = item?.additional ?? {};
+          const normalised = { ...item, additional: { ...restAdditional, ...equipment } };
+
+          const equipType = normalised?.additional?.equipmentType?.toLowerCase();
+          const hasMappings = equipType ? hasJqMapping('backward', equipType) : false;
+          console.log(`[get-json] instrument pid=${item?.pid} equipmentType=${equipType} hasMapping=${hasMappings}`);
+
+          if (!hasMappings) {
+            console.log(`[get-json] skipping instrument pid=${item?.pid} — no backward mapping for equipmentType=${equipType}`);
+            continue;
+          }
+
+          const jqScript = await getBackwardJqScript(equipType);
+          const mapped = await jq.run(jqScript, normalised, { input: 'json', output: 'json' });
+          console.log(`[get-json] mapped instrument pid=${item?.pid}:`, JSON.stringify(mapped, null, 2));
+          results.push(mapped);
+        }
+
+        console.log(`[get-json] instruments returning ${results.length}/${items.length} items`);
+        return json(results);
       }
 
-      if (!target || !hasJqMapping('backward', target)) return json(data);
+      // All other targets: apply a single backward mapping script if one exists
+      if (!target || !hasJqMapping('backward', target)) {
+        console.log(`[get-json] no backward mapping for target=${target}, dropping ${items.length} items`);
+        return json([]);
+      }
 
       const jqScript = await getBackwardJqScript(target);
-      let mappedData = Array.isArray(data)
-        ? await Promise.all(data.map(obj => jq.run(jqScript, obj, { input: 'json', output: 'json' })))
-        : await jq.run(jqScript, data, { input: 'json', output: 'json' });
-
-      return json(mappedData);
+      const mapped = await Promise.all(
+        items.map(obj => jq.run(jqScript, obj as any, { input: 'json', output: 'json' }))
+      );
+      return json(mapped);
     } catch (err: any) {
       if (err.status) throw err;
-      console.error(`Error fetching remote data for ${target}:`, err);
+      console.error(`[get-json] error fetching remote data for target=${target}:`, err);
       throw error(502, `Failed to fetch from remote API: ${err.message}`);
     }
   }

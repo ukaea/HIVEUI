@@ -63,7 +63,7 @@ export const POST: RequestHandler = async ({ request }) => {
             const rootFolder = env.ROOT_FOLDER_LOCATION;
             if (rootFolder) {
                 const relativePath = normalize(
-                    `HIVE/E-${runMetadata.experimentNumber}/S-${runMetadata.sampleNumber}/R-${runMetadata.runNumber}`
+                    `E-${runMetadata.experimentNumber}/S-${runMetadata.sampleNumber}/R-${runMetadata.runNumber}`
                 ).replace(/^(\.\.[\/\\])+/, '');
                 const runDir = resolve(rootFolder, relativePath);
                 if (runDir.startsWith(resolve(rootFolder))) {

@@ -3,6 +3,7 @@ import { existsSync, mkdirSync } from 'fs';
 import { dirname } from 'path';
 import { env } from '$env/dynamic/private';
 let db: Database.Database | null = null;
+const initializedTables = new Set<string>();
 
 /**
  * Parse DB_URL and determine database type
@@ -47,8 +48,9 @@ export function initDb(dbUrl?: string): Database.Database {
     // Create/open SQLite database
     db = new Database(dbPath);
 
-    // Enable Write-Ahead Logging for concurrency and performance
+    // Enable WAL mode and set busy timeout to handle concurrent access
     db.exec('PRAGMA journal_mode = WAL;');
+    db.exec('PRAGMA busy_timeout = 5000;');
 
     return db;
 }
@@ -71,14 +73,16 @@ export function ensureTable(tableName: string): void {
         throw new Error('Invalid table name format');
     }
 
+    if (initializedTables.has(tableName)) return;
+
     const database = getDb();
-    const createTableSql = `
+    database.exec(`
         CREATE TABLE IF NOT EXISTS "${tableName}" (
             id TEXT PRIMARY KEY,
             data JSON NOT NULL
         )
-    `;
-    database.exec(createTableSql);
+    `);
+    initializedTables.add(tableName);
 }
 
 /**

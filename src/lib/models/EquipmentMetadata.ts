@@ -30,25 +30,25 @@ export class EquipmentMetadata {
         equipment.equipmentType = json.equipmentType || '';
         switch (json.equipmentType) {
             case "thermocouple":
-                equipment.equipment = ThermocoupleMetadata.fromJSON(json.equipment);
+                equipment.equipment = ThermocoupleMetadata.fromJSON(json);
                 break;
             case "camera":
-                equipment.equipment = CameraMetadata.fromJSON(json.equipment);
+                equipment.equipment = CameraMetadata.fromJSON(json);
                 break;
             case "lens":
-                equipment.equipment = LensMetadata.fromJSON(json.equipment);
+                equipment.equipment = LensMetadata.fromJSON(json);
                 break;
             case "dic":
-                equipment.equipment = DicMetadata.fromJSON(json.equipment);
+                equipment.equipment = DicMetadata.fromJSON(json);
                 break;
             case "flowmeter":
-                equipment.equipment = FlowmeterMetadata.fromJSON(json.equipment);
+                equipment.equipment = FlowmeterMetadata.fromJSON(json);
                 break;
             case "pyrometer":
-                equipment.equipment = PyrometerMetadata.fromJSON(json.equipment);
+                equipment.equipment = PyrometerMetadata.fromJSON(json);
                 break;
             case "ir-camera":
-                equipment.equipment = IrCameraMetadata.fromJSON(json.equipment);
+                equipment.equipment = IrCameraMetadata.fromJSON(json);
                 break;
             default:
                 equipment.equipment = null;

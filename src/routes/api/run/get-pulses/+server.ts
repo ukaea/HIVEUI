@@ -31,7 +31,7 @@ export const GET: RequestHandler = async ({ url, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        const relativePath = `HIVE/E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`;
+        const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`;
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const runPath = resolve(rootFolder, sanitizedPath);
 

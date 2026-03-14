@@ -32,7 +32,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        const relativePath = `HIVE/E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseNumber}`;
+        const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseNumber}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);

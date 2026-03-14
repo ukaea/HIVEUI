@@ -9,6 +9,7 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ConfigurationMetadataModel } from '$lib/models/ConfigurationMetadata';
+	import { env } from '$env/dynamic/public';
 
 	let allRuns: RunMetadata[] = [];
 	let allExperiments: ExperimentMetadata[] = [];
@@ -29,7 +30,7 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/local/experiments',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});

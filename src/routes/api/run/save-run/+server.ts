@@ -35,7 +35,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         const experimentDir = `E-${experimentNumber}`;
         const sampleDir = `S-${sampleNumber}`;
         const runDir = `R-${runNumber}`;
-        const relativePath = `HIVE/${experimentDir}/${sampleDir}/${runDir}`;
+        const relativePath = `${experimentDir}/${sampleDir}/${runDir}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);

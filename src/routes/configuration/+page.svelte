@@ -45,7 +45,7 @@
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/equipment' : '/remote/equipment',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/equipment' : '/remote/instruments',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});

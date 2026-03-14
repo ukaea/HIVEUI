@@ -2,6 +2,17 @@ import Zod from "zod";
 import { PersonMetadata } from "./PersonMetadata";
 import { HeatingInformation, CoolantInformation } from "./CompiledPulseMetadata";
 
+function generateUUID(): string {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    // Fallback for non-secure contexts (HTTP in dev)
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, (c) => {
+        const r = (Math.random() * 16) | 0;
+        return (c === 'x' ? r : (r & 0x3) | 0x8).toString(16);
+    });
+}
+
 export class RunMetadata {
     runId: string;
     runNumber: number;
@@ -49,7 +60,7 @@ export class RunMetadata {
     });
 
     constructor() {
-        this.runId = crypto.randomUUID();
+        this.runId = generateUUID();
         this.runNumber = 0;
         this.sampleNumber = 0;
         this.experimentNumber = 0;
