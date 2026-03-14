@@ -10,6 +10,7 @@ import type { RequestHandler } from './$types';
 export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   const endpoint = url.searchParams.get('endpoint');
   const id = url.searchParams.get('id');
+  const target = endpoint?.split('/')[2] ?? '';
 
   // --- AUTHENTICATION CHECK ---
   if (env.AUTHN_ENABLE === 'true' && !locals.user) {
@@ -26,6 +27,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
   }
 
   const token = (locals.user as any)?.accessToken;
+  console.log('Token:', token);
   if (!endpoint) {
     return json({ success: false, message: 'No endpoint provided' }, { status: 400 });
   }
@@ -93,32 +95,41 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const metacatBaseUrl = env.METACAT_URL;
       if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
-      type QueryFilter = { where?: Record<string, unknown> };
+      const remotePath = endpoint.replace(/^\/remote\//, '');
+      const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
 
-      const rawPath = endpoint.replace(/^\/remote\//, '');
-      const remotePath = rawPath === 'equipment' ? 'instruments' : rawPath;
-      const remoteUrlObj = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`);
-      const target = rawPath.split('/')[0];
+      console.log(`Fetching remote URL: ${remoteUrl}`);
 
-      const filterFields: QueryFilter = { where: { facility: 'HIVE' } };
-      remoteUrlObj.searchParams.append('filter', JSON.stringify(filterFields));
-
-      //DEBUG LOGGING
-      console.log(token)
+      interface QueryFilter {
+        where: {
+          [key: string]: string | number | boolean | object;
+        };
+      }
 
       const headers: HeadersInit = {};
       if (token) {
         headers['Authorization'] = `Bearer ${token}`;
       }
 
-      const response = await fetch(remoteUrlObj.toString(), { headers });
+      const url = new URL(remoteUrl);
 
-      if (!response.ok) throw error(response.status, `Remote API error: ${response.statusText}`);
+      const filterFields: QueryFilter = {
+        where: { ownerGroup: 'HIVE' }
+      };
+      url.searchParams.append('filter', JSON.stringify(filterFields));
+
+      // 3. Execute the fetch call
+      const response: Response = await fetch(url.toString(), { headers });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error(`Metacat error for ${target} (${response.status}):`, errorBody);
+        throw error(response.status, `Remote API error: ${errorBody}`);
+      }
 
       const data = await response.json();
-      console.log('Fetched data from remote API:', data);
 
-
+      // Instruments: apply per-instrument backward mapping based on equipmentType
       if (target === 'instruments') {
         const mappedData = await Promise.all(
           (Array.isArray(data) ? data : [data]).map(async (item) => {
@@ -127,7 +138,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
               const jqScript = await getBackwardJqScript(equipType);
               return jq.run(jqScript, item, { input: 'json', output: 'json' });
             }
-            return item;
+            return item; // no mapping available, return as-is
           })
         );
         return json(mappedData);
@@ -136,14 +147,15 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       if (!target || !hasJqMapping('backward', target)) return json(data);
 
       const jqScript = await getBackwardJqScript(target);
-      const mappedData = Array.isArray(data)
+      let mappedData = Array.isArray(data)
         ? await Promise.all(data.map(obj => jq.run(jqScript, obj, { input: 'json', output: 'json' })))
         : await jq.run(jqScript, data, { input: 'json', output: 'json' });
 
       return json(mappedData);
     } catch (err: any) {
       if (err.status) throw err;
-      throw error(502, 'Failed to fetch from remote API');
+      console.error(`Error fetching remote data for ${target}:`, err);
+      throw error(502, `Failed to fetch from remote API: ${err.message}`);
     }
   }
 

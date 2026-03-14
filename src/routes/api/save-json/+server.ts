@@ -28,6 +28,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     try {
         const body = await request.json();
         const { targetPath, metadata, id } = body;
+        const target = targetPath.split('/')[2];
 
         if (!targetPath || !metadata) {
             throw error(400, 'targetPath and metadata are required');
@@ -48,7 +49,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             const schemaRegistryUrl = env.SCHEMA_REGISTRY_URL;
             if (schemaRegistryUrl) {
                 try {
-                    const schemaType = relativePath.split('/')[0] || 'default';
+                    const schemaType = target || relativePath.split('/')[0] || 'default';
                     const validationResponse = await fetch(schemaRegistryUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
@@ -86,7 +87,6 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 await mkdir(baseDir, { recursive: true });
                 await writeFile(absolutePath, JSON.stringify(metadata, null, 2));
 
-                console.log('Saved local file:', absolutePath);
                 return json({ success: true, message: 'Saved to local' });
             } catch (err: any) {
                 console.error('Local save error:', err);
@@ -110,35 +110,38 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
         // --- BRANCH 3: Remote API (Metacat) ---
         if (targetPath.startsWith('/remote/')) {
             const metacatBaseUrl = env.METACAT_URL;
+            console.log("TARGETPATH: ", targetPath)
+            console.log("TARGET: ", target)
             if (!metacatBaseUrl) throw new Error('METACAT_URL not set');
 
             try {
-                      //DEBUG LOGGING
-                console.log(token)
                 let dataToSend = metadata;
 
-                //Add schemaVersion if it doesn't exist
-                if (!dataToSend.schemaVersion) {
-                    dataToSend.schemaVersion = '1.0.0';
-                }
+                // Add schemaVersion before mapping
+                metadata["schemaVersion"] = "1.0.0";
 
                 // Apply jq mapping if available
-                let target = targetPath.replace(/^\/remote\//, '').split('/')[0];
                 if (target && hasJqMapping('forward', target)) {
                     const jqScript = await getForwardJqScript(target);
+                    console.log("JQSCRIPT: ", jqScript)
                     dataToSend = await jq.run(jqScript, metadata, { input: 'json', output: 'json' });
-                }
 
-                // Post mapping fixes
-                if (dataToSend.facilityExperimentId && typeof dataToSend.facilityExperimentId === 'number') {
-                    dataToSend.facilityExperimentId = dataToSend.facilityExperimentId.toString();
+                    if (target == "experiments")
+                    {
+                        dataToSend["facilityExperimentId"] = String(dataToSend["facilityExperimentId"]);
+                    }
+
+
+                    //DEBUG
+                    console.log("DATATOSEND: ", dataToSend)
                 }
 
                 const remotePath = targetPath.replace(/^\/remote\//, '');
                 const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
 
+                // Injecting the Bearer Token
                 const headers: HeadersInit = {
-                    'Content-Type': 'application/json' 
+                    'Content-Type': 'application/json'
                 };
                 if (token) {
                     headers['Authorization'] = `Bearer ${token}`;
@@ -151,15 +154,17 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 });
 
                 if (!response.ok) {
-                    const errorText = await response.text();
-                    throw error(response.status, `Remote save failed for ${target}: ${errorText}`);
+                    const errorBody = await response.text();
+                    console.error(`Metacat error for ${target} (${response.status}):`, errorBody);
+                    throw error(response.status, `Remote save failed: ${errorBody}`);
                 }
-                
+
                 const result = await response.json();
                 return json(result);
             } catch (err: any) {
                 if (err.status) throw err;
-                throw error(500, `Remote save failed for ${targetPath}: ${err.message}`);
+                console.error(`Error in remote save for ${target}:`, err);
+                throw error(500, `Remote save failed for ${target}: ${err.message}`);
             }
         }
 

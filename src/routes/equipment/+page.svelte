@@ -4,6 +4,7 @@
 	import { tableOrderStore } from 'svelte-ux';
 	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { env } from '$env/dynamic/public';
 	import Zod from 'zod';
 
 	let allEquipment: EquipmentMetadata[] = [];
@@ -20,7 +21,7 @@
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
-		endpoint: '/remote/equipment',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/equipment' : '/remote/instruments',
 		idField: 'equipmentName',
 		displayName: 'equipment'
 	});

@@ -6,7 +6,7 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
-	import { authClient } from '$lib/auth-client';
+	import { env } from '$env/dynamic/public';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -24,7 +24,7 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/remote/experiments',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
@@ -32,6 +32,7 @@
 	async function fetchExperiments() {
 		try {
 			allExperiments = await experimentService.fetchAll();
+			console.log('Fetched experiments:', allExperiments);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -62,6 +63,7 @@
 
 		try {
 			await experimentService.submit(selectedExperiment);
+			console.log('Submitted experiment metadata:', selectedExperiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();

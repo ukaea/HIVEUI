@@ -11,7 +11,7 @@ const BACKWARD_JQ_FILES: Record<string, string> = {
 };
 
 const FORWARD_JQ_FILES: Record<string, string> = {
-    equipment: 'instrument.jq',
+    instruments: 'instrument.jq',
     experiments: 'experiment.jq',
     pulse: 'dataset.jq',
 };
