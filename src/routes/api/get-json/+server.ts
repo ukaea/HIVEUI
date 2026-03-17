@@ -98,9 +98,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
       const metacatPath = target === 'equipment' ? 'instruments' : target;
       const remoteUrl = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${metacatPath}`);
 
-      // Per-target filter
-      const filterWhere = target === 'experiments' ? { facility: 'HIVE' } : { ownerGroup: 'HIVE' };
-      remoteUrl.searchParams.append('filter', JSON.stringify({ where: filterWhere }));
+      remoteUrl.searchParams.append('filter', JSON.stringify({ where: { ownerGroup: 'HIVE' } }));
 
       console.log(`[get-json] remote fetch target=${target} metacatPath=${metacatPath} url=${remoteUrl}`);
 
