@@ -51,22 +51,11 @@ export const GET: RequestHandler = async ({ url }) => {
             );
         }
 
-        const issuerUrl = new URL(env.AUTH_KEYCLOAK_ISSUER);
-        const pathParts = issuerUrl.pathname.split('/');
-        const realmIndex = pathParts.indexOf('realms');
-        
-        if (realmIndex === -1 || realmIndex === pathParts.length - 1) {
-            return json(
-                { success: false, message: 'Invalid Keycloak issuer URL format' },
-                { status: 500 }
-            );
-        }
-
-        const realm = pathParts[realmIndex + 1];
-        const keycloakBaseUrl = `${issuerUrl.protocol}//${issuerUrl.host}`;
+        const issuer = env.AUTH_KEYCLOAK_ISSUER.replace(/\/$/, '');
+        const adminRealmUrl = issuer.replace('/realms/', '/admin/realms/');
 
         // 3. Get access token (Direct Grant flow)
-        const tokenUrl = `${keycloakBaseUrl}/realms/${realm}/protocol/openid-connect/token`;
+        const tokenUrl = `${issuer}/protocol/openid-connect/token`;
         const tokenParams = new URLSearchParams({
             grant_type: 'password',
             client_id: env.AUTH_KEYCLOAK_ID,
@@ -94,11 +83,7 @@ export const GET: RequestHandler = async ({ url }) => {
         const accessToken = tokenData.access_token;
 
         // 4. Lookup Group ID by Name
-        // Endpoint: /admin/realms/{realm}/groups?search={name}
-        const groupSearchUrl = new URL(`${keycloakBaseUrl}/admin/realms/${realm}/groups`);
-        groupSearchUrl.searchParams.append('search', groupName);
-
-        const groupSearchResponse = await fetch(groupSearchUrl.toString(), {
+        const groupSearchResponse = await fetch(`${adminRealmUrl}/groups?search=${encodeURIComponent(groupName)}`, {
             method: 'GET',
             headers: {
                 Authorization: `Bearer ${accessToken}`,
@@ -132,11 +117,7 @@ export const GET: RequestHandler = async ({ url }) => {
         const groupId = targetGroup.id;
 
         // 5. Fetch Group Members using the ID found
-        const membersUrl = new URL(
-            `${keycloakBaseUrl}/admin/realms/${realm}/groups/${groupId}/members`
-        );
-        
-        const membersResponse = await fetch(membersUrl.toString(), {
+        const membersResponse = await fetch(`${adminRealmUrl}/groups/${groupId}/members`, {
             method: 'GET',
             headers: {
                 Authorization: `Bearer ${accessToken}`,
