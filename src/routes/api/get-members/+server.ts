@@ -40,6 +40,7 @@ export const GET: RequestHandler = async ({ url }) => {
         if (
             !env.AUTH_KEYCLOAK_ISSUER ||
             !env.AUTH_KEYCLOAK_ID ||
+            !env.AUTH_KEYCLOAK_SECRET ||
             !env.AUTH_KEYCLOAK_SERVICE_USERNAME ||
             !env.AUTH_KEYCLOAK_SERVICE_PASSWORD
         ) {
@@ -64,18 +65,15 @@ export const GET: RequestHandler = async ({ url }) => {
         const realm = pathParts[realmIndex + 1];
         const keycloakBaseUrl = `${issuerUrl.protocol}//${issuerUrl.host}`;
 
-        // 3. Get access token (Password Flow)
+        // 3. Get access token (Direct Grant flow)
         const tokenUrl = `${keycloakBaseUrl}/realms/${realm}/protocol/openid-connect/token`;
         const tokenParams = new URLSearchParams({
             grant_type: 'password',
             client_id: env.AUTH_KEYCLOAK_ID,
+            client_secret: env.AUTH_KEYCLOAK_SECRET,
             username: env.AUTH_KEYCLOAK_SERVICE_USERNAME,
             password: env.AUTH_KEYCLOAK_SERVICE_PASSWORD,
         });
-
-        if (env.AUTH_KEYCLOAK_SECRET) {
-            tokenParams.append('client_secret', env.AUTH_KEYCLOAK_SECRET);
-        }
 
         const tokenResponse = await fetch(tokenUrl, {
             method: 'POST',
