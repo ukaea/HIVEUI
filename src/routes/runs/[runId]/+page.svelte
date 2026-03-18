@@ -11,6 +11,8 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
+	import { MemberService } from '$lib/services/MembersService';
+	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { triggerDAG } from '$lib/triggerPipeline';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
 	import { env } from '$env/dynamic/public';
@@ -85,6 +87,10 @@
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
+
+	let allMembers: KeycloakMember[] = [];
+	let operator1ManualEdit = true;
+	let operator2ManualEdit = true;
 
 	let experimentOptions: MenuOption[] = [];
 	let configurationOptions: MenuOption[] = [];
@@ -333,6 +339,14 @@
 		}
 	}
 
+	async function fetchMembers() {
+		try {
+			allMembers = await MemberService.getMembers('HIVE');
+		} catch (error) {
+			console.error('Error fetching members:', error);
+		}
+	}
+
 	async function fetchConfigurations() {
 		try {
 			const configurations = await configurationService.fetchAll();
@@ -349,6 +363,7 @@
 		loadRunData();
 		fetchExperiments();
 		fetchConfigurations();
+		fetchMembers();
 	});
 </script>
 
@@ -390,12 +405,10 @@
 				<h3 class="text-lg font-bold mb-4">Add Metadata</h3>
 				<Form initial={runMetadata} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
 					<div class="grid grid-cols-3 gap-4">
-						<SelectField
-							options={experimentOptions}
+						<TextField
 							label="Experiment Number"
-							value={draft.experimentNumber}
+							value={String(draft.experimentNumber)}
 							disabled
-							autoplacement={false}
 						/>
 						<TextField
 							label="Sample Number"
@@ -421,43 +434,81 @@
 							error={errors.configurationId}
 						/>
 
-						<h3 class="col-span-3 font-bold mt-4">Operator 1</h3>
+						<h3 class="col-span-3 font-bold mt-4 flex items-center gap-3">
+							<span>Operator 1</span>
+							<div class="w-64">
+								<SelectField
+									label="Select from Members"
+									value={operator1ManualEdit ? '' : draft.operator1?.email}
+									options={allMembers.map((m) => ({ label: `${m.firstName} ${m.lastName}`, value: m.email }))}
+									on:change={(e) => {
+										const m = allMembers.find((m) => m.email === e.detail.value);
+										if (m) {
+											draft.operator1.firstName = m.firstName;
+											draft.operator1.lastName = m.lastName;
+											draft.operator1.email = m.email;
+											operator1ManualEdit = false;
+											refresh();
+										}
+									}}
+								/>
+							</div>
+						</h3>
 						<TextField
 							label="First Name"
-							value={draft.operator1.firstName}
-							on:change={(e) => { draft.operator1.firstName = e.detail.value; refresh(); }}
+							value={current.operator1?.firstName}
+							on:change={(e) => { draft.operator1.firstName = e.detail.value; operator1ManualEdit = true; refresh(); }}
 							error={errors['operator1.firstName']}
 						/>
 						<TextField
 							label="Last Name"
-							value={draft.operator1.lastName}
-							on:change={(e) => { draft.operator1.lastName = e.detail.value; refresh(); }}
+							value={current.operator1?.lastName}
+							on:change={(e) => { draft.operator1.lastName = e.detail.value; operator1ManualEdit = true; refresh(); }}
 							error={errors['operator1.lastName']}
 						/>
 						<TextField
 							label="Email"
-							value={draft.operator1.email}
-							on:change={(e) => { draft.operator1.email = e.detail.value; refresh(); }}
+							value={current.operator1?.email}
+							on:change={(e) => { draft.operator1.email = e.detail.value; operator1ManualEdit = true; refresh(); }}
 							error={errors['operator1.email']}
 						/>
 
-						<h3 class="col-span-3 font-bold mt-4">Operator 2</h3>
+						<h3 class="col-span-3 font-bold mt-4 flex items-center gap-3">
+							<span>Operator 2</span>
+							<div class="w-64">
+								<SelectField
+									label="Select from Members"
+									value={operator2ManualEdit ? '' : draft.operator2?.email}
+									options={allMembers.map((m) => ({ label: `${m.firstName} ${m.lastName}`, value: m.email }))}
+									on:change={(e) => {
+										const m = allMembers.find((m) => m.email === e.detail.value);
+										if (m) {
+											draft.operator2.firstName = m.firstName;
+											draft.operator2.lastName = m.lastName;
+											draft.operator2.email = m.email;
+											operator2ManualEdit = false;
+											refresh();
+										}
+									}}
+								/>
+							</div>
+						</h3>
 						<TextField
 							label="First Name"
-							value={draft.operator2.firstName}
-							on:change={(e) => { draft.operator2.firstName = e.detail.value; refresh(); }}
+							value={current.operator2?.firstName}
+							on:change={(e) => { draft.operator2.firstName = e.detail.value; operator2ManualEdit = true; refresh(); }}
 							error={errors['operator2.firstName']}
 						/>
 						<TextField
 							label="Last Name"
-							value={draft.operator2.lastName}
-							on:change={(e) => { draft.operator2.lastName = e.detail.value; refresh(); }}
+							value={current.operator2?.lastName}
+							on:change={(e) => { draft.operator2.lastName = e.detail.value; operator2ManualEdit = true; refresh(); }}
 							error={errors['operator2.lastName']}
 						/>
 						<TextField
 							label="Email"
-							value={draft.operator2.email}
-							on:change={(e) => { draft.operator2.email = e.detail.value; refresh(); }}
+							value={current.operator2?.email}
+							on:change={(e) => { draft.operator2.email = e.detail.value; operator2ManualEdit = true; refresh(); }}
 							error={errors['operator2.email']}
 						/>
 
