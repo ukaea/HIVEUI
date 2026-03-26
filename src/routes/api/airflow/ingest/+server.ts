@@ -21,16 +21,11 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Build payload
         const payload = {
-            mappingData: {
-                schemaVersion: '1.0.0',
-                ownerGroup: 'MRF',
-                accessGroups: ['MRF']
-            },
             runData: {
                 runNumber: runMetadata.runNumber,
                 sampleNumber: runMetadata.sampleNumber,
                 experimentNumber: runMetadata.experimentNumber,
-                configurationUUID: runMetadata.configurationId,
+                configurationId: runMetadata.configurationId,
                 operator1: runMetadata.operator1,
                 operator2: runMetadata.operator2,
                 heatingInformation: runMetadata.heatingInformation,
@@ -52,7 +47,7 @@ export const POST: RequestHandler = async ({ request }) => {
                     dataCaptureStartTimestamp: processedData?.dataCaptureStartTimestamp ?? null,
                     heatingInformation: processedData?.heatingInformation ?? null,
                     coolantInformation: processedData?.coolantInformation ?? null,
-                    thermocoupleInformation: []
+                    thermocoupleInformation: processedData?.thermocoupleInformation ?? []
                 };
             })
         };
