@@ -71,7 +71,7 @@ export const POST: RequestHandler = async ({ request }) => {
         }
 
         const token = await airflowTokenManager.getToken();
-        const endpoint = `${env.AIRFLOW_URL}/api/v1/dags/${env.AIRFLOW_INGEST_DAG_ID}/dagRuns`;
+        const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${env.AIRFLOW_INGEST_DAG_ID}/dagRuns`;
 
         const response = await fetch(endpoint, {
             method: 'POST',
