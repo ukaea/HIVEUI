@@ -3,16 +3,31 @@ import { env as publicEnv } from '$env/dynamic/public';
 import { json } from '@sveltejs/kit';
 import { getRecordById } from '$lib/services/DatabaseService';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
-import { writeFile, mkdir } from 'fs/promises';
+import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
+
+async function getConfigRecord(configurationId: string): Promise<any | null> {
+    if (publicEnv.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true') {
+        const rootFolder = env.ROOT_FOLDER_LOCATION;
+        if (!rootFolder) return null;
+        try {
+            const filePath = resolve(rootFolder, 'configurations', `${configurationId}.json`);
+            const content = await readFile(filePath, 'utf-8');
+            return JSON.parse(content);
+        } catch {
+            return null;
+        }
+    }
+    return getRecordById('configurations', configurationId);
+}
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
         const { runMetadata, pulsesMetadata } = await request.json();
 
         // Look up configuration to derive diagnostics
-        const configRecord = getRecordById('configurations', runMetadata.configurationId);
+        const configRecord = await getConfigRecord(runMetadata.configurationId);
         const diagnostics: string[][] = configRecord
             ? (configRecord.equipmentCombinations ?? []).map((combo: any) =>
                 (combo.equipment ?? []).map((eq: any) => eq.equipmentName)

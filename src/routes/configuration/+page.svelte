@@ -29,16 +29,18 @@
 	let newCombination: CombinationMetadata | null = null;
 	let isNewCombination = false;
 
+	const configStoragePrefix = env.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true' ? '/local' : '/db';
+
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: '/db/configurations',
+		endpoint: `${configStoragePrefix}/configurations`,
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
 	const combinationService = new GenericDataService<CombinationMetadata>({
 		modelClass: CombinationMetadata,
-		endpoint: '/db/combinations',
+		endpoint: `${configStoragePrefix}/combinations`,
 		idField: 'combinationId',
 		displayName: 'combinations'
 	});
