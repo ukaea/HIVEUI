@@ -6,8 +6,8 @@ export interface DAGStatus {
     end_date: string | null;
 }
 
-export async function pollDAGStatus(dagRunId: string): Promise<DAGStatus> {
-    const response = await fetch(`/api/airflow/dag-status?dagRunId=${encodeURIComponent(dagRunId)}`);
+export async function pollDAGStatus(dagRunId: string, dagType: 'postprocessing' | 'ingest' = 'postprocessing'): Promise<DAGStatus> {
+    const response = await fetch(`/api/airflow/dag-status?dagRunId=${encodeURIComponent(dagRunId)}&dagType=${dagType}`);
 
     if (!response.ok) {
         throw new Error(`Failed to fetch DAG status: ${response.status} ${response.statusText}`);
@@ -21,13 +21,14 @@ export async function waitForDAGCompletion(
     dagRunId: string,
     intervalMs: number = 5000,
     timeoutMs: number = 10 * 60 * 1000,
+    dagType: 'postprocessing' | 'ingest' = 'postprocessing',
     onStatusUpdate?: (status: DAGStatus) => void
 ): Promise<DAGStatus> {
     return new Promise((resolve, reject) => {
+        const start = Date.now();
         const poll = async () => {
-            const start = Date.now()
             try {
-                const status = await pollDAGStatus(dagRunId);
+                const status = await pollDAGStatus(dagRunId, dagType);
                 if (onStatusUpdate) {
                     onStatusUpdate(status);
                 }
@@ -36,8 +37,8 @@ export async function waitForDAGCompletion(
                     resolve(status);
                 } else if (status.state === 'failed') {
                     reject(new Error('DAG run failed'));
-                } else if (Date.now() - start > timeoutMs){
-                    reject(new Error(`Timeout waiting for Dag: ${dagRunId} run, last_state=${status.state}`))
+                } else if (Date.now() - start > timeoutMs) {
+                    reject(new Error(`Timeout waiting for DAG: ${dagRunId}, last_state=${status.state}`));
                 } else {
                     setTimeout(poll, intervalMs);
                 }

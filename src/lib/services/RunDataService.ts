@@ -196,7 +196,7 @@ export class RunDataService {
     async ingestToDataCatalogue(
         runMetadata: RunMetadata,
         pulsesMetadata: Array<{ annotation: any; processedData: any }>
-    ): Promise<void> {
+    ): Promise<{ dag_run_id?: string; testMode?: boolean }> {
         try {
             const response = await fetch('/api/airflow/ingest', {
                 method: 'POST',
@@ -212,8 +212,7 @@ export class RunDataService {
                 throw new Error(errorData.message || 'Ingestion failed');
             }
 
-            runMetadata.status = 'ingested';
-            await this.saveRun(runMetadata);
+            return await response.json();
         } catch (error) {
             console.error('Error ingesting to Data Catalogue:', error);
             throw error;

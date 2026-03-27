@@ -34,6 +34,8 @@
 	let saveNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
+	let ingestStatusText = '';
+	let ingestError = '';
 	let inputPowerToggle = true;
 
 	// Annotation split-pane state
@@ -249,7 +251,7 @@
 		dagStatusText = 'Processing...';
 		dagError = '';
 
-		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, (status: DAGStatus) => {
+		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'postprocessing', (status: DAGStatus) => {
 			dagStatusText = `State: ${status.state}`;
 		})
 			.then(async () => {
@@ -294,6 +296,7 @@
 
 	async function handleIngest() {
 		saving = true;
+		ingestError = '';
 		try {
 			// Ensure processed data is loaded for every pulse
 			for (const pulse of pulses) {
@@ -315,16 +318,42 @@
 					: null
 			}));
 
-			await runService.ingestToDataCatalogue(runMetadata, pulsesMetadata);
-			runMetadata.status = 'ingested';
-			saveNotify = true;
-			setTimeout(() => { saveNotify = false; }, 3000);
+			const result = await runService.ingestToDataCatalogue(runMetadata, pulsesMetadata);
+
+			if (result.testMode) {
+				runMetadata.status = 'ingested';
+				await runService.saveRun(runMetadata);
+				saveNotify = true;
+				setTimeout(() => { saveNotify = false; }, 3000);
+			} else if (result.dag_run_id) {
+				startIngestPolling(result.dag_run_id);
+			}
 		} catch (error) {
 			console.error('Error ingesting to Data Catalogue:', error);
-			alert(`Failed to ingest: ${(error as Error).message}`);
+			ingestError = (error as Error).message;
 		} finally {
 			saving = false;
 		}
+	}
+
+	function startIngestPolling(dagRunId: string) {
+		ingestStatusText = 'Ingesting...';
+		ingestError = '';
+
+		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'ingest', (status: DAGStatus) => {
+			ingestStatusText = `State: ${status.state}`;
+		})
+			.then(async () => {
+				ingestStatusText = '';
+				runMetadata.status = 'ingested';
+				await runService.saveRun(runMetadata);
+				saveNotify = true;
+				setTimeout(() => { saveNotify = false; }, 3000);
+			})
+			.catch((err) => {
+				ingestError = err.message || 'Ingest DAG failed';
+				ingestStatusText = '';
+			});
 	}
 
 	async function fetchExperiments() {
@@ -852,12 +881,26 @@
 				{/if}
 
 				{#if runMetadata.status !== 'ingested'}
-					<div class="flex justify-between">
-						<Button on:click={() => setStep(2)}>Back</Button>
-						<Button variant="fill" color="success" disabled={saving} on:click={handleIngest}>
-							{saving ? 'Ingesting...' : 'Ingest to Data Catalogue'}
-						</Button>
-					</div>
+					{#if ingestStatusText}
+						<div class="flex items-center gap-3 mb-4">
+							<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
+							<span class="text-gray-300">{ingestStatusText}</span>
+						</div>
+					{/if}
+					{#if ingestError}
+						<div class="mt-4">
+							<p class="text-red-600 mb-2">{ingestError}</p>
+							<Button variant="outline" on:click={() => handleIngest()}>Retry</Button>
+						</div>
+					{/if}
+					{#if !ingestStatusText && !ingestError}
+						<div class="flex justify-between">
+							<Button on:click={() => setStep(2)}>Back</Button>
+							<Button variant="fill" color="success" disabled={saving} on:click={handleIngest}>
+								{saving ? 'Triggering...' : 'Ingest to Data Catalogue'}
+							</Button>
+						</div>
+					{/if}
 				{:else}
 					<div class="flex items-center gap-2 text-green-600 font-semibold">
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
