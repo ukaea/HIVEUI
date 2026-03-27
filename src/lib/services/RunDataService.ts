@@ -161,6 +161,29 @@ export class RunDataService {
         }
     }
 
+    async triggerPostprocess(
+        experimentNumber: number,
+        sampleNumber: number,
+        runNumber: number
+    ): Promise<{ dag_run_id: string }> {
+        try {
+            const response = await fetch('/api/airflow/postprocess', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ experimentNumber, sampleNumber, runNumber })
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to trigger postprocess DAG: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error triggering postprocess DAG:', error);
+            throw error;
+        }
+    }
+
     async seedTestData(
         experimentNumber: number,
         sampleNumber: number,

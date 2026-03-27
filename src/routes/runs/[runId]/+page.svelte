@@ -13,7 +13,6 @@
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 	import { MemberService } from '$lib/services/MembersService';
 	import type { KeycloakMember } from '$lib/services/MembersService';
-	import { triggerDAG } from '$lib/triggerPipeline';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
 	import { env } from '$env/dynamic/public';
 
@@ -233,7 +232,7 @@
 			dagError = '';
 			dagStatusText = 'Triggering pipeline...';
 
-			const result = await triggerDAG(experimentNumber, sampleNumber, runNumber);
+			const result = await runService.triggerPostprocess(experimentNumber, sampleNumber, runNumber);
 
 			runMetadata.dagRunId = result.dag_run_id;
 			runMetadata.status = 'processing';
