@@ -10,7 +10,8 @@ export async function pollDAGStatus(dagRunId: string, dagType: 'postprocessing' 
     const response = await fetch(`/api/airflow/dag-status?dagRunId=${encodeURIComponent(dagRunId)}&dagType=${dagType}`);
 
     if (!response.ok) {
-        throw new Error(`Failed to fetch DAG status: ${response.status} ${response.statusText}`);
+        const body = await response.json().catch(() => null);
+        throw new Error(body?.error ?? `Failed to fetch DAG status: ${response.status} ${response.statusText}`);
     }
 
     const dagResponse = (await response.json()) as DAGStatus

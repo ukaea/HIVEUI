@@ -77,7 +77,7 @@
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
 		modelClass: ExperimentMetadataModel,
-		endpoint: '/local/experiments',
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
@@ -136,6 +136,7 @@
 			case 'processing': return 2; // resume polling / annotation
 			case 'processed': return 2; // show annotation
 			case 'annotated': return 3; // show ingest
+			case 'ingesting': return 3; // resume ingest polling
 			case 'ingested': return 3; // read-only ingest
 			default: return 0;
 		}
@@ -166,6 +167,10 @@
 
 			if (existing.status === 'processing' && existing.dagRunId) {
 				startPolling(existing.dagRunId);
+			}
+
+			if (existing.status === 'ingesting' && existing.ingestDagRunId) {
+				startIngestPolling(existing.ingestDagRunId);
 			}
 
 			if (['processed', 'annotated', 'ingested'].includes(existing.status)) {
@@ -325,7 +330,12 @@
 				saveNotify = true;
 				setTimeout(() => { saveNotify = false; }, 3000);
 			} else if (result.dag_run_id) {
+				runMetadata.ingestDagRunId = result.dag_run_id;
+				runMetadata.status = 'ingesting';
+				await runService.saveRun(runMetadata);
 				startIngestPolling(result.dag_run_id);
+			} else {
+				ingestError = 'Ingest DAG did not return a run ID. Check server logs.';
 			}
 		} catch (error) {
 			console.error('Error ingesting to Data Catalogue:', error);
