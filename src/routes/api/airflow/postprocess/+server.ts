@@ -10,6 +10,7 @@ export async function POST({ request }) {
         const token = await airflowTokenManager.getToken();
 
         const payload = {
+            logical_date: new Date().toISOString(),
             conf: {
                 'exp-number': String(experimentNumber),
                 'sample-number': String(sampleNumber),
@@ -21,7 +22,6 @@ export async function POST({ request }) {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache',
                 'Authorization': `Bearer ${token}`
             },
             body: JSON.stringify(payload),

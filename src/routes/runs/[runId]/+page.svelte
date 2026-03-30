@@ -16,7 +16,7 @@
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
 	import { env } from '$env/dynamic/public';
 
-	const testMode = env.PUBLIC_RUNS_TEST_MODE === 'true';
+	const testMode = env.PUBLIC_PROCESSING_TEST_MODE === 'true';
 	let experimentNumber = 0;
 	let sampleNumber = 0;
 	let runNumber = 0;

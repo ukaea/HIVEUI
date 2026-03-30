@@ -3,6 +3,7 @@ import { json } from '@sveltejs/kit';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 import type { RequestHandler } from './$types';
 
+
 export const GET: RequestHandler = async ({ url }) => {
     const dagRunId = url.searchParams.get('dagRunId');
     const dagType = url.searchParams.get('dagType') || 'postprocessing';

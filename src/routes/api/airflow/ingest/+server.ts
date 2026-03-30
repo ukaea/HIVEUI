@@ -25,7 +25,6 @@ async function getConfigRecord(configurationId: string): Promise<any | null> {
 export const POST: RequestHandler = async ({ request }) => {
     try {
         const { runMetadata, pulsesMetadata } = await request.json();
-
         // Look up configuration to derive diagnostics
         const configRecord = await getConfigRecord(runMetadata.configurationId);
         const diagnostics: string[][] = configRecord
@@ -67,7 +66,7 @@ export const POST: RequestHandler = async ({ request }) => {
             })
         };
 
-        if (publicEnv.PUBLIC_RUNS_TEST_MODE === 'true') {
+        if (publicEnv.PUBLIC_INGEST_TEST_MODE === 'true') {
             console.log('TEST MODE - Ingest payload:', JSON.stringify(payload, null, 2));
 
             const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -95,7 +94,7 @@ export const POST: RequestHandler = async ({ request }) => {
                 'Cache-Control': 'no-cache',
                 'Authorization': `Bearer ${token}`
             },
-            body: JSON.stringify({ conf: payload })
+            body: JSON.stringify({ logical_date: new Date().toISOString(), conf: payload })
         });
 
         if (!response.ok) {
