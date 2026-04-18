@@ -1,20 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { Button, TextField, Form, Notification, Steps, Step } from 'svelte-ux';
-	import { SelectField, type MenuOption } from 'svelte-ux';
-	import { mdiCheckCircleOutline, mdiCheck } from '@mdi/js';
-	import { RunMetadata } from '$lib/models/RunMetadata';
-	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
-	import { ExperimentMetadata, ConfigurationMetadata } from '$lib/models';
-	import { RunDataService } from '$lib/services/RunDataService';
-	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { env } from '$env/dynamic/public';
+	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
+	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
-	import { MemberService } from '$lib/services/MembersService';
+	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
+	import { RunMetadata } from '$lib/models/RunMetadata';
+	import { GenericDataService } from '$lib/services/GenericDataService';
 	import type { KeycloakMember } from '$lib/services/MembersService';
-	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
-	import { env } from '$env/dynamic/public';
+	import { MemberService } from '$lib/services/MembersService';
+	import { RunDataService } from '$lib/services/RunDataService';
+	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
+	import { onMount } from 'svelte';
+	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
 	const testMode = env.PUBLIC_PROCESSING_TEST_MODE === 'true';
 	let experimentNumber = 0;
@@ -36,6 +35,7 @@
 	let ingestStatusText = '';
 	let ingestError = '';
 	let inputPowerToggle = true;
+	let coolantToggle = true;
 
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
@@ -609,7 +609,9 @@
 							label="Sample Cooling"
 							value={draft.coolantInformation.sampleCooling}
 							autoplacement={false}
-							on:change={(e) => { draft.coolantInformation.sampleCooling = e.detail.value; refresh(); }}
+							on:change={(e) => { draft.coolantInformation.sampleCooling = e.detail.value; 
+												coolantToggle = e.detail.value === 'Yes';
+												refresh(); }}
 							error={errors['coolantInformation.sampleCooling']}
 						/>
 						<SelectField
@@ -618,6 +620,7 @@
 							value={draft.coolantInformation.coolantType}
 							autoplacement={false}
 							on:change={(e) => { draft.coolantInformation.coolantType = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.coolantType']}
 						/>
 						<TextField
@@ -625,6 +628,7 @@
 							value={draft.coolantInformation.targetCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantFlow = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.targetCoolantFlow']}
 						/>
 						<TextField
@@ -632,6 +636,7 @@
 							value={draft.coolantInformation.targetCoolantTemperature}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantTemperature = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.targetCoolantTemperature']}
 						/>
 						<TextField
@@ -639,6 +644,7 @@
 							value={draft.coolantInformation.measuredCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.measuredCoolantFlow = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.measuredCoolantFlow']}
 						/>
 					</div>
