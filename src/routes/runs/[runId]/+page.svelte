@@ -30,6 +30,7 @@
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
+	let delteNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
 	let ingestStatusText = '';
@@ -209,6 +210,20 @@
 		} catch (error) {
 			console.error('Error saving run metadata:', error);
 			alert(`Failed to save: ${(error as Error).message}`);
+		} finally {
+			saving = false;
+		}
+	}
+
+	async function handleDeleteMetadata() {
+		try {
+			runMetadata.status = 'draft';
+			await runService.delete(runMetadata);
+			delteNotify = true;
+			setTimeout(() => { delteNotify = false; }, 3000);
+		} catch (error) {
+			console.error('Error deleting run metadata:', error);
+			alert(`Failed to delete: ${(error as Error).message}`);
 		} finally {
 			saving = false;
 		}
@@ -654,6 +669,14 @@
 						<div class="flex gap-2">
 							<Button
 								variant="fill"
+									on:click={() => {setStep(0);
+									handleDeleteMetadata();
+								}}
+							>
+								Delete Metadata
+							</Button>
+							<Button
+								variant="fill"
 								disabled={saving}
 								on:click={() => {
 									runMetadata = { ...runMetadata, ...current };
@@ -930,6 +953,9 @@
 
 	<div class="fixed top-4 right-4 z-50">
 		<Notification title="Saved successfully!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
+	</div>
+	<div class="fixed top-4 right-4 z-50">
+		<Notification title="Successfully Deleted!" icon={mdiCheckCircleOutline} color="success" closeIcon open={delteNotify} />
 	</div>
 </div>
 
