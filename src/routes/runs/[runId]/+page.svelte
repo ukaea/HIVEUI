@@ -44,8 +44,27 @@
 	let loadingProcessedData = false;
 	let processedDataByPulse = new Map<number, ProcessMetadata>();
 	let processedSequences: ProcessMetadata[] = [];
+	let hasUsavedChanges = false;
+	let disablePulse = false;
+
 
 	async function handleSelectPulse(index: number) {
+		// To hold the previous in
+		const previousIndex = selectedPulseIndex;
+		
+		if (selectedPulseIndex === index) {
+			selectedPulseIndex = previousIndex;
+			return;
+		}
+		if (hasUsavedChanges) {
+			const confirmSave = window.confirm(
+				"You have unsaved changes. Are you sure you want to leave?"
+			)
+			if (!confirmSave) {
+				selectedPulseIndex = previousIndex;
+				return;
+			}
+		} 
 		selectedPulseIndex = index;
 		const pulseNumber = pulses[index].pulseNumber;
 		loadingProcessedData = true;
@@ -60,10 +79,12 @@
 				selectedProcessedData = sequences[0];
 				processedDataByPulse.set(pulseNumber, sequences[0]);
 			}
+			
 		} catch (error) {
 			console.error('Error loading processed data:', error);
 		} finally {
 			loadingProcessedData = false;
+			hasUsavedChanges = true;
 		}
 	}
 
@@ -206,6 +227,7 @@
 			await runService.saveRun(runMetadata);
 			metadataSaved = true;
 			saveNotify = true;
+			hasUsavedChanges = false;
 			setTimeout(() => { saveNotify = false; }, 3000);
 		} catch (error) {
 			console.error('Error saving run metadata:', error);
@@ -217,6 +239,10 @@
 
 	async function handleDeleteMetadata() {
 		try {
+			const confirmed = window.confirm("Are you sure you want to delete the metadata")
+			if (!confirmed) {
+				return;
+			}
 			runMetadata.status = 'draft';
 			await runService.delete(runMetadata);
 			delteNotify = true;
@@ -305,6 +331,7 @@
 			annotationsSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
+			hasUsavedChanges = false;
 		} catch (error) {
 			console.error('Error saving annotations:', error);
 			alert(`Failed to save annotations: ${(error as Error).message}`);
@@ -624,9 +651,11 @@
 							label="Sample Cooling"
 							value={draft.coolantInformation.sampleCooling}
 							autoplacement={false}
-							on:change={(e) => { draft.coolantInformation.sampleCooling = e.detail.value; 
-												coolantToggle = e.detail.value === 'Yes';
-												refresh(); }}
+							on:change={(e) => { 
+								draft.coolantInformation.sampleCooling = e.detail.value; 
+								coolantToggle = e.detail.value === false;
+								refresh(); 
+							}}
 							error={errors['coolantInformation.sampleCooling']}
 						/>
 						<SelectField
@@ -790,6 +819,15 @@
 								<h4 class="text-md font-bold mb-3">Pulse {pulses[selectedPulseIndex].pulseNumber} Data</h4>
 
 								{#if selectedProcessedData}
+									<!-- Run Information -->
+									<div class="mb-4">
+										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Run Information</h5>
+										<div class="grid grid-cols-3 gap-3">
+											<TextField label="Experiment Number" value={String(runMetadata.experimentNumber)} disabled />
+											<TextField label="Sample Number" value={String(runMetadata.sampleNumber)} disabled />
+											<TextField label="Run Number" value={String(runMetadata.runNumber)} disabled />
+										</div>
+									</div>
 									<!-- Pulse Information -->
 									<div class="mb-4">
 										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Pulse Information</h5>
