@@ -44,26 +44,51 @@
 	let loadingProcessedData = false;
 	let processedDataByPulse = new Map<number, ProcessMetadata>();
 	let processedSequences: ProcessMetadata[] = [];
-	let hasUsavedChanges = false;
-	let disablePulse = false;
+	let hasUsavedAnnotation = false;
+
+	function setupBeforeUnload() {
+		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+
+			// trigger if unsaved changes exist
+			if (!hasUsavedAnnotation){
+				return;
+			}
+
+			event.preventDefault();
 
 
+			event.returnValue = '';
+		};
+
+		window.addEventListener('beforeunload', handleBeforeUnload);
+
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload);
+		}
+
+	}
+	function canLeaveCurrentPulse() {
+		if(hasUsavedAnnotation) {
+			return window.confirm(
+				"You have unsaved changes. Are you sure you want to leave?"
+			)
+		}
+		return true;
+	}
 	async function handleSelectPulse(index: number) {
-		// To hold the previous in
+		// To hold the previous in pulse index
 		const previousIndex = selectedPulseIndex;
 		
+		// Allow browser to maintain same page when same button is clicked.
 		if (selectedPulseIndex === index) {
 			selectedPulseIndex = previousIndex;
 			return;
 		}
-		if (hasUsavedChanges) {
-			const confirmSave = window.confirm(
-				"You have unsaved changes. Are you sure you want to leave?"
-			)
-			if (!confirmSave) {
-				selectedPulseIndex = previousIndex;
-				return;
-			}
+
+		// Ask user if they really want to switch if unsaved annotation
+		if (!canLeaveCurrentPulse()) {
+			selectedPulseIndex = previousIndex;
+			return;
 		} 
 		selectedPulseIndex = index;
 		const pulseNumber = pulses[index].pulseNumber;
@@ -84,7 +109,6 @@
 			console.error('Error loading processed data:', error);
 		} finally {
 			loadingProcessedData = false;
-			hasUsavedChanges = true;
 		}
 	}
 
@@ -227,7 +251,6 @@
 			await runService.saveRun(runMetadata);
 			metadataSaved = true;
 			saveNotify = true;
-			hasUsavedChanges = false;
 			setTimeout(() => { saveNotify = false; }, 3000);
 		} catch (error) {
 			console.error('Error saving run metadata:', error);
@@ -331,7 +354,7 @@
 			annotationsSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
-			hasUsavedChanges = false;
+			hasUsavedAnnotation = false;
 		} catch (error) {
 			console.error('Error saving annotations:', error);
 			alert(`Failed to save annotations: ${(error as Error).message}`);
@@ -440,10 +463,13 @@
 	}
 
 	onMount(() => {
+		const beforeUnload = setupBeforeUnload();
 		loadRunData();
 		fetchExperiments();
 		fetchConfigurations();
 		fetchMembers();
+
+		return beforeUnload;
 	});
 </script>
 
@@ -877,6 +903,7 @@
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].pulseQuality = e.detail.value;
 													pulses = pulses;
+													hasUsavedAnnotation = true;
 												}
 											}}
 										/>
@@ -886,6 +913,7 @@
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].comment = String(e.detail.value ?? '');
+													hasUsavedAnnotation = true;
 												}
 											}}
 										/>
