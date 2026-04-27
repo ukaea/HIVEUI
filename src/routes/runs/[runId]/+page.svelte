@@ -44,31 +44,29 @@
 	let loadingProcessedData = false;
 	let processedDataByPulse = new Map<number, ProcessMetadata>();
 	let processedSequences: ProcessMetadata[] = [];
-	let hasUsavedAnnotation = false;
+	let hasUnsavedAnnotation = false;
 
-	function setupBeforeUnload() {
-		const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+	// function setupBeforeUnload() {
+	// 	const handleBeforeUnload = (event: BeforeUnloadEvent) => {
 
-			// trigger if unsaved changes exist
-			if (!hasUsavedAnnotation){
-				return;
-			}
+	// 		// trigger if unsaved changes exist
+	// 		if (!hasUnsavedAnnotation){
+	// 			return;
+	// 		}
 
-			event.preventDefault();
+	// 		event.preventDefault();
+	// 		// event.returnValue = '';
+	// 	};
 
+	// 	window.addEventListener('beforeunload', handleBeforeUnload);
 
-			event.returnValue = '';
-		};
+	// 	return () => {
+	// 		window.removeEventListener('beforeunload', handleBeforeUnload);
+	// 	}
 
-		window.addEventListener('beforeunload', handleBeforeUnload);
-
-		return () => {
-			window.removeEventListener('beforeunload', handleBeforeUnload);
-		}
-
-	}
+	// }
 	function canLeaveCurrentPulse() {
-		if(hasUsavedAnnotation) {
+		if(hasUnsavedAnnotation) {
 			return window.confirm(
 				"You have unsaved changes. Are you sure you want to leave?"
 			)
@@ -87,7 +85,6 @@
 
 		// Ask user if they really want to switch if unsaved annotation
 		if (!canLeaveCurrentPulse()) {
-			selectedPulseIndex = previousIndex;
 			return;
 		} 
 		selectedPulseIndex = index;
@@ -354,7 +351,7 @@
 			annotationsSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
-			hasUsavedAnnotation = false;
+			hasUnsavedAnnotation = false;
 		} catch (error) {
 			console.error('Error saving annotations:', error);
 			alert(`Failed to save annotations: ${(error as Error).message}`);
@@ -463,13 +460,13 @@
 	}
 
 	onMount(() => {
-		const beforeUnload = setupBeforeUnload();
+		// const beforeUnload = setupBeforeUnload();
 		loadRunData();
 		fetchExperiments();
 		fetchConfigurations();
 		fetchMembers();
 
-		return beforeUnload;
+		// return beforeUnload;
 	});
 </script>
 
@@ -903,7 +900,7 @@
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].pulseQuality = e.detail.value;
 													pulses = pulses;
-													hasUsavedAnnotation = true;
+													hasUnsavedAnnotation = true;
 												}
 											}}
 										/>
@@ -913,7 +910,7 @@
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].comment = String(e.detail.value ?? '');
-													hasUsavedAnnotation = true;
+													hasUnsavedAnnotation = true;
 												}
 											}}
 										/>
