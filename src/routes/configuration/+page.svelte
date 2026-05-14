@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, Drawer, MenuItem, sort, format, Logger } from 'svelte-ux';
-	import { SelectField, Toggle, delay, cls, type MenuOption } from 'svelte-ux';
+	import { Button, Table, Dialog, Form, TextField} from 'svelte-ux';
+	import { SelectField,} from 'svelte-ux';
 	import { tableOrderStore } from '@layerstack/svelte-table';
 	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';

@@ -50,6 +50,7 @@ export const handle: Handle = async ({ event, resolve }) => {
         console.log('Access token expired or expiring soon, attempting refresh...');
 
         const newTokens = await refreshAccessToken(user.refreshToken);
+        console.log('Refresh result:', newTokens);
         if (newTokens) {
           // Update user record with new tokens
           try {
