@@ -4,33 +4,26 @@ import { auth, refreshAccessToken } from "$lib/auth";
 import { redirect, type Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 
-
-// Buffer time before expiry to trigger refresh (30 seconds)
 const TOKEN_REFRESH_BUFFER_MS = 30 * 1000;
 
 export const handle: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url;
 
-  // 1. Better Auth Handler
   if (pathname.startsWith("/api/auth")) {
     return svelteKitHandler({ event, resolve, auth, building });
   }
 
-  // 2. Global Auth Bypass
   if (env.AUTHN_ENABLE !== 'true') {
     return resolve(event);
   }
 
-  // 3. Asset & Public Path Guard
-  // Exclude common static files and the unauthorized page
   const isAsset = pathname.includes('.') || pathname.startsWith('/fonts') || pathname.startsWith('/images');
   const isPublic = pathname === '/unauthorized';
-  
+
   if (isAsset || isPublic) {
     return resolve(event);
   }
 
-  // 4. Get Session
   const session = await auth.api.getSession({
     headers: event.request.headers,
   });
@@ -39,20 +32,12 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.session = session.session;
     event.locals.user = session.user as App.Locals['user'];
 
-    // 4a. Check if access token needs refresh
     const user = event.locals.user;
     if (user?.accessTokenExpiresAt && user?.refreshToken) {
       const now = Date.now();
-      const expiresAt = user.accessTokenExpiresAt;
-
-      // Refresh if token is expired or about to expire
-      if (now >= expiresAt - TOKEN_REFRESH_BUFFER_MS) {
-        console.log('Access token expired or expiring soon, attempting refresh...');
-
+      if (now >= user.accessTokenExpiresAt - TOKEN_REFRESH_BUFFER_MS) {
         const newTokens = await refreshAccessToken(user.refreshToken);
-        console.log('Refresh result:', newTokens);
         if (newTokens) {
-          // Update user record with new tokens
           try {
             await auth.api.updateUser({
               body: {
@@ -62,22 +47,16 @@ export const handle: Handle = async ({ event, resolve }) => {
               },
               headers: event.request.headers
             });
-
-            // Update locals with new token data
             event.locals.user = {
               ...user,
               accessToken: newTokens.accessToken,
               refreshToken: newTokens.refreshToken,
               accessTokenExpiresAt: newTokens.accessTokenExpiresAt
             };
-
-            console.log('Access token refreshed successfully');
           } catch (updateError) {
             console.error('Failed to update user with new tokens:', updateError);
           }
         } else {
-          // Refresh failed - clear session and force re-authentication
-          console.warn('Token refresh failed, clearing session');
           await auth.api.signOut({ headers: event.request.headers });
           event.locals.session = null;
           event.locals.user = null;
@@ -89,22 +68,15 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.user = null;
   }
 
-  // 5. Authentication Challenge
   if (!event.locals.user) {
-    // CRITICAL: Do not redirect if we are already in the middle of an auth flow
-    // Better Auth handles the callback via the svelteKitHandler above.
     if (pathname.startsWith('/api/auth/callback')) {
-        return resolve(event);
+      return resolve(event);
     }
-
-    console.log(`Unauthenticated access to ${pathname}. Redirecting to Keycloak.`);
 
     const result = await auth.api.signInSocial({
       body: {
         provider: 'keycloak-custom',
-        // Omitting callbackURL allows Better Auth to use its default internal logic
-        // which is safer for state management.
-        callbackURL: '/' 
+        callbackURL: '/'
       },
     });
 
@@ -115,7 +87,6 @@ export const handle: Handle = async ({ event, resolve }) => {
     throw redirect(302, '/unauthorized');
   }
 
-  // 6. Authorization (Group Check)
   if (env.AUTHZ_ENABLE === 'true') {
     const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
     const userGroups = event.locals.user?.groups || [];
