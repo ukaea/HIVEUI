@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
-	import { tableOrderStore, SelectField } from 'svelte-ux';
+	import { SelectField } from 'svelte-ux';
+	import { tableOrderStore } from '@layerstack/svelte-table';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';

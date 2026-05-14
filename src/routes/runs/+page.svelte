@@ -2,7 +2,8 @@
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
 	import { Button, Table, Dialog, TextField } from 'svelte-ux';
-	import { tableOrderStore, SelectField, type MenuOption } from 'svelte-ux';
+	import { SelectField, type MenuOption } from 'svelte-ux';
+	import { tableOrderStore } from '@layerstack/svelte-table';
 	import { RunMetadata } from '$lib/models/RunMetadata';
 	import { ExperimentMetadata, ConfigurationMetadata } from '$lib/models';
 	import { RunDataService } from '$lib/services/RunDataService';

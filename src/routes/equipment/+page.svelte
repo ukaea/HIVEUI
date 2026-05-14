@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
-	import { tableOrderStore } from 'svelte-ux';
+	import { tableOrderStore } from '@layerstack/svelte-table';
 	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { env } from '$env/dynamic/public';
