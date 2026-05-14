@@ -1,4 +1,5 @@
 import { env } from '$env/dynamic/private';
+import { fetchWithTokenRefresh } from '$lib/auth';
 import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json } from '@sveltejs/kit';
@@ -7,7 +8,7 @@ import jq from "node-jq";
 import { extname, join, normalize, resolve } from 'path';
 import type { RequestHandler } from './$types';
 
-export const GET: RequestHandler = async ({ url, fetch, locals }) => {
+export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
   const endpoint = url.searchParams.get('endpoint');
   const id = url.searchParams.get('id');
   const target = endpoint?.split('/')[2] ?? '';
@@ -26,7 +27,6 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
     }
   }
 
-  const token = (locals.user as any)?.accessToken;
   if (!endpoint) {
     return json({ success: false, message: 'No endpoint provided' }, { status: 400 });
   }
@@ -102,8 +102,9 @@ export const GET: RequestHandler = async ({ url, fetch, locals }) => {
 
       console.log(`[get-json] remote fetch target=${target} metacatPath=${metacatPath} url=${remoteUrl}`);
 
-      const headers: HeadersInit = token ? { Authorization: `Bearer ${token}` } : {};
-      const response = await fetch(remoteUrl.toString(), { headers });
+      const response = await fetchWithTokenRefresh(locals.user, request.headers, (token) =>
+        fetch(remoteUrl.toString(), { headers: { Authorization: `Bearer ${token}` } })
+      );
 
       if (!response.ok) {
         const errorBody = await response.text();

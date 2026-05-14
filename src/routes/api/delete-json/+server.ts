@@ -4,6 +4,7 @@ import type { RequestHandler } from './$types';
 import { rm } from 'fs/promises';
 import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
+import { fetchWithTokenRefresh } from '$lib/auth';
 import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
@@ -21,7 +22,6 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
         }
     }
 
-    const token = locals.user?.accessToken;
 
     try {
         const { targetPath, id } = await request.json();
@@ -80,18 +80,12 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             const remotePath = targetPath.replace(/^\/remote\//, '');
             const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
             
-            const headers: HeadersInit = {
-                'Content-Type': 'application/json'
-            };
-
-            if (token) {
-                headers['Authorization'] = `Bearer ${token}`;
-            }
-
-            const response = await fetch(remoteUrl, { 
-                method: 'DELETE',
-                headers 
-            });
+            const response = await fetchWithTokenRefresh(locals.user, request.headers, (token) =>
+                fetch(remoteUrl, {
+                    method: 'DELETE',
+                    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
+                })
+            );
 
             if (!response.ok) throw error(response.status, `Remote delete failed: ${response.statusText}`);
             return json({ success: true });

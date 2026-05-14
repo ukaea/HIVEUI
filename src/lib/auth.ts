@@ -9,7 +9,6 @@ interface TokenData {
 	id: any;
 	accessToken: string;
 	refreshToken: string;
-	accessTokenExpiresAt: number;
 }
 
 function fetchUserInfoFromCustomProvider(tokens: any): TokenData {
@@ -22,15 +21,10 @@ function fetchUserInfoFromCustomProvider(tokens: any): TokenData {
 	// Decode the ID token to get user info
 	const idData = jwtDecode(idToken) as any;
 
-	// Calculate expiry time (expiresIn is in seconds, convert to milliseconds timestamp)
-	const expiresIn = tokens.expiresIn || 300; // Default to 5 minutes if not provided
-	const accessTokenExpiresAt = Date.now() + (expiresIn * 1000);
-
 	const keycloakData: TokenData = {
 		id: idData,
 		accessToken: tokens.accessToken,
-		refreshToken: tokens.refreshToken || "",
-		accessTokenExpiresAt
+		refreshToken: tokens.refreshToken || ""
 	}
 
 	return keycloakData;
@@ -43,7 +37,6 @@ function fetchUserInfoFromCustomProvider(tokens: any): TokenData {
 export async function refreshAccessToken(refreshToken: string): Promise<{
 	accessToken: string;
 	refreshToken: string;
-	accessTokenExpiresAt: number;
 } | null> {
 	try {
 		// Fetch the OpenID configuration to get the token endpoint
@@ -80,19 +73,48 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
 
 		const tokens = await response.json();
 
-		// Calculate new expiry time
-		const expiresIn = tokens.expires_in || 300;
-		const accessTokenExpiresAt = Date.now() + (expiresIn * 1000);
-
+		console.log('Access token refreshed successfully');
 		return {
 			accessToken: tokens.access_token,
-			refreshToken: tokens.refresh_token || refreshToken, // Keycloak may return a new refresh token
-			accessTokenExpiresAt
+			refreshToken: tokens.refresh_token || refreshToken
 		};
 	} catch (error) {
 		console.error('Error refreshing access token:', error);
 		return null;
 	}
+}
+
+export async function fetchWithTokenRefresh(
+	user: App.Locals['user'],
+	requestHeaders: Headers,
+	makeRequest: (token: string) => Promise<Response>
+): Promise<Response> {
+	const response = await makeRequest(user!.accessToken);
+	console.log(`Downstream response status: ${response.status}`);
+
+	if (response.status !== 403 && response.status !== 401) {
+		return response;
+	}
+
+	if (!user?.refreshToken) {
+		return response;
+	}
+
+	console.log(`Downstream ${response.status} for user ${user.email}, attempting token refresh`);
+	const newTokens = await refreshAccessToken(user.refreshToken);
+	if (!newTokens) {
+		return response;
+	}
+
+	await auth.api.updateUser({
+		body: {
+			accessToken: newTokens.accessToken,
+			refreshToken: newTokens.refreshToken
+		},
+		headers: requestHeaders
+	});
+
+	return makeRequest(newTokens.accessToken);
 }
 
 export const auth = betterAuth({
@@ -112,11 +134,6 @@ export const auth = betterAuth({
 				type: "string",
 				required: true,
 				defaultValue: ""
-			},
-			accessTokenExpiresAt: {
-				type: "number",
-				required: true,
-				defaultValue: 0
 			}
         }
     },
@@ -138,8 +155,7 @@ export const auth = betterAuth({
 						emailVerified: keycloakData.id.email_verified,
 						groups: keycloakData.id.groups || [],
 						accessToken: keycloakData.accessToken,
-						refreshToken: keycloakData.refreshToken,
-						accessTokenExpiresAt: keycloakData.accessTokenExpiresAt
+						refreshToken: keycloakData.refreshToken
 					};
 				}
 			},

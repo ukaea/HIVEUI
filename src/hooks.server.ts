@@ -3,8 +3,7 @@ import { env } from '$env/dynamic/private';
 import { auth, refreshAccessToken } from "$lib/auth";
 import { redirect, type Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
-
-const TOKEN_REFRESH_BUFFER_MS = 30 * 1000;
+import { jwtDecode } from "jwt-decode";
 
 export const handle: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url;
@@ -33,33 +32,31 @@ export const handle: Handle = async ({ event, resolve }) => {
     event.locals.user = session.user as App.Locals['user'];
 
     const user = event.locals.user;
-    if (user?.accessTokenExpiresAt && user?.refreshToken) {
-      const now = Date.now();
-      if (now >= user.accessTokenExpiresAt - TOKEN_REFRESH_BUFFER_MS) {
-        const newTokens = await refreshAccessToken(user.refreshToken);
-        if (newTokens) {
-          try {
-            await auth.api.updateUser({
-              body: {
-                accessToken: newTokens.accessToken,
-                refreshToken: newTokens.refreshToken,
-                accessTokenExpiresAt: newTokens.accessTokenExpiresAt
-              },
-              headers: event.request.headers
+    if (user?.accessToken) {
+      const { exp } = jwtDecode(user.accessToken) as { exp?: number };
+      if (exp) {
+        const remainingSeconds = Math.round(exp - Date.now() / 1000);
+        if (remainingSeconds <= 0) {
+          console.warn(`Token expired for ${user.email}, refreshing`);
+          const newTokens = await refreshAccessToken(user.refreshToken);
+          if (newTokens) {
+            const updateResponse = await auth.api.updateUser({
+              body: { accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken },
+              headers: event.request.headers,
+              asResponse: true
             });
-            event.locals.user = {
-              ...user,
-              accessToken: newTokens.accessToken,
-              refreshToken: newTokens.refreshToken,
-              accessTokenExpiresAt: newTokens.accessTokenExpiresAt
-            };
-          } catch (updateError) {
-            console.error('Failed to update user with new tokens:', updateError);
+            event.locals.user = { ...user, accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken };
+            const response = await resolve(event);
+            updateResponse.headers.getSetCookie().forEach(cookie => {
+              response.headers.append('set-cookie', cookie);
+            });
+            return response;
+          } else {
+            console.warn(`Token refresh failed for ${user.email}, signing out`);
+            await auth.api.signOut({ headers: event.request.headers });
+            event.locals.session = null;
+            event.locals.user = null;
           }
-        } else {
-          await auth.api.signOut({ headers: event.request.headers });
-          event.locals.session = null;
-          event.locals.user = null;
         }
       }
     }

@@ -9,7 +9,6 @@ declare global {
                 groups: string[];
                 accessToken: string;
                 refreshToken: string;
-                accessTokenExpiresAt: number;
             }) | null;
         }
     }
