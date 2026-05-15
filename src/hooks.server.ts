@@ -5,6 +5,10 @@ import { redirect, type Handle } from "@sveltejs/kit";
 import { svelteKitHandler } from "better-auth/svelte-kit";
 import { jwtDecode } from "jwt-decode";
 
+// Keyed by user id. Value is a promise that resolves to the new tokens (or null on failure).
+// Concurrent requests for the same user wait on the same promise rather than each firing a refresh.
+const refreshLocks = new Map<string, Promise<{ accessToken: string; refreshToken: string } | null>>();
+
 export const handle: Handle = async ({ event, resolve }) => {
   const { pathname } = event.url;
 
@@ -35,11 +39,26 @@ export const handle: Handle = async ({ event, resolve }) => {
     if (user?.accessToken) {
       const { exp } = jwtDecode(user.accessToken) as { exp?: number };
       if (exp) {
-        const remainingSeconds = Math.round(exp - Date.now() / 1000);
+        const now = Date.now() / 1000;
+        const remainingSeconds = Math.round(exp - now);
+
         if (remainingSeconds <= 0) {
-          console.warn(`Token expired for ${user.email}, refreshing`);
-          const newTokens = await refreshAccessToken(user.refreshToken);
+          console.warn(`[${pathname}] Access token expired for ${user.email}, refreshing`);
+
+          // If no refresh is in flight for this user, start one. Otherwise join the existing promise.
+          if (!refreshLocks.has(user.id)) {
+            const promise = refreshAccessToken(user.refreshToken).finally(() => {
+              refreshLocks.delete(user.id);
+            });
+            refreshLocks.set(user.id, promise);
+          }
+
+          const newTokens = await refreshLocks.get(user.id)!;
+
           if (newTokens) {
+            const { exp: newExp } = jwtDecode(newTokens.accessToken) as { exp?: number };
+            const newExpiry = newExp ? `${Math.round(newExp - Date.now() / 1000)}s` : 'unknown';
+            console.log(`[${pathname}] Token refreshed for ${user.email}, new access token expires in ${newExpiry}`);
             const updateResponse = await auth.api.updateUser({
               body: { accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken },
               headers: event.request.headers,
@@ -54,8 +73,12 @@ export const handle: Handle = async ({ event, resolve }) => {
           } else {
             console.warn(`Token refresh failed for ${user.email}, signing out`);
             await auth.api.signOut({ headers: event.request.headers });
+            for (const c of event.cookies.getAll()) {
+              event.cookies.delete(c.name, { path: '/' });
+            }
             event.locals.session = null;
             event.locals.user = null;
+            throw redirect(302, '/');
           }
         }
       }
