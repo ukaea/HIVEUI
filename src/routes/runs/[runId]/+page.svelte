@@ -1,20 +1,19 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
 	import { page } from '$app/stores';
-	import { Button, TextField, Form, Notification, Steps, Step } from 'svelte-ux';
-	import { SelectField, type MenuOption } from 'svelte-ux';
-	import { mdiCheckCircleOutline, mdiCheck } from '@mdi/js';
-	import { RunMetadata } from '$lib/models/RunMetadata';
-	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
-	import { ExperimentMetadata, ConfigurationMetadata } from '$lib/models';
-	import { RunDataService } from '$lib/services/RunDataService';
-	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { env } from '$env/dynamic/public';
+	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
+	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
-	import { MemberService } from '$lib/services/MembersService';
+	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
+	import { RunMetadata } from '$lib/models/RunMetadata';
+	import { GenericDataService } from '$lib/services/GenericDataService';
 	import type { KeycloakMember } from '$lib/services/MembersService';
-	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
-	import { env } from '$env/dynamic/public';
+	import { MemberService } from '$lib/services/MembersService';
+	import { RunDataService } from '$lib/services/RunDataService';
+	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
+	import { onMount } from 'svelte';
+	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
 	const testMode = env.PUBLIC_PROCESSING_TEST_MODE === 'true';
 	let experimentNumber = 0;
@@ -31,11 +30,13 @@
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
+	let delteNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
 	let ingestStatusText = '';
 	let ingestError = '';
 	let inputPowerToggle = true;
+	let coolantToggle = true;
 
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
@@ -43,8 +44,49 @@
 	let loadingProcessedData = false;
 	let processedDataByPulse = new Map<number, ProcessMetadata>();
 	let processedSequences: ProcessMetadata[] = [];
+	let hasUnsavedAnnotation = false;
 
+	// function setupBeforeUnload() {
+	// 	const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+
+	// 		// trigger if unsaved changes exist
+	// 		if (!hasUnsavedAnnotation){
+	// 			return;
+	// 		}
+
+	// 		event.preventDefault();
+	// 		// event.returnValue = '';
+	// 	};
+
+	// 	window.addEventListener('beforeunload', handleBeforeUnload);
+
+	// 	return () => {
+	// 		window.removeEventListener('beforeunload', handleBeforeUnload);
+	// 	}
+
+	// }
+	function canLeaveCurrentPulse() {
+		if(hasUnsavedAnnotation) {
+			return window.confirm(
+				"You have unsaved changes. Are you sure you want to leave?"
+			)
+		}
+		return true;
+	}
 	async function handleSelectPulse(index: number) {
+		// To hold the previous in pulse index
+		const previousIndex = selectedPulseIndex;
+		
+		// Allow browser to maintain same page when same button is clicked.
+		if (selectedPulseIndex === index) {
+			selectedPulseIndex = previousIndex;
+			return;
+		}
+
+		// Ask user if they really want to switch if unsaved annotation
+		if (!canLeaveCurrentPulse()) {
+			return;
+		} 
 		selectedPulseIndex = index;
 		const pulseNumber = pulses[index].pulseNumber;
 		loadingProcessedData = true;
@@ -59,6 +101,7 @@
 				selectedProcessedData = sequences[0];
 				processedDataByPulse.set(pulseNumber, sequences[0]);
 			}
+			
 		} catch (error) {
 			console.error('Error loading processed data:', error);
 		} finally {
@@ -214,6 +257,24 @@
 		}
 	}
 
+	async function handleDeleteMetadata() {
+		try {
+			const confirmed = window.confirm("Are you sure you want to delete the metadata")
+			if (!confirmed) {
+				return;
+			}
+			runMetadata.status = 'draft';
+			await runService.delete(runMetadata);
+			delteNotify = true;
+			setTimeout(() => { delteNotify = false; }, 3000);
+		} catch (error) {
+			console.error('Error deleting run metadata:', error);
+			alert(`Failed to delete: ${(error as Error).message}`);
+		} finally {
+			saving = false;
+		}
+	}
+
 	let processingDone = false;
 
 	async function handleTriggerDAG() {
@@ -290,6 +351,7 @@
 			annotationsSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
+			hasUnsavedAnnotation = false;
 		} catch (error) {
 			console.error('Error saving annotations:', error);
 			alert(`Failed to save annotations: ${(error as Error).message}`);
@@ -398,10 +460,13 @@
 	}
 
 	onMount(() => {
+		// const beforeUnload = setupBeforeUnload();
 		loadRunData();
 		fetchExperiments();
 		fetchConfigurations();
 		fetchMembers();
+
+		// return beforeUnload;
 	});
 </script>
 
@@ -609,7 +674,11 @@
 							label="Sample Cooling"
 							value={draft.coolantInformation.sampleCooling}
 							autoplacement={false}
-							on:change={(e) => { draft.coolantInformation.sampleCooling = e.detail.value; refresh(); }}
+							on:change={(e) => { 
+								draft.coolantInformation.sampleCooling = e.detail.value; 
+								coolantToggle = e.detail.value === false;
+								refresh(); 
+							}}
 							error={errors['coolantInformation.sampleCooling']}
 						/>
 						<SelectField
@@ -618,6 +687,7 @@
 							value={draft.coolantInformation.coolantType}
 							autoplacement={false}
 							on:change={(e) => { draft.coolantInformation.coolantType = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.coolantType']}
 						/>
 						<TextField
@@ -625,6 +695,7 @@
 							value={draft.coolantInformation.targetCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantFlow = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.targetCoolantFlow']}
 						/>
 						<TextField
@@ -632,6 +703,7 @@
 							value={draft.coolantInformation.targetCoolantTemperature}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantTemperature = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.targetCoolantTemperature']}
 						/>
 						<TextField
@@ -639,6 +711,7 @@
 							value={draft.coolantInformation.measuredCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.measuredCoolantFlow = e.detail.value; refresh(); }}
+							disabled={coolantToggle}
 							error={errors['coolantInformation.measuredCoolantFlow']}
 						/>
 					</div>
@@ -646,6 +719,14 @@
 					<div class="flex justify-between mt-6">
 						<div></div>
 						<div class="flex gap-2">
+							<Button
+								variant="fill"
+									on:click={() => {setStep(0);
+									handleDeleteMetadata();
+								}}
+							>
+								Delete Metadata
+							</Button>
 							<Button
 								variant="fill"
 								disabled={saving}
@@ -761,6 +842,15 @@
 								<h4 class="text-md font-bold mb-3">Pulse {pulses[selectedPulseIndex].pulseNumber} Data</h4>
 
 								{#if selectedProcessedData}
+									<!-- Run Information -->
+									<div class="mb-4">
+										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Run Information</h5>
+										<div class="grid grid-cols-3 gap-3">
+											<TextField label="Experiment Number" value={String(runMetadata.experimentNumber)} disabled />
+											<TextField label="Sample Number" value={String(runMetadata.sampleNumber)} disabled />
+											<TextField label="Run Number" value={String(runMetadata.runNumber)} disabled />
+										</div>
+									</div>
 									<!-- Pulse Information -->
 									<div class="mb-4">
 										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Pulse Information</h5>
@@ -810,6 +900,7 @@
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].pulseQuality = e.detail.value;
 													pulses = pulses;
+													hasUnsavedAnnotation = true;
 												}
 											}}
 										/>
@@ -819,6 +910,7 @@
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
 													pulses[selectedPulseIndex].comment = String(e.detail.value ?? '');
+													hasUnsavedAnnotation = true;
 												}
 											}}
 										/>
@@ -924,6 +1016,9 @@
 
 	<div class="fixed top-4 right-4 z-50">
 		<Notification title="Saved successfully!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
+	</div>
+	<div class="fixed top-4 right-4 z-50">
+		<Notification title="Successfully Deleted!" icon={mdiCheckCircleOutline} color="success" closeIcon open={delteNotify} />
 	</div>
 </div>
 
