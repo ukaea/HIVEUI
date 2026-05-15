@@ -1,5 +1,6 @@
 // src/routes/api/save-json/+server.ts
 import { env } from '$env/dynamic/private';
+import { fetchWithTokenRefresh } from '$lib/auth';
 import { getForwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { upsertRecord } from '$lib/services/DatabaseService';
 import { error, json } from '@sveltejs/kit';
@@ -23,7 +24,6 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
         }
     }
 
-    const token = locals.user?.accessToken;
 
     try {
         const body = await request.json();
@@ -139,19 +139,13 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 const remotePath = targetPath.replace(/^\/remote\//, '');
                 const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
 
-                // Injecting the Bearer Token
-                const headers: HeadersInit = {
-                    'Content-Type': 'application/json'
-                };
-                if (token) {
-                    headers['Authorization'] = `Bearer ${token}`;
-                }
-
-                const response = await fetch(remoteUrl, {
-                    method: 'POST',
-                    headers,
-                    body: JSON.stringify(dataToSend)
-                });
+                const response = await fetchWithTokenRefresh(locals.user, request.headers, (token) =>
+                    fetch(remoteUrl, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+                        body: JSON.stringify(dataToSend)
+                    })
+                );
 
                 if (!response.ok) {
                     const errorBody = await response.text();

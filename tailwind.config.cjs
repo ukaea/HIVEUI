@@ -1,5 +1,5 @@
 const colors = require('tailwindcss/colors');
-const svelte_ux = require('svelte-ux/plugins/tailwind.cjs');
+const svelte_ux = require('@layerstack/tailwind/plugin');
 
 /** @type {import('tailwindcss').Config}*/
 const config = {
