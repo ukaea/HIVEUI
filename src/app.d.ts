@@ -1,17 +1,11 @@
-// src/app.d.ts
-import { type Session, type User } from "better-auth";
+import type { SessionData } from '$lib/server/auth';
 
 declare global {
-    namespace App {
-        interface Locals {
-            session: Session | null;
-            user: (User & {
-                groups: string[];
-                accessToken: string;
-                refreshToken: string;
-            }) | null;
-        }
-    }
+	namespace App {
+		interface Locals {
+			user: SessionData | null;
+		}
+	}
 }
 
 export {};
