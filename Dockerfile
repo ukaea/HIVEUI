@@ -8,8 +8,6 @@ WORKDIR /app
 COPY --from=deps /app/node_modules node_modules/
 COPY package*.json ./
 COPY . .
-ENV BETTER_AUTH_SECRET=placeholder
-ENV BETTER_AUTH_URL=http://localhost:3000
 RUN npm run build
 
 FROM node:24.2.0-alpine AS production

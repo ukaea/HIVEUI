@@ -1,122 +1,154 @@
-import { building } from "$app/environment";
 import { env } from '$env/dynamic/private';
-import { auth, refreshAccessToken } from "$lib/auth";
-import { redirect, type Handle } from "@sveltejs/kit";
-import { svelteKitHandler } from "better-auth/svelte-kit";
-import { jwtDecode } from "jwt-decode";
+import {
+	createKeycloakClient,
+	decodeSession,
+	encodeSession,
+	refreshAccessToken,
+	SESSION_COOKIE,
+	type SessionData
+} from '$lib/server/auth';
+import { redirect, type Handle } from '@sveltejs/kit';
+import { jwtDecode } from 'jwt-decode';
+import * as arctic from 'arctic';
 
-// Keyed by user id. Value is a promise that resolves to the new tokens (or null on failure).
-// Concurrent requests for the same user wait on the same promise rather than each firing a refresh.
+// ---------------------------------------------------------------------------
+// Cookie helpers
+// ---------------------------------------------------------------------------
+
+function setSessionCookie(data: SessionData, response: Response): void {
+	const value = encodeSession(data);
+	const maxAge = 60 * 60 * 24 * 7; // 7 days
+	response.headers.append(
+		'set-cookie',
+		`${SESSION_COOKIE}=${value}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${maxAge}`
+	);
+}
+
+// ---------------------------------------------------------------------------
+// Per-user refresh deduplication
+// ---------------------------------------------------------------------------
+
 const refreshLocks = new Map<string, Promise<{ accessToken: string; refreshToken: string } | null>>();
 
+// ---------------------------------------------------------------------------
+// Handle
+// ---------------------------------------------------------------------------
+
 export const handle: Handle = async ({ event, resolve }) => {
-  const { pathname } = event.url;
+	const { pathname } = event.url;
 
-  if (pathname.startsWith("/api/auth")) {
-    return svelteKitHandler({ event, resolve, auth, building });
-  }
+	// Auth callback and signout are handled by their own routes — let them through
+	if (pathname.startsWith('/api/auth/') || pathname === '/signout') {
+		return resolve(event);
+	}
 
-  if (env.AUTHN_ENABLE !== 'true') {
-    return resolve(event);
-  }
+	if (env.AUTHN_ENABLE !== 'true') {
+		return resolve(event);
+	}
 
-  const isAsset = pathname.includes('.') || pathname.startsWith('/fonts') || pathname.startsWith('/images');
-  const isPublic = pathname === '/unauthorized';
+	const isAsset = pathname.includes('.') || pathname.startsWith('/fonts') || pathname.startsWith('/images');
+	const isPublic = pathname === '/unauthorized';
 
-  if (isAsset || isPublic) {
-    return resolve(event);
-  }
+	if (isAsset || isPublic) {
+		return resolve(event);
+	}
 
-  const session = await auth.api.getSession({
-    headers: event.request.headers,
-  });
+	// Read and verify session cookie
+	const raw = event.cookies.get(SESSION_COOKIE);
+	const session = raw ? decodeSession(raw) : null;
 
-  if (session) {
-    event.locals.session = session.session;
-    event.locals.user = session.user as App.Locals['user'];
+	if (session) {
+		event.locals.user = session;
 
-    const user = event.locals.user;
-    if (user?.accessToken) {
-      const { exp } = jwtDecode(user.accessToken) as { exp?: number };
-      if (exp) {
-        const now = Date.now() / 1000;
-        const remainingSeconds = Math.round(exp - now);
+		// Check access token expiry directly from JWT exp claim
+		const { exp } = jwtDecode(session.accessToken) as { exp?: number };
+		const { exp: refreshExp } = jwtDecode(session.refreshToken) as { exp?: number };
+		if (exp) {
+			const now = Date.now() / 1000;
+			const remainingSeconds = Math.round(exp - now);
+			const refreshRemainingSeconds = refreshExp ? Math.round(refreshExp - now) : null;
 
-        if (remainingSeconds <= 0) {
-          console.warn(`[${pathname}] Access token expired for ${user.email}, refreshing`);
+			console.log(
+				`[${pathname}] ${session.email} — access token expires in ${remainingSeconds}s` +
+				(refreshRemainingSeconds !== null ? `, refresh token expires in ${refreshRemainingSeconds}s` : '')
+			);
 
-          // If no refresh is in flight for this user, start one. Otherwise join the existing promise.
-          if (!refreshLocks.has(user.id)) {
-            const promise = refreshAccessToken(user.refreshToken).finally(() => {
-              refreshLocks.delete(user.id);
-            });
-            refreshLocks.set(user.id, promise);
-          }
+			if (remainingSeconds <= 0) {
+				console.warn(`[${pathname}] Access token expired for ${session.email}, refreshing`);
 
-          const newTokens = await refreshLocks.get(user.id)!;
+				if (!refreshLocks.has(session.userId)) {
+					const promise = refreshAccessToken(session.refreshToken).finally(() => {
+						refreshLocks.delete(session.userId);
+					});
+					refreshLocks.set(session.userId, promise);
+				}
 
-          if (newTokens) {
-            const { exp: newExp } = jwtDecode(newTokens.accessToken) as { exp?: number };
-            const newExpiry = newExp ? `${Math.round(newExp - Date.now() / 1000)}s` : 'unknown';
-            console.log(`[${pathname}] Token refreshed for ${user.email}, new access token expires in ${newExpiry}`);
-            const updateResponse = await auth.api.updateUser({
-              body: { accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken },
-              headers: event.request.headers,
-              asResponse: true
-            });
-            event.locals.user = { ...user, accessToken: newTokens.accessToken, refreshToken: newTokens.refreshToken };
-            const response = await resolve(event);
-            updateResponse.headers.getSetCookie().forEach(cookie => {
-              response.headers.append('set-cookie', cookie);
-            });
-            return response;
-          } else {
-            console.warn(`Token refresh failed for ${user.email}, signing out`);
-            await auth.api.signOut({ headers: event.request.headers });
-            for (const c of event.cookies.getAll()) {
-              event.cookies.delete(c.name, { path: '/' });
-            }
-            event.locals.session = null;
-            event.locals.user = null;
-            throw redirect(302, '/');
-          }
-        }
-      }
-    }
-  } else {
-    event.locals.session = null;
-    event.locals.user = null;
-  }
+				const newTokens = await refreshLocks.get(session.userId)!;
 
-  if (!event.locals.user) {
-    if (pathname.startsWith('/api/auth/callback')) {
-      return resolve(event);
-    }
+				if (newTokens) {
+					const { exp: newExp } = jwtDecode(newTokens.accessToken) as { exp?: number };
+					const newExpiry = newExp ? `${Math.round(newExp - Date.now() / 1000)}s` : 'unknown';
+					console.log(`[${pathname}] Token refreshed for ${session.email}, new token expires in ${newExpiry}`);
 
-    const result = await auth.api.signInSocial({
-      body: {
-        provider: 'keycloak-custom',
-        callbackURL: '/'
-      },
-    });
+					const updatedSession: SessionData = { ...session, ...newTokens };
+					event.locals.user = updatedSession;
 
-    if (result?.url) {
-      throw redirect(302, result.url);
-    }
+					const response = await resolve(event);
+					setSessionCookie(updatedSession, response);
+					return response;
+				} else {
+					console.warn(`Token refresh failed for ${session.email}, clearing session`);
+					const clearCookie = `${SESSION_COOKIE}=; Path=/; HttpOnly; SameSite=Lax; Max-Age=0`;
+					const isBrowserNavigation = event.request.headers.get('accept')?.includes('text/html') ?? false;
+					if (isBrowserNavigation) {
+						// Full page load — redirect to root so the hook re-runs with no session
+						// and issues the Keycloak redirect normally
+						const headers = new Headers();
+						headers.append('set-cookie', clearCookie);
+						headers.set('location', '/');
+						return new Response(null, { status: 302, headers });
+					} else {
+						// SvelteKit client-side fetch — signal the layout's fetch interceptor to reload
+						const headers = new Headers();
+						headers.append('set-cookie', clearCookie);
+						headers.set('x-auth-reload', '1');
+						return new Response(null, { status: 401, headers });
+					}
+				}
+			}
+		}
+	} else {
+		event.locals.user = null;
+	}
 
-    throw redirect(302, '/unauthorized');
-  }
+	// Redirect unauthenticated users to Keycloak via PKCE
+	if (!event.locals.user) {
+		const state = arctic.generateState();
+		const codeVerifier = arctic.generateCodeVerifier();
 
-  if (env.AUTHZ_ENABLE === 'true') {
-    const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
-    const userGroups = event.locals.user?.groups || [];
+		const cookieOpts = 'Path=/; HttpOnly; SameSite=Lax; Max-Age=600';
+		const headers = new Headers();
+		headers.append('set-cookie', `oauth_state=${state}; ${cookieOpts}`);
+		headers.append('set-cookie', `oauth_verifier=${codeVerifier}; ${cookieOpts}`);
+		headers.append('set-cookie', `oauth_redirect=${encodeURIComponent(pathname)}; ${cookieOpts}`);
 
-    if (requiredGroup && !userGroups.includes(requiredGroup)) {
-      console.warn(`Access Denied for ${event.locals.user?.email}`);
-      await auth.api.signOut({ headers: event.request.headers });
-      throw redirect(303, '/unauthorized');
-    }
-  }
+		const keycloak = createKeycloakClient();
+		const url = keycloak.createAuthorizationURL(state, codeVerifier, ['openid', 'profile', 'email']);
+		headers.set('location', url.toString());
 
-  return resolve(event);
+		return new Response(null, { status: 302, headers });
+	}
+
+	// Group authorisation
+	if (env.AUTHZ_ENABLE === 'true') {
+		const requiredGroup = env.AUTHZ_REQUIRED_GROUP;
+		const userGroups = event.locals.user.groups ?? [];
+
+		if (requiredGroup && !userGroups.includes(requiredGroup)) {
+			console.warn(`Access denied for ${event.locals.user.email}`);
+			throw redirect(303, '/unauthorized');
+		}
+	}
+
+	return resolve(event);
 };

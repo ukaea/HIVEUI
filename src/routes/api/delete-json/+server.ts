@@ -4,7 +4,7 @@ import type { RequestHandler } from './$types';
 import { rm } from 'fs/promises';
 import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
-import { fetchWithTokenRefresh } from '$lib/auth';
+import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
@@ -80,7 +80,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             const remotePath = targetPath.replace(/^\/remote\//, '');
             const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;
             
-            const response = await fetchWithTokenRefresh(locals.user, request.headers, (token) =>
+            const response = await fetchWithTokenRefresh(locals, (token) =>
                 fetch(remoteUrl, {
                     method: 'DELETE',
                     headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` }
