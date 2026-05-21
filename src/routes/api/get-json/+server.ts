@@ -1,5 +1,5 @@
 import { env } from '$env/dynamic/private';
-import { fetchWithTokenRefresh } from '$lib/auth';
+import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json } from '@sveltejs/kit';
@@ -102,7 +102,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
 
       console.log(`[get-json] remote fetch target=${target} metacatPath=${metacatPath} url=${remoteUrl}`);
 
-      const response = await fetchWithTokenRefresh(locals.user, request.headers, (token) =>
+      const response = await fetchWithTokenRefresh(locals, (token) =>
         fetch(remoteUrl.toString(), { headers: { Authorization: `Bearer ${token}` } })
       );
 
