@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 function generateProcessedMetadata(pulseNumber: number, sequenceNumber: number) {
     const baseTimestamp = new Date('2025-06-15T10:30:00');

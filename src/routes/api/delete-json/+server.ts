@@ -1,6 +1,5 @@
 // src/routes/api/delete-json/+server.ts
-import { json, error } from '@sveltejs/kit';
-import type { RequestHandler } from './$types';
+import { json, error, type RequestHandler } from '@sveltejs/kit';
 import { rm } from 'fs/promises';
 import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';

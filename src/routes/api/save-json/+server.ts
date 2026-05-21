@@ -3,11 +3,10 @@ import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/auth';
 import { getForwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { upsertRecord } from '$lib/services/DatabaseService';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
 import jq from "node-jq";
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---

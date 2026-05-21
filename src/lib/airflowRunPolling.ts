@@ -7,7 +7,7 @@ export interface DAGStatus {
 }
 
 export async function pollDAGStatus(dagRunId: string, dagType: 'postprocessing' | 'ingest' = 'postprocessing'): Promise<DAGStatus> {
-    const response = await fetch(`/api/airflow/dag-status?dagRunId=${encodeURIComponent(dagRunId)}&dagType=${dagType}`);
+    const response = await fetch(`/api/airflow/run-status?dagRunId=${encodeURIComponent(dagRunId)}&dagType=${dagType}`);
 
     if (!response.ok) {
         const body = await response.json().catch(() => null);

@@ -2,11 +2,10 @@ import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/auth';
 import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises';
 import jq from "node-jq";
 import { extname, join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
   const endpoint = url.searchParams.get('endpoint');

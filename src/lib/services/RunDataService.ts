@@ -2,6 +2,13 @@ import { RunMetadata } from '$lib/models/RunMetadata';
 import { PulseAnnotation } from '$lib/models/PulseAnnotation';
 import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 
+export interface PostprocessData {
+    found_pulses: number[];
+    experimentId: string | number;
+    sampleId: string | number;
+    runId: string | number;
+}
+
 export class RunDataService {
 
     // ─── Run endpoints (local disk) ─────────────────────────────────────
@@ -180,6 +187,24 @@ export class RunDataService {
             return await response.json();
         } catch (error) {
             console.error('Error triggering postprocess DAG:', error);
+            throw error;
+        }
+    }
+
+    async fetchPostprocessData(dagRunId: string, taskId?: string): Promise<PostprocessData> {
+        try {
+            const params = new URLSearchParams({ dagRunId, type: 'postprocessing' });
+            if (taskId) params.set('taskId', taskId);
+
+            const response = await fetch(`/api/airflow/data?${params}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch postprocess data: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching postprocess data:', error);
             throw error;
         }
     }

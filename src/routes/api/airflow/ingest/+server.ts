@@ -1,11 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import { getRecordById } from '$lib/services/DatabaseService';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 async function getConfigRecord(configurationId: string): Promise<any | null> {
     if (publicEnv.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true') {

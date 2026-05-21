@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
     if (env.AUTHN_ENABLE === 'true' && !locals.user) {

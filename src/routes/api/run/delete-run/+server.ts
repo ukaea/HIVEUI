@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { rm } from 'fs/promises';
 import { normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---

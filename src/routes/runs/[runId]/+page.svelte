@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
-	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
+	import { waitForDAGCompletion, type DAGStatus } from '$lib/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
@@ -321,10 +321,28 @@
 		})
 			.then(async () => {
 				dagStatusText = '';
+
+				if (!testMode) {
+					try {
+						const postprocessData = await runService.fetchPostprocessData(dagRunId);
+						const expId = Number(postprocessData.experimentId);
+						const sampleId = Number(postprocessData.sampleId);
+						const runId = Number(postprocessData.runId);
+						const foundPulseNumbers = new Set(postprocessData.found_pulses.map(Number));
+
+						const allPulses = await runService.fetchPulses(expId, sampleId, runId);
+						pulses = allPulses.filter((p) => foundPulseNumbers.has(p.pulseNumber));
+					} catch (err) {
+						console.error('Failed to load pulses from postprocess data, falling back to directory scan:', err);
+						await loadPulses();
+					}
+				} else {
+					await loadPulses();
+				}
+
 				processingDone = true;
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
-				await loadPulses();
 			})
 			.catch((err) => {
 				dagError = err.message || 'DAG processing failed';
