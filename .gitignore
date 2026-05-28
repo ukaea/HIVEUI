@@ -1,5 +1,7 @@
 .DS_Store
+notes.md
 node_modules
+realm-data
 /build
 /.svelte-kit
 /package
@@ -10,3 +12,5 @@ vite.config.ts.timestamp-*
 /exampleData
 /sampleData
 KeyChallenge4
+/diagnostics
+/experiments

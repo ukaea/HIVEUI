@@ -1,45 +1,22 @@
-<script lang="ts">
-	import { AppBar, AppLayout, Card, Button, NavItem, Tooltip, settings } from 'svelte-ux';
-	import '../app.postcss';
-	import User from '../components/user.svelte';
-	import type { LayoutServerData } from './$types';
+<script>
+	import AppLayout from '$lib/layouts/App.svelte';
+	import { onMount } from 'svelte';
 
-	export let data: LayoutServerData;
-
-	settings({
-		components: {
-			AppBar: {
-				classes: 'bg-custom-blue text-white shadow-md'
+	// Intercept all fetch calls made by SvelteKit's client router and reload
+	// the page if the server signals that the session has expired (401 + x-auth-reload).
+	onMount(() => {
+		const original = window.fetch;
+		window.fetch = async (...args) => {
+			const response = await original(...args);
+			if (response.status === 401 && response.headers.get('x-auth-reload') === '1') {
+				window.location.reload();
 			}
-		}
+			return response;
+		};
+		return () => { window.fetch = original; };
 	});
 </script>
 
-<AppLayout areas="'header header' 'aside main'" navWidth=0>
-	<AppBar title="HIVE Data Ingestion" class="main-appbar">
-		<div slot="actions" class="flex items-center justify-end w-full">
-			<User data={{ user: data?.session?.user, status: Boolean(data?.session) }} />
-		</div>
-	</AppBar>
-
-	<main>
-		<slot />
-	</main>
+<AppLayout>
+	<slot />
 </AppLayout>
-
-<style>
-  :global(.main-appbar) {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 0 1rem;
-  }
-
-  :global(.main-appbar h2) {
-    margin-right: auto;
-  }
-
-  :global(.main-appbar [slot="actions"]) {
-    margin-left: auto;
-  }
-</style>
