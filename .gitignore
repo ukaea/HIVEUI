@@ -14,3 +14,5 @@ vite.config.ts.timestamp-*
 KeyChallenge4
 /diagnostics
 /experiments
+.claude
+/postgres_data/*

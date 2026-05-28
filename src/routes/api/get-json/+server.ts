@@ -1,9 +1,10 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
+import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
 import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { readdir, readFile, stat } from 'fs/promises';
+import { mkdir, readdir, readFile, stat } from 'fs/promises';
 import jq from "node-jq";
 import { extname, join, normalize, resolve } from 'path';
 
@@ -32,18 +33,19 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
 
   // --- BRANCH 1: Local File System ---
   if (endpoint.startsWith('/local/')) {
+    const rootFolder = env.ROOT_FOLDER_LOCATION;
+    if (!rootFolder) throw error(500, 'ROOT_FOLDER_LOCATION not set');
+
+    const relativePath = endpoint.replace(/^\/local\//, '');
+    const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+    const dirPath = resolve(rootFolder, sanitizedPath);
+    const fullPath = id ? resolve(dirPath, `${id}.json`) : dirPath;
+
+    if (!fullPath.startsWith(resolve(rootFolder))) {
+      throw error(403, 'Access denied: Invalid file path');
+    }
+
     try {
-      const rootFolder = env.ROOT_FOLDER_LOCATION;
-      if (!rootFolder) throw new Error('ROOT_FOLDER_LOCATION not set');
-
-      const relativePath = endpoint.replace(/^\/local\//, '');
-      const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-      let fullPath = id ? resolve(rootFolder, sanitizedPath, `${id}.json`) : resolve(rootFolder, sanitizedPath);
-
-      if (!fullPath.startsWith(resolve(rootFolder))) {
-        throw error(403, 'Access denied: Invalid file path');
-      }
-
       const stats = await stat(fullPath);
 
       if (stats.isFile()) {
@@ -64,6 +66,10 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
       throw error(400, 'Invalid path type');
     } catch (err: any) {
       if (err.status) throw err;
+      if (err.code === 'ENOENT' && !id) {
+        await mkdir(dirPath, { recursive: true });
+        return json([]);
+      }
       if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
       throw error(500, 'Internal server error reading files');
     }
@@ -74,6 +80,15 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
     try {
       const tableName = endpoint.replace(/^\/db\//, '');
       if (!/^[a-zA-Z0-9_]+$/.test(tableName)) throw error(400, 'Invalid table name');
+
+      if (tableName === 'configurations') {
+        if (id) {
+          const record = await getConfigurationById(id);
+          if (!record) throw error(404, `Record ${id} not found`);
+          return json(record);
+        }
+        return json(await getAllConfigurations());
+      }
 
       if (id) {
         const record = getRecordById(tableName, id);

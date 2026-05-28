@@ -4,6 +4,7 @@ import { rm } from 'fs/promises';
 import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
+import { deleteConfiguration } from '$lib/server/db/configurationsRepository';
 import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
@@ -67,6 +68,12 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
             if (!id) {
                 throw error(400, 'id is required for database delete operations');
             }
+
+            if (tableName === 'configurations') {
+                await deleteConfiguration(id);
+                return json({ success: true });
+            }
+
             deleteRecord(tableName, id);
             return json({ success: true });
         }

@@ -2,6 +2,7 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getForwardJqScript, hasJqMapping } from '$lib/services/MappingService';
+import { upsertConfiguration } from '$lib/server/db/configurationsRepository';
 import { upsertRecord } from '$lib/services/DatabaseService';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
@@ -100,6 +101,11 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
 
             if (!id) {
                 throw error(400, 'id is required for database operations');
+            }
+
+            if (tableName === 'configurations') {
+                await upsertConfiguration(id, metadata);
+                return json({ success: true, message: 'Saved to DB' });
             }
 
             upsertRecord(tableName, id, metadata);
