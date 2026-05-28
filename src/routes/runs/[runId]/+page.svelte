@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
-	import { waitForDAGCompletion, type DAGStatus } from '$lib/airflowRunPolling';
+	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
