@@ -43,7 +43,6 @@
 	let selectedProcessedData: ProcessMetadata | null = null;
 	let loadingProcessedData = false;
 	let processedDataByPulse = new Map<number, ProcessMetadata>();
-	let processedSequences: ProcessMetadata[] = [];
 	let hasUnsavedAnnotation = false;
 
 	// function setupBeforeUnload() {
@@ -88,20 +87,17 @@
 			return;
 		} 
 		selectedPulseIndex = index;
-		const pulseNumber = pulses[index].pulseNumber;
+		const pulse = pulses[index];
 		loadingProcessedData = true;
 		selectedProcessedData = null;
-		processedSequences = [];
 		try {
-			const sequences = await runService.fetchProcessedData(
-				experimentNumber, sampleNumber, runNumber, pulseNumber
+			const data = await runService.fetchProcessedData(
+				experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
 			);
-			processedSequences = sequences;
-			if (sequences.length > 0) {
-				selectedProcessedData = sequences[0];
-				processedDataByPulse.set(pulseNumber, sequences[0]);
+			if (data) {
+				selectedProcessedData = data;
+				processedDataByPulse.set(pulse.pulseNumber, data);
 			}
-			
 		} catch (error) {
 			console.error('Error loading processed data:', error);
 		} finally {
@@ -323,22 +319,13 @@
 				dagStatusText = '';
 
 				if (!testMode) {
-					try {
-						const postprocessData = await runService.fetchPostprocessData(dagRunId);
-						const expId = Number(postprocessData.experimentId);
-						const sampleId = Number(postprocessData.sampleId);
-						const runId = Number(postprocessData.runId);
-						const foundPulseNumbers = new Set(postprocessData.found_pulses.map(Number));
-
-						const allPulses = await runService.fetchPulses(expId, sampleId, runId);
-						pulses = allPulses.filter((p) => foundPulseNumbers.has(p.pulseNumber));
-					} catch (err) {
-						console.error('Failed to load pulses from postprocess data, falling back to directory scan:', err);
-						await loadPulses();
-					}
-				} else {
-					await loadPulses();
+					const postprocessData = await runService.fetchPostprocessData(dagRunId);
+					runMetadata.pulseIds = postprocessData.pulses.map(
+						({ pulseNumber, sequenceNumber }) => [pulseNumber, sequenceNumber] as [number, number]
+					);
 				}
+
+				await loadPulses();
 
 				processingDone = true;
 				runMetadata.status = 'processed';
@@ -385,11 +372,11 @@
 			// Ensure processed data is loaded for every pulse
 			for (const pulse of pulses) {
 				if (!processedDataByPulse.has(pulse.pulseNumber)) {
-					const sequences = await runService.fetchProcessedData(
-						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber
+					const data = await runService.fetchProcessedData(
+						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
 					);
-					if (sequences.length > 0) {
-						processedDataByPulse.set(pulse.pulseNumber, sequences[0]);
+					if (data) {
+						processedDataByPulse.set(pulse.pulseNumber, data);
 					}
 				}
 			}

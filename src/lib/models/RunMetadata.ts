@@ -28,6 +28,7 @@ export class RunMetadata {
     ingestDagRunId: string;
     currentStep: number;
     createdAt: string;
+    pulseIds: Array<[number, number]>;
 
     static schema = Zod.object({
         runNumber: Zod.number().min(1, 'Run Number is required'),
@@ -75,6 +76,7 @@ export class RunMetadata {
         this.ingestDagRunId = '';
         this.currentStep = 0;
         this.createdAt = new Date().toISOString();
+        this.pulseIds = [];
     }
 
     static fromJSON(json: any): RunMetadata {
@@ -101,6 +103,7 @@ export class RunMetadata {
         run.ingestDagRunId = json.ingestDagRunId || '';
         run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
+        run.pulseIds = Array.isArray(json.pulseIds) ? json.pulseIds : [];
         return run;
     }
 
@@ -119,7 +122,8 @@ export class RunMetadata {
             dagRunId: metadata.dagRunId,
             ingestDagRunId: metadata.ingestDagRunId,
             currentStep: metadata.currentStep,
-            createdAt: metadata.createdAt
+            createdAt: metadata.createdAt,
+            pulseIds: metadata.pulseIds
         };
     }
 }

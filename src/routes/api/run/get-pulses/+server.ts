@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
-import { readdir, readFile, stat } from 'fs/promises';
+import { readFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 
 export const GET: RequestHandler = async ({ url, locals }) => {
@@ -24,44 +24,39 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         throw error(400, 'experimentNumber, sampleNumber, and runNumber are required');
     }
 
+    const rootFolder = env.ROOT_FOLDER_LOCATION;
+    if (!rootFolder) {
+        throw error(500, 'ROOT_FOLDER_LOCATION is not set');
+    }
+
+    const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`;
+    const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+    const runPath = resolve(rootFolder, sanitizedPath);
+
+    if (!runPath.startsWith(resolve(rootFolder))) {
+        throw error(403, 'Access denied: Invalid file path');
+    }
+
     try {
-        const rootFolder = env.ROOT_FOLDER_LOCATION;
-        if (!rootFolder) {
-            throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
-        }
-
-        const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`;
-        const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-        const runPath = resolve(rootFolder, sanitizedPath);
-
-        if (!runPath.startsWith(resolve(rootFolder))) {
-            throw error(403, 'Access denied: Invalid file path');
-        }
-
-        const entries = await readdir(runPath, { withFileTypes: true });
-        const pulseDirs = entries.filter(
-            (e) => e.isDirectory() && /^P-\d+$/.test(e.name)
-        );
+        const metadataRaw = await readFile(join(runPath, 'manual_metadata.json'), 'utf-8');
+        const metadata = JSON.parse(metadataRaw);
+        const pulseIds: Array<[number, number]> = Array.isArray(metadata.pulseIds) ? metadata.pulseIds : [];
 
         const pulses = await Promise.all(
-            pulseDirs.map(async (dir) => {
-                const pulseNumber = parseInt(dir.name.replace('P-', ''), 10);
-                const annotationPath = join(runPath, dir.name, 'pulse_manual_metadata.json');
+            pulseIds.map(async ([pulseNumber, sequenceNumber]) => {
+                const annotationPath = join(runPath, `P-${pulseNumber}`, 'pulse_manual_metadata.json');
 
                 let annotation = null;
                 try {
-                    const stats = await stat(annotationPath);
-                    if (stats.isFile()) {
-                        const content = await readFile(annotationPath, 'utf-8');
-                        annotation = JSON.parse(content);
-                    }
+                    const content = await readFile(annotationPath, 'utf-8');
+                    annotation = JSON.parse(content);
                 } catch {
                     // No annotation file yet
                 }
 
                 return {
                     pulseNumber,
-                    runNumber: parseInt(runNumber, 10),
+                    sequenceNumber,
                     pulseQuality: annotation?.pulseQuality || '',
                     comment: annotation?.comment || ''
                 };
@@ -69,13 +64,11 @@ export const GET: RequestHandler = async ({ url, locals }) => {
         );
 
         pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
-
         return json(pulses);
 
     } catch (err: any) {
-        console.error('Error reading pulse directories:', err);
         if (err.status) throw err;
         if (err.code === 'ENOENT') return json([]);
-        throw error(500, 'Internal server error reading pulse directories');
+        throw error(500, 'Internal server error reading pulse data');
     }
 };

@@ -3,10 +3,10 @@ import { PulseAnnotation } from '$lib/models/PulseAnnotation';
 import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
 
 export interface PostprocessData {
-    found_pulses: number[];
-    experimentId: string | number;
-    sampleId: string | number;
-    runId: string | number;
+    experimentNumber: number;
+    sampleNumber: number;
+    runNumber: number;
+    pulses: Array<{ pulseNumber: number; sequenceNumber: number }>;
 }
 
 export class RunDataService {
@@ -112,6 +112,7 @@ export class RunDataService {
         experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
+        pulseNumber: number,
         annotation: PulseAnnotation
     ): Promise<void> {
         const cleanedData = PulseAnnotation.toJSON(annotation);
@@ -124,7 +125,7 @@ export class RunDataService {
                     experimentNumber,
                     sampleNumber,
                     runNumber,
-                    pulseNumber: annotation.pulseNumber,
+                    pulseNumber,
                     annotation: cleanedData
                 })
             });
@@ -143,29 +144,25 @@ export class RunDataService {
         experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
-        pulseNumber: number
-    ): Promise<ProcessMetadata[]> {
-        try {
-            const params = new URLSearchParams({
-                experimentNumber: String(experimentNumber),
-                sampleNumber: String(sampleNumber),
-                runNumber: String(runNumber),
-                pulseNumber: String(pulseNumber)
-            });
+        pulseNumber: number,
+        sequenceNumber: number
+    ): Promise<ProcessMetadata | null> {
+        const params = new URLSearchParams({
+            experimentNumber: String(experimentNumber),
+            sampleNumber: String(sampleNumber),
+            runNumber: String(runNumber),
+            pulseNumber: String(pulseNumber),
+            sequenceNumber: String(sequenceNumber)
+        });
 
-            const response = await fetch(`/api/run/get-processed-data?${params}`);
+        const response = await fetch(`/api/run/get-processed-data?${params}`);
 
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const rawItems = Array.isArray(data) ? data : [data];
-            return rawItems.map((json: any) => ProcessMetadata.fromJSON(json));
-        } catch (error) {
-            console.error('Error fetching processed data:', error);
-            throw new Error('Failed to load processed data.');
+        if (!response.ok) {
+            throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
         }
+
+        const data = await response.json();
+        return data ? ProcessMetadata.fromJSON(data) : null;
     }
 
     async triggerPostprocess(
