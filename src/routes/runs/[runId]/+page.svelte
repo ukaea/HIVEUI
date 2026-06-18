@@ -4,14 +4,18 @@
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
-	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
-	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
+
 	import { RunMetadata } from '$lib/models/RunMetadata';
+	import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
+	import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
+    import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { MemberService } from '$lib/services/MembersService';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
+	import type { KeycloakMember } from '$lib/services/MembersService';	
+	import type  { PostprocessResult} from '$lib/services/RunDataService';
 	import { onMount } from 'svelte';
 	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
@@ -20,13 +24,10 @@
 	let sampleNumber = 0;
 	let runNumber = 0;
 
-	let runMetadata: any = toPlainObject(new RunMetadata());
-	let pulses: PulseAnnotation[] = [];
+	let runMetadata: RunMetadata;
+	let pulses: PulseCombinedMetadata[] = [];
 	let currentStep = 0;
 
-	function toPlainObject(obj: RunMetadata): any {
-		return JSON.parse(JSON.stringify(RunMetadata.toJSON(obj)));
-	}
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
@@ -40,9 +41,8 @@
 
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
-	let selectedProcessedData: ProcessMetadata | null = null;
+	let selectedProcessedData: PulseProcessedMetadata | null = null;
 	let loadingProcessedData = false;
-	let processedDataByPulse = new Map<number, ProcessMetadata>();
 	let hasUnsavedAnnotation = false;
 
 	// function setupBeforeUnload() {
@@ -91,12 +91,9 @@
 		loadingProcessedData = true;
 		selectedProcessedData = null;
 		try {
-			const data = await runService.fetchProcessedData(
-				experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
-			);
+			const data = pulses[index]
 			if (data) {
-				selectedProcessedData = data;
-				processedDataByPulse.set(pulse.pulseNumber, data);
+				selectedProcessedData = data.processedData;
 			}
 		} catch (error) {
 			console.error('Error loading processed data:', error);
@@ -193,7 +190,7 @@
 				return;
 			}
 
-			runMetadata = toPlainObject(existing);
+			runMetadata = existing;
 			experimentNumber = existing.experimentNumber;
 			sampleNumber = existing.sampleNumber;
 			runNumber = existing.runNumber;
@@ -229,7 +226,14 @@
 
 	async function loadPulses() {
 		try {
-			pulses = await runService.fetchPulses(experimentNumber, sampleNumber, runNumber);
+			var postProcessResult: PostprocessResult = {
+				experimentNumber: experimentNumber,
+				sampleNumber: sampleNumber,
+				runNumber: runNumber,
+				pulses: runMetadata.pulseMap
+			};
+
+			pulses = await runService.fetchPostprocessData(postProcessResult);
 		} catch (error) {
 			console.error('Error loading pulses:', error);
 		}
@@ -319,10 +323,8 @@
 				dagStatusText = '';
 
 				if (!testMode) {
-					const postprocessData = await runService.fetchPostprocessData(dagRunId);
-					runMetadata.pulseIds = postprocessData.pulses.map(
-						({ pulseNumber, sequenceNumber }) => [pulseNumber, sequenceNumber] as [number, number]
-					);
+					const postprocessResults = await runService.fetchPostprocessResults(dagRunId);
+
 				}
 
 				await loadPulses();
@@ -347,6 +349,8 @@
 					experimentNumber,
 					sampleNumber,
 					runNumber,
+					pulse.pulseNumber,
+					pulse.sequenceNumber,
 					pulse
 				);
 			}
@@ -372,7 +376,7 @@
 			// Ensure processed data is loaded for every pulse
 			for (const pulse of pulses) {
 				if (!processedDataByPulse.has(pulse.pulseNumber)) {
-					const data = await runService.fetchProcessedData(
+					const data = await runService.fetchPostprocessData(
 						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
 					);
 					if (data) {
