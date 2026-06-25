@@ -77,6 +77,26 @@ export class RunDataService {
         }
     }
 
+    async fetchPulseCombinedMetadata(run : RunMetadata): Promise<PulseCombinedMetadata[]> {
+        try {
+            const response = await fetch('/api/run/get-pulse-combined-metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({runMetadata: RunMetadata.toJSON(run)})
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch pulse combined metadata: ${response.status} ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return Array.isArray(data) ? data.map((json: any) => PulseCombinedMetadata.fromJSON(json)) : [];
+        } catch (error) {
+            console.error('Error fetching pulse combined metadata:', error);
+            throw error;
+        }
+    }
+
 
     async savePulseAnnotation(
         experimentNumber: number,

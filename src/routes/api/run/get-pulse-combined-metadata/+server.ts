@@ -15,14 +15,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         }
     }
 
-    const body = await request.json();
-    const { postprocessResult } = body;
+    const { runMetadata } = await request.json();
 
-    if (!postprocessResult?.experimentNumber || !postprocessResult?.sampleNumber || !postprocessResult?.runNumber || !postprocessResult?.pulses) {
-        throw error(400, 'postprocessResult with experimentNumber, sampleNumber, runNumber, and pulses is required');
+    if (!runMetadata?.experimentNumber || !runMetadata?.sampleNumber || !runMetadata?.runNumber) {
+        throw error(400, 'runMetadata with experimentNumber, sampleNumber, and runNumber is required');
     }
 
-    const { experimentNumber, sampleNumber, runNumber } = postprocessResult;
+    const { experimentNumber, sampleNumber, runNumber } = runMetadata;
+
+    // The pulse map is serialized by RunMetadata.toJSON under `postProcessResult`.
+    const pulseList = Array.isArray(runMetadata.pulseMap)
+        ? runMetadata.pulseMap
+        : Array.isArray(runMetadata.postProcessResult)
+            ? runMetadata.postProcessResult
+            : [];
 
     const rootFolder = env.ROOT_FOLDER_LOCATION;
     if (!rootFolder) {
@@ -38,20 +44,20 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     }
 
     const pulses = await Promise.all(
-        postprocessResult.pulses.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
+        pulseList.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
+            // Postprocess output lives at the sequence level.
             const processedPath = join(runPath, `P-${pulseNumber}`, `Seq-${sequenceNumber}`, 'processed_metadata.json');
             const processedData = await readFile(processedPath, 'utf-8').then(JSON.parse).catch(() => null);
 
-            return { pulseNumber, sequenceNumber, processedData };
+            // Annotations are saved at the pulse level by save-pulse-annotation.
+            const annotationPath = join(runPath, `P-${pulseNumber}`, 'pulse_manual_metadata.json');
+            const annotationData = await readFile(annotationPath, 'utf-8').then(JSON.parse).catch(() => null);
+
+            return { pulseNumber, sequenceNumber, processedData, annotationData };
         })
     );
 
     pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
 
-    return json({
-        experimentNumber,
-        sampleNumber,
-        runNumber,
-        pulses
-    });
+    return json(pulses);
 };

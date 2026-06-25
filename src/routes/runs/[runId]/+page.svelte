@@ -14,8 +14,7 @@
 	import { MemberService } from '$lib/services/MembersService';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
-	import type { KeycloakMember } from '$lib/services/MembersService';	
-	import type  { PostprocessResult} from '$lib/services/RunDataService';
+	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { onMount } from 'svelte';
 	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
@@ -45,25 +44,6 @@
 	let loadingProcessedData = false;
 	let hasUnsavedAnnotation = false;
 
-	// function setupBeforeUnload() {
-	// 	const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-
-	// 		// trigger if unsaved changes exist
-	// 		if (!hasUnsavedAnnotation){
-	// 			return;
-	// 		}
-
-	// 		event.preventDefault();
-	// 		// event.returnValue = '';
-	// 	};
-
-	// 	window.addEventListener('beforeunload', handleBeforeUnload);
-
-	// 	return () => {
-	// 		window.removeEventListener('beforeunload', handleBeforeUnload);
-	// 	}
-
-	// }
 	function canLeaveCurrentPulse() {
 		if(hasUnsavedAnnotation) {
 			return window.confirm(
@@ -226,14 +206,7 @@
 
 	async function loadPulses() {
 		try {
-			var postProcessResult: PostprocessResult = {
-				experimentNumber: experimentNumber,
-				sampleNumber: sampleNumber,
-				runNumber: runNumber,
-				pulses: runMetadata.pulseMap
-			};
-
-			pulses = await runService.fetchPostprocessData(postProcessResult);
+			pulses = await runService.fetchPulseCombinedMetadata(runMetadata);
 		} catch (error) {
 			console.error('Error loading pulses:', error);
 		}
