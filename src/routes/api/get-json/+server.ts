@@ -1,6 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
+import { getAllCombinations, getCombinationById } from '$lib/server/db/combinationsRepository';
 import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
@@ -88,6 +89,15 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
           return json(record);
         }
         return json(await getAllConfigurations());
+      }
+
+      if (tableName === 'combinations') {
+        if (id) {
+          const record = await getCombinationById(id);
+          if (!record) throw error(404, `Record ${id} not found`);
+          return json(record);
+        }
+        return json(await getAllCombinations());
       }
 
       if (id) {

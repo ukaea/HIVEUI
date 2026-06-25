@@ -5,6 +5,7 @@ import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { deleteConfiguration } from '$lib/server/db/configurationsRepository';
+import { deleteCombination } from '$lib/server/db/combinationsRepository';
 import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
@@ -71,6 +72,11 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
 
             if (tableName === 'configurations') {
                 await deleteConfiguration(id);
+                return json({ success: true });
+            }
+
+            if (tableName === 'combinations') {
+                await deleteCombination(id);
                 return json({ success: true });
             }
 
