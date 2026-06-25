@@ -193,7 +193,7 @@ export class RunDataService {
         runNumber: number,
         pulseCount: number = 3,
         sequenceCount: number = 2
-    ): Promise<{ pulseCount: number; sequenceCount: number }> {
+    ): Promise<{ pulseCount: number; sequenceCount: number; pulses: Array<{ pulseNumber: number; sequenceNumber: number }> }> {
         try {
             const response = await fetch('/api/run/seed-test-data', {
                 method: 'POST',

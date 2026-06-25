@@ -78,6 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw error(403, 'Access denied: Invalid file path');
         }
 
+        const pulses: Array<{ pulseNumber: number; sequenceNumber: number }> = [];
         for (let p = 1; p <= numPulses; p++) {
             for (let s = 1; s <= numSequences; s++) {
                 const seqDir = join(runPath, `P-${p}`, `Seq-${s}`);
@@ -87,6 +88,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                     join(seqDir, 'processed_metadata.json'),
                     JSON.stringify(metadata, null, 2)
                 );
+                pulses.push({ pulseNumber: p, sequenceNumber: s });
             }
         }
 
@@ -94,7 +96,8 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             success: true,
             message: `Created ${numPulses} pulses with ${numSequences} sequences each`,
             pulseCount: numPulses,
-            sequenceCount: numSequences
+            sequenceCount: numSequences,
+            pulses
         });
 
     } catch (err: any) {

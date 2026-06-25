@@ -23,12 +23,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const { experimentNumber, sampleNumber, runNumber } = runMetadata;
 
-    // The pulse map is serialized by RunMetadata.toJSON under `postProcessResult`.
-    const pulseList = Array.isArray(runMetadata.pulseMap)
-        ? runMetadata.pulseMap
-        : Array.isArray(runMetadata.postProcessResult)
-            ? runMetadata.postProcessResult
-            : [];
+    const pulseList = Array.isArray(runMetadata.pulseMap) ? runMetadata.pulseMap : [];
 
     const rootFolder = env.ROOT_FOLDER_LOCATION;
     if (!rootFolder) {

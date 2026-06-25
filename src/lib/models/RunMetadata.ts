@@ -198,7 +198,7 @@ export class RunMetadata {
             ingestDagRunId: metadata.ingestDagRunId,
             currentStep: metadata.currentStep,
             createdAt: metadata.createdAt,
-            postProcessResult: metadata.pulseMap.map(({ pulseNumber, sequenceNumber }) => ({ pulseNumber, sequenceNumber }))
+            pulseMap: metadata.pulseMap.map(({ pulseNumber, sequenceNumber }) => ({ pulseNumber, sequenceNumber }))
         };
     }
 }

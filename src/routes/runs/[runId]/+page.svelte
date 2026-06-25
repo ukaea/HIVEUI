@@ -254,7 +254,8 @@
 		if (testMode) {
 			dagStatusText = 'Triggering pipeline...';
 			try {
-				await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
+				const seedResult = await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
+				runMetadata.pulseMap = seedResult.pulses ?? [];
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
 				await loadPulses();
@@ -297,14 +298,14 @@
 
 				if (!testMode) {
 					const postprocessResults = await runService.fetchPostprocessResults(dagRunId);
-
+					runMetadata.pulseMap = postprocessResults.pulses ?? [];
 				}
 
-				await loadPulses();
-
-				processingDone = true;
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
+
+				await loadPulses();
+				processingDone = true;
 			})
 			.catch((err) => {
 				dagError = err.message || 'DAG processing failed';
