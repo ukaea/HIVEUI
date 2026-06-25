@@ -324,8 +324,7 @@
 					sampleNumber,
 					runNumber,
 					pulse.pulseNumber,
-					pulse.sequenceNumber,
-					pulse
+					pulse.annotationData
 				);
 			}
 
@@ -804,7 +803,7 @@
 								>
 									<span class="font-semibold">Pulse {pulse.pulseNumber}</span>
 									<span
-										class="w-3 h-3 rounded-full {pulse.pulseQuality === 'Success' ? 'bg-green-500' : pulse.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
+										class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
 									></span>
 								</button>
 							{/each}
@@ -860,10 +859,10 @@
 									<div class="mb-4">
 										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Coolant Information</h5>
 										<div class="grid grid-cols-3 gap-3">
-											<TextField label="Coolant Type" value={selectedProcessedData.coolantInformation.coolantType} disabled />
-											<TextField label="Target Coolant Flow" value={selectedProcessedData.coolantInformation.targetCoolantFlow} disabled />
-											<TextField label="Target Coolant Temperature" value={selectedProcessedData.coolantInformation.targetCoolantTemperature} disabled />
-											<TextField label="Measured Coolant Flow" value={selectedProcessedData.coolantInformation.measuredCoolantFlow} disabled />
+											<TextField label="Coolant Flow" value={selectedProcessedData.coolantInformation.coolantFlow} disabled />
+											<TextField label="Coolant Temperature In" value={selectedProcessedData.coolantInformation.coolantTemperatureIn} disabled />
+											<TextField label="Coolant Temperature Out" value={selectedProcessedData.coolantInformation.coolantTemperatureOut} disabled />
+											<TextField label="Delta Temperature" value={selectedProcessedData.coolantInformation.deltaTemperature} disabled />
 										</div>
 									</div>
 								{:else}
@@ -877,11 +876,11 @@
 										<SelectField
 											label="Pulse Quality"
 											options={pulseQualityOptions}
-											value={pulses[selectedPulseIndex].pulseQuality}
+											value={pulses[selectedPulseIndex].annotationData.pulseQuality}
 											autoplacement={false}
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
-													pulses[selectedPulseIndex].pulseQuality = e.detail.value;
+													pulses[selectedPulseIndex].annotationData.pulseQuality = e.detail.value;
 													pulses = pulses;
 													hasUnsavedAnnotation = true;
 												}
@@ -889,10 +888,10 @@
 										/>
 										<TextField
 											label="Comment"
-											value={pulses[selectedPulseIndex].comment}
+											value={pulses[selectedPulseIndex].annotationData.comment}
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
-													pulses[selectedPulseIndex].comment = String(e.detail.value ?? '');
+													pulses[selectedPulseIndex].annotationData.comment = String(e.detail.value ?? '');
 													hasUnsavedAnnotation = true;
 												}
 											}}
@@ -954,8 +953,8 @@
 									{#each pulses as pulse}
 										<tr>
 											<td>{pulse.pulseNumber}</td>
-											<td>{pulse.pulseQuality}</td>
-											<td>{pulse.comment}</td>
+											<td>{pulse.annotationData.pulseQuality}</td>
+											<td>{pulse.annotationData.comment}</td>
 										</tr>
 									{/each}
 								</tbody>
