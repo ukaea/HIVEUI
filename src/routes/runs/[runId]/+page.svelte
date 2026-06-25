@@ -27,6 +27,10 @@
 	let pulses: PulseCombinedMetadata[] = [];
 	let currentStep = 0;
 
+	// svelte-ux's <Form> drafts `initial` with Immer, which only accepts plain
+	// objects (not class instances), so feed it the serialized RunMetadata.
+	$: formInitial = runMetadata ? RunMetadata.toJSON(runMetadata) : undefined;
+
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
@@ -488,7 +492,7 @@
 		{#if currentStep === 0}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content">
 				<h3 class="text-lg font-bold mb-4">Add Metadata</h3>
-				<Form initial={runMetadata} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
+				<Form initial={formInitial} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
 					<div class="grid grid-cols-3 gap-4">
 						<TextField
 							label="Experiment Number"
@@ -713,7 +717,7 @@
 								variant="fill"
 								disabled={saving}
 								on:click={() => {
-									runMetadata = { ...runMetadata, ...current };
+									runMetadata = RunMetadata.fromJSON(current);
 									handleSaveMetadata();
 								}}
 							>
