@@ -2,10 +2,14 @@ import { env } from '$env/dynamic/private';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 
-const DATA_TYPE_CONFIG: Record<string, { dagIdEnvKey: keyof typeof env; taskId: string }> = {
+const DATA_TYPE_CONFIG: Record<string, { dagIdEnvKey: keyof typeof env; taskIdEnvKey: keyof typeof env }> = {
     postprocessing: {
         dagIdEnvKey: 'AIRFLOW_POSTPROCESSING_DAG_ID',
-        taskId: 'postprocess'
+        taskIdEnvKey: 'AIRFLOW_POSTPROCESSING_TASK_ID'
+    },
+    ingest: {
+        dagIdEnvKey: 'AIRFLOW_INGEST_DAG_ID',
+        taskIdEnvKey: 'AIRFLOW_INGEST_TASK_ID'
     }
 };
 
@@ -29,7 +33,15 @@ export const GET: RequestHandler = async ({ url }) => {
 
     try {
         const dagId = env[config.dagIdEnvKey];
-        const taskId = url.searchParams.get('taskId') ?? config.taskId;
+        const taskId = url.searchParams.get('taskId') ?? env[config.taskIdEnvKey];
+
+        if (!dagId || !taskId) {
+            return json(
+                { error: `Missing Airflow config for type "${type}": ${config.dagIdEnvKey} and ${config.taskIdEnvKey} must be set` },
+                { status: 500 }
+            );
+        }
+
         const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${dagId}/dagRuns/${dagRunId}/taskInstances/${taskId}/xcomEntries/${xcomKey}`;
         const token = await airflowTokenManager.getToken();
 
