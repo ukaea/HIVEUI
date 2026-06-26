@@ -136,6 +136,19 @@
 			return;
 		}
 
+		const duplicate = allRuns.some(
+			(run) =>
+				run.experimentNumber === newExperimentNumber &&
+				run.sampleNumber === newSampleNumber &&
+				run.runNumber === newRunNumber
+		);
+		if (duplicate) {
+			alert(
+				`Run ${newRunNumber} already exists for Experiment ${newExperimentNumber} / Sample ${newSampleNumber}. Please choose a different run number.`
+			);
+			return;
+		}
+
 		const newRun = new RunMetadata();
 		newRun.experimentNumber = newExperimentNumber;
 		newRun.sampleNumber = newSampleNumber;

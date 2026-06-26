@@ -88,8 +88,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                     join(seqDir, 'processed_metadata.json'),
                     JSON.stringify(metadata, null, 2)
                 );
-                pulses.push({ pulseNumber: p, sequenceNumber: s });
             }
+            // One entry per pulse, pointing at the latest sequence (matches the real
+            // postprocess output, where each pulse resolves to its final sequence).
+            pulses.push({ pulseNumber: p, sequenceNumber: numSequences });
         }
 
         return json({
