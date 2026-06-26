@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { beforeNavigate } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
@@ -48,14 +49,22 @@
 	let loadingProcessedData = false;
 	let hasUnsavedAnnotation = false;
 
-	function canLeaveCurrentPulse() {
-		if(hasUnsavedAnnotation) {
+	function confirmDiscardUnsavedAnnotation() {
+		if (hasUnsavedAnnotation) {
 			return window.confirm(
 				"You have unsaved changes. Are you sure you want to leave?"
-			)
+			);
 		}
 		return true;
 	}
+
+	// Only warn when actually leaving the annotation page (step 2) — e.g. navigating
+	// to another route. Switching between pulses on the page stays free.
+	beforeNavigate((navigation) => {
+		if (currentStep === 2 && !confirmDiscardUnsavedAnnotation()) {
+			navigation.cancel();
+		}
+	});
 	async function handleSelectPulse(index: number) {
 		// To hold the previous in pulse index
 		const previousIndex = selectedPulseIndex;
@@ -66,10 +75,7 @@
 			return;
 		}
 
-		// Ask user if they really want to switch if unsaved annotation
-		if (!canLeaveCurrentPulse()) {
-			return;
-		} 
+		// Switching between pulses on the annotation page is free — no prompt here.
 		selectedPulseIndex = index;
 		const pulse = pulses[index];
 		loadingProcessedData = true;
@@ -143,6 +149,10 @@
 	];
 
 	function setStep(step: number) {
+		// Warn before leaving the annotation page (step 2) with unsaved changes.
+		if (currentStep === 2 && step !== 2 && !confirmDiscardUnsavedAnnotation()) {
+			return;
+		}
 		currentStep = step;
 		runMetadata.currentStep = step;
 		runService.saveRun(runMetadata).catch((err) => {
