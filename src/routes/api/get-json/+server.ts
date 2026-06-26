@@ -2,7 +2,6 @@ import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
 import { getAllCombinations, getCombinationById } from '$lib/server/db/combinationsRepository';
-import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, readdir, readFile, stat } from 'fs/promises';
@@ -100,12 +99,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
         return json(await getAllCombinations());
       }
 
-      if (id) {
-        const record = getRecordById(tableName, id);
-        if (!record) throw error(404, `Record ${id} not found`);
-        return json(record);
-      }
-      return json(getAllRecords(tableName));
+      throw error(400, `Unsupported table: ${tableName}`);
     } catch (err: any) {
       if (err.status) throw err;
       throw error(500, 'Database error');

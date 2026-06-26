@@ -108,7 +108,7 @@
 		try {
 			await runService.saveRun(newRun);
 			handleModalClose();
-			goto(`/runs/${newRun.runId}`);
+			goto(`/runs/${newRun.runUUID}`);
 		} catch (error) {
 			console.error('Error creating run:', error);
 			alert(`Failed to create run: ${(error as Error).message}`);
@@ -116,7 +116,7 @@
 	}
 
 	function handleRowClick(row: RunMetadata) {
-		goto(`/runs/${row.runId}`);
+		goto(`/runs/${row.runUUID}`);
 	}
 
 	function formatDate(value: string) {

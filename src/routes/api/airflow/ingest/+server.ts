@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { getRecordById } from '$lib/services/DatabaseService';
+import { getConfigurationById } from '$lib/server/db/configurationsRepository';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
@@ -18,7 +18,7 @@ async function getConfigRecord(configurationId: string): Promise<any | null> {
             return null;
         }
     }
-    return getRecordById('configurations', configurationId);
+    return getConfigurationById(configurationId);
 }
 
 export const POST: RequestHandler = async ({ request }) => {

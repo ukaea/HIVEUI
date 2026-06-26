@@ -164,12 +164,12 @@
 
 	async function loadRunData() {
 		try {
-			const runId = $page.params.runId;
+			const runUUID = $page.params.runUUID;
 			const allRuns = await runService.fetchAll();
-			const existing = allRuns.find((r) => r.runId === runId);
+			const existing = allRuns.find((r) => r.runUUID === runUUID);
 
 			if (!existing) {
-				console.error('Run not found:', runId);
+				console.error('Run not found:', runUUID);
 				loading = false;
 				return;
 			}

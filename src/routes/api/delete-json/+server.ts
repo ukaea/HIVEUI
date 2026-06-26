@@ -6,7 +6,6 @@ import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { deleteConfiguration } from '$lib/server/db/configurationsRepository';
 import { deleteCombination } from '$lib/server/db/combinationsRepository';
-import { deleteRecord } from '$lib/services/DatabaseService';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---
@@ -80,8 +79,7 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 return json({ success: true });
             }
 
-            deleteRecord(tableName, id);
-            return json({ success: true });
+            throw error(400, `Unsupported table: ${tableName}`);
         }
 
         // --- BRANCH 3: Remote API (Metacat) ---

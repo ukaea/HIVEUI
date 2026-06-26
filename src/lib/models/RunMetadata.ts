@@ -89,7 +89,7 @@ export class CoolantInformation {
 }
 
 export class RunMetadata {
-    runId: string;
+    runUUID: string;
     runNumber: number;
     sampleNumber: number;
     experimentNumber: number;
@@ -137,7 +137,7 @@ export class RunMetadata {
     });
 
     constructor() {
-        this.runId = generateUUID();
+        this.runUUID = generateUUID();
         this.runNumber = 0;
         this.sampleNumber = 0;
         this.experimentNumber = 0;
@@ -156,7 +156,7 @@ export class RunMetadata {
 
     static fromJSON(json: any): RunMetadata {
         const run = new RunMetadata();
-        run.runId = json.runId || run.runId;
+        run.runUUID = json.runUUID || run.runUUID;
         run.runNumber = json.runNumber || 0;
         run.sampleNumber = json.sampleNumber || 0;
         run.experimentNumber = json.experimentNumber || 0;
@@ -184,7 +184,7 @@ export class RunMetadata {
 
     static toJSON(metadata: RunMetadata): any {
         return {
-            runId: metadata.runId,
+            runUUID: metadata.runUUID,
             runNumber: metadata.runNumber,
             sampleNumber: metadata.sampleNumber,
             experimentNumber: metadata.experimentNumber,
