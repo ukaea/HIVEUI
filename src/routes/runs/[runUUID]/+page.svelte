@@ -104,7 +104,7 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: env.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true' ? '/local/configurations' : '/db/configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});

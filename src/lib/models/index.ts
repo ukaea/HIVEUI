@@ -15,5 +15,6 @@ export { PulseProcessedMetadata } from './PulseProcessedMetadata';
 export { PulseCombinedMetadata } from './PulseCombinedMetadata';
 export { PyrometerMetadata } from './PyrometerMetadata';
 export { RunMetadata } from './RunMetadata';
+export { SampleMetadata } from './SampleMetadata';
 export { ThermocoupleMetadata } from './ThermocoupleMetadata';
 
