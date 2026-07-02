@@ -5,16 +5,18 @@
 	import { SelectField, type MenuOption } from 'svelte-ux';
 	import { tableOrderStore } from '@layerstack/svelte-table';
 	import { RunMetadata } from '$lib/models/RunMetadata';
-	import { ExperimentMetadata, ConfigurationMetadata } from '$lib/models';
+	import { ExperimentMetadata, ConfigurationMetadata, SampleMetadata } from '$lib/models';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { ConfigurationMetadataModel } from '$lib/models/ConfigurationMetadata';
+	import { SampleMetadataModel } from '$lib/models/SampleMetadata';
 	import { env } from '$env/dynamic/public';
 
 	let allRuns: RunMetadata[] = [];
 	let allExperiments: ExperimentMetadata[] = [];
 	let allConfigurations: ConfigurationMetadata[] = [];
+	let allSamples: SampleMetadata[] = [];
 	let open = false;
 	let newRunNumber = 0;
 	let newSampleNumber = 0;
@@ -38,13 +40,21 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadataModel,
-		endpoint: env.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true' ? '/local/configurations' : '/db/configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
 
+	const sampleService = new GenericDataService<SampleMetadata>({
+		modelClass: SampleMetadataModel,
+		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/samples' : '/remote/samples',
+		idField: 'sampleNumber',
+		displayName: 'samples'
+	});
+
 	let experimentOptions: MenuOption[] = [];
 	let configurationOptions: MenuOption[] = [];
+	let sampleOptions: MenuOption[] = [];
 
 	async function fetchRuns() {
 		try {
@@ -81,6 +91,33 @@
 		}
 	}
 
+	async function fetchSamples() {
+		try {
+			allSamples = await sampleService.fetchAll();
+			sampleOptions = allSamples.map((sample) => ({
+				label: String(sample.sampleNumber),
+				value: sample.sampleNumber
+			}));
+		} catch (error) {
+			console.error('Error fetching samples:', error);
+			alert((error as Error).message);
+		}
+	}
+
+	// Auto-fill the run number as one greater than the highest existing run for the
+	// selected experiment + sample combination (or 1 if no run exists for it yet).
+	function computeNextRunNumber() {
+		if (!newExperimentNumber || !newSampleNumber) return;
+
+		const matching = allRuns.filter(
+			(run) => run.experimentNumber === newExperimentNumber && run.sampleNumber === newSampleNumber
+		);
+
+		newRunNumber = matching.length
+			? Math.max(...matching.map((run) => run.runNumber)) + 1
+			: 1;
+	}
+
 	function handleNewRun() {
 		newRunNumber = 0;
 		newSampleNumber = 0;
@@ -99,6 +136,19 @@
 			return;
 		}
 
+		const duplicate = allRuns.some(
+			(run) =>
+				run.experimentNumber === newExperimentNumber &&
+				run.sampleNumber === newSampleNumber &&
+				run.runNumber === newRunNumber
+		);
+		if (duplicate) {
+			alert(
+				`Run ${newRunNumber} already exists for Experiment ${newExperimentNumber} / Sample ${newSampleNumber}. Please choose a different run number.`
+			);
+			return;
+		}
+
 		const newRun = new RunMetadata();
 		newRun.experimentNumber = newExperimentNumber;
 		newRun.sampleNumber = newSampleNumber;
@@ -108,7 +158,7 @@
 		try {
 			await runService.saveRun(newRun);
 			handleModalClose();
-			goto(`/runs/${newRun.runId}`);
+			goto(`/runs/${newRun.runUUID}`);
 		} catch (error) {
 			console.error('Error creating run:', error);
 			alert(`Failed to create run: ${(error as Error).message}`);
@@ -116,7 +166,7 @@
 	}
 
 	function handleRowClick(row: RunMetadata) {
-		goto(`/runs/${row.runId}`);
+		goto(`/runs/${row.runUUID}`);
 	}
 
 	function formatDate(value: string) {
@@ -147,6 +197,7 @@
 		fetchRuns();
 		fetchExperiments();
 		fetchConfigurations();
+		fetchSamples();
 	});
 </script>
 
@@ -190,14 +241,6 @@
 	</div>
 	<div class="p-4">
 		<div class="grid grid-cols-1 gap-4">
-			<TextField
-				label="Run Number"
-				type="integer"
-				value={newRunNumber}
-				on:change={(e) => {
-					newRunNumber = e.detail.value;
-				}}
-			/>		
 			<SelectField
 				options={experimentOptions}
 				label="Experiment Number"
@@ -205,14 +248,25 @@
 				autoplacement={false}
 				on:change={(e) => {
 					newExperimentNumber = e.detail.value;
+					computeNextRunNumber();
+				}}
+			/>
+			<SelectField
+				options={sampleOptions}
+				label="Sample Number"
+				value={newSampleNumber}
+				autoplacement={false}
+				on:change={(e) => {
+					newSampleNumber = e.detail.value;
+					computeNextRunNumber();
 				}}
 			/>
 			<TextField
-				label="Sample Number"
+				label="Run Number"
 				type="integer"
-				value={newSampleNumber}
+				value={newRunNumber}
 				on:change={(e) => {
-					newSampleNumber = e.detail.value;
+					newRunNumber = e.detail.value;
 				}}
 			/>
 			<SelectField

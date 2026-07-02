@@ -1,7 +1,6 @@
 import { env } from '$env/dynamic/private';
-import { json } from '@sveltejs/kit';
+import { json, type RequestHandler } from '@sveltejs/kit';
 import { airflowTokenManager } from '$lib/server/airflowTokenManager';
-import type { RequestHandler } from './$types';
 
 
 export const GET: RequestHandler = async ({ url }) => {

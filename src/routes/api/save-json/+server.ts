@@ -2,12 +2,12 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getForwardJqScript, hasJqMapping } from '$lib/services/MappingService';
-import { upsertRecord } from '$lib/services/DatabaseService';
-import { error, json } from '@sveltejs/kit';
+import { upsertConfiguration } from '$lib/server/db/configurationsRepository';
+import { upsertCombination } from '$lib/server/db/combinationsRepository';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
 import jq from "node-jq";
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---
@@ -103,8 +103,17 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 throw error(400, 'id is required for database operations');
             }
 
-            upsertRecord(tableName, id, metadata);
-            return json({ success: true, message: 'Saved to DB' });
+            if (tableName === 'configurations') {
+                await upsertConfiguration(id, metadata);
+                return json({ success: true, message: 'Saved to DB' });
+            }
+
+            if (tableName === 'combinations') {
+                await upsertCombination(id, metadata);
+                return json({ success: true, message: 'Saved to DB' });
+            }
+
+            throw error(400, `Unsupported table: ${tableName}`);
         }
 
         // --- BRANCH 3: Remote API (Metacat) ---

@@ -1,6 +1,5 @@
 import Zod from "zod";
 import { PersonMetadata } from "./PersonMetadata";
-import { HeatingInformation, CoolantInformation } from "./CompiledPulseMetadata";
 
 function generateUUID(): string {
     if (typeof crypto !== 'undefined' && crypto.randomUUID) {
@@ -13,8 +12,84 @@ function generateUUID(): string {
     });
 }
 
+export class HeatingInformation {
+    heatingType: string;
+    currentType: string;
+    inputPower: number;
+    inputCurrent: number;
+    inputVoltage: number;
+    outputCurrent: number;
+
+    constructor() {
+        this.heatingType = '';
+        this.currentType = '';
+        this.inputPower = 0.0;
+        this.inputCurrent = 0.0;
+        this.inputVoltage = 0.0;
+        this.outputCurrent = 0.0; 
+    }
+
+    static fromJSON(json: any): HeatingInformation {
+        const heat = new HeatingInformation();
+        heat.heatingType = json.heatingType || '';
+        heat.currentType = json.currentType || '';
+        heat.inputPower = json.inputPower || 0.0;
+        heat.inputCurrent = json.inputCurrent || 0.0;
+        heat.inputVoltage = json.inputVoltage || 0.0;
+        heat.outputCurrent = json.outputCurrent || 0.0;
+        return heat
+    }
+
+    static toJSON(metadata: HeatingInformation): any {
+        return{
+            heatingType: metadata.heatingType,
+            currentType: metadata.currentType,
+            inputPower: metadata.inputPower,
+            inputCurrent: metadata.inputCurrent,
+            inputVoltage: metadata.inputVoltage,
+            outputCurrent: metadata.outputCurrent
+        };
+    }
+}
+
+export class CoolantInformation {
+    sampleCooling: boolean | null;
+    coolantType: string;
+    targetCoolantFlow: number;
+    targetCoolantTemperature: number;
+    measuredCoolantFlow: number;
+
+    constructor() {
+        this.sampleCooling = null;
+        this.coolantType = '';
+        this.targetCoolantFlow = 0.0;
+        this.targetCoolantTemperature = 0.0;
+        this.measuredCoolantFlow = 0.0;
+    }
+    static fromJSON(json: any): CoolantInformation{
+        const coolant = new CoolantInformation();
+        coolant.sampleCooling = json.sampleCooling || '';
+        coolant.coolantType = json.coolantType || '';
+        coolant.targetCoolantFlow = json.targetCoolantFlow || '';
+        coolant.targetCoolantTemperature = json.targetCoolantTemperature || '';
+        coolant.measuredCoolantFlow = json.measuredCoolantFlow || 0.0;
+        return coolant
+    }
+
+    static toJSON(metadata: CoolantInformation): any {
+        return {
+        sampleCooling: metadata.sampleCooling,
+        coolantType: metadata.coolantType,
+        targetCoolantFlow: metadata.targetCoolantFlow,
+        targetCoolantTemperature: metadata.targetCoolantTemperature,
+        measuredCoolantFlow: metadata.measuredCoolantFlow
+        }
+    }
+
+}
+
 export class RunMetadata {
-    runId: string;
+    runUUID: string;
     runNumber: number;
     sampleNumber: number;
     experimentNumber: number;
@@ -28,6 +103,7 @@ export class RunMetadata {
     ingestDagRunId: string;
     currentStep: number;
     createdAt: string;
+    pulseMap: Array<{ pulseNumber: number; sequenceNumber: number }>
 
     static schema = Zod.object({
         runNumber: Zod.number().min(1, 'Run Number is required'),
@@ -61,7 +137,7 @@ export class RunMetadata {
     });
 
     constructor() {
-        this.runId = generateUUID();
+        this.runUUID = generateUUID();
         this.runNumber = 0;
         this.sampleNumber = 0;
         this.experimentNumber = 0;
@@ -75,11 +151,12 @@ export class RunMetadata {
         this.ingestDagRunId = '';
         this.currentStep = 0;
         this.createdAt = new Date().toISOString();
+        this.pulseMap = [];
     }
 
     static fromJSON(json: any): RunMetadata {
         const run = new RunMetadata();
-        run.runId = json.runId || run.runId;
+        run.runUUID = json.runUUID || run.runUUID;
         run.runNumber = json.runNumber || 0;
         run.sampleNumber = json.sampleNumber || 0;
         run.experimentNumber = json.experimentNumber || 0;
@@ -101,12 +178,13 @@ export class RunMetadata {
         run.ingestDagRunId = json.ingestDagRunId || '';
         run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
+        run.pulseMap = Array.isArray(json.pulseMap) ? json.pulseMap : [];
         return run;
     }
 
     static toJSON(metadata: RunMetadata): any {
         return {
-            runId: metadata.runId,
+            runUUID: metadata.runUUID,
             runNumber: metadata.runNumber,
             sampleNumber: metadata.sampleNumber,
             experimentNumber: metadata.experimentNumber,
@@ -119,7 +197,8 @@ export class RunMetadata {
             dagRunId: metadata.dagRunId,
             ingestDagRunId: metadata.ingestDagRunId,
             currentStep: metadata.currentStep,
-            createdAt: metadata.createdAt
+            createdAt: metadata.createdAt,
+            pulseMap: metadata.pulseMap.map(({ pulseNumber, sequenceNumber }) => ({ pulseNumber, sequenceNumber }))
         };
     }
 }

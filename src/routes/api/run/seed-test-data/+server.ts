@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, writeFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 function generateProcessedMetadata(pulseNumber: number, sequenceNumber: number) {
     const baseTimestamp = new Date('2025-06-15T10:30:00');
@@ -79,6 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw error(403, 'Access denied: Invalid file path');
         }
 
+        const pulses: Array<{ pulseNumber: number; sequenceNumber: number }> = [];
         for (let p = 1; p <= numPulses; p++) {
             for (let s = 1; s <= numSequences; s++) {
                 const seqDir = join(runPath, `P-${p}`, `Seq-${s}`);
@@ -89,13 +89,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
                     JSON.stringify(metadata, null, 2)
                 );
             }
+            // One entry per pulse, pointing at the latest sequence (matches the real
+            // postprocess output, where each pulse resolves to its final sequence).
+            pulses.push({ pulseNumber: p, sequenceNumber: numSequences });
         }
 
         return json({
             success: true,
             message: `Created ${numPulses} pulses with ${numSequences} sequences each`,
             pulseCount: numPulses,
-            sequenceCount: numSequences
+            sequenceCount: numSequences,
+            pulses
         });
 
     } catch (err: any) {

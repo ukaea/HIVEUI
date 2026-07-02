@@ -1,17 +1,21 @@
 <script lang="ts">
 	import { page } from '$app/stores';
+	import { beforeNavigate } from '$app/navigation';
 	import { env } from '$env/dynamic/public';
-	import { waitForDAGCompletion, type DAGStatus } from '$lib/dagPolling';
+	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
-	import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
-	import { PulseAnnotation } from '$lib/models/PulseAnnotation';
+
 	import { RunMetadata } from '$lib/models/RunMetadata';
+	import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
+	import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
+    import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { MemberService } from '$lib/services/MembersService';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
+	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { onMount } from 'svelte';
 	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
@@ -20,13 +24,14 @@
 	let sampleNumber = 0;
 	let runNumber = 0;
 
-	let runMetadata: any = toPlainObject(new RunMetadata());
-	let pulses: PulseAnnotation[] = [];
+	let runMetadata: RunMetadata;
+	let pulses: PulseCombinedMetadata[] = [];
 	let currentStep = 0;
 
-	function toPlainObject(obj: RunMetadata): any {
-		return JSON.parse(JSON.stringify(RunMetadata.toJSON(obj)));
-	}
+	// svelte-ux's <Form> drafts `initial` with Immer, which only accepts plain
+	// objects (not class instances), so feed it the serialized RunMetadata.
+	$: formInitial = runMetadata ? RunMetadata.toJSON(runMetadata) : undefined;
+
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
@@ -40,39 +45,26 @@
 
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
-	let selectedProcessedData: ProcessMetadata | null = null;
+	let selectedProcessedData: PulseProcessedMetadata | null = null;
 	let loadingProcessedData = false;
-	let processedDataByPulse = new Map<number, ProcessMetadata>();
-	let processedSequences: ProcessMetadata[] = [];
 	let hasUnsavedAnnotation = false;
 
-	// function setupBeforeUnload() {
-	// 	const handleBeforeUnload = (event: BeforeUnloadEvent) => {
-
-	// 		// trigger if unsaved changes exist
-	// 		if (!hasUnsavedAnnotation){
-	// 			return;
-	// 		}
-
-	// 		event.preventDefault();
-	// 		// event.returnValue = '';
-	// 	};
-
-	// 	window.addEventListener('beforeunload', handleBeforeUnload);
-
-	// 	return () => {
-	// 		window.removeEventListener('beforeunload', handleBeforeUnload);
-	// 	}
-
-	// }
-	function canLeaveCurrentPulse() {
-		if(hasUnsavedAnnotation) {
+	function confirmDiscardUnsavedAnnotation() {
+		if (hasUnsavedAnnotation) {
 			return window.confirm(
 				"You have unsaved changes. Are you sure you want to leave?"
-			)
+			);
 		}
 		return true;
 	}
+
+	// Only warn when actually leaving the annotation page (step 2) — e.g. navigating
+	// to another route. Switching between pulses on the page stays free.
+	beforeNavigate((navigation) => {
+		if (currentStep === 2 && !confirmDiscardUnsavedAnnotation()) {
+			navigation.cancel();
+		}
+	});
 	async function handleSelectPulse(index: number) {
 		// To hold the previous in pulse index
 		const previousIndex = selectedPulseIndex;
@@ -83,25 +75,16 @@
 			return;
 		}
 
-		// Ask user if they really want to switch if unsaved annotation
-		if (!canLeaveCurrentPulse()) {
-			return;
-		} 
+		// Switching between pulses on the annotation page is free — no prompt here.
 		selectedPulseIndex = index;
-		const pulseNumber = pulses[index].pulseNumber;
+		const pulse = pulses[index];
 		loadingProcessedData = true;
 		selectedProcessedData = null;
-		processedSequences = [];
 		try {
-			const sequences = await runService.fetchProcessedData(
-				experimentNumber, sampleNumber, runNumber, pulseNumber
-			);
-			processedSequences = sequences;
-			if (sequences.length > 0) {
-				selectedProcessedData = sequences[0];
-				processedDataByPulse.set(pulseNumber, sequences[0]);
+			const data = pulses[index]
+			if (data) {
+				selectedProcessedData = data.processedData;
 			}
-			
 		} catch (error) {
 			console.error('Error loading processed data:', error);
 		} finally {
@@ -127,7 +110,7 @@
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
-		endpoint: env.PUBLIC_CONFIGURATION_LOCAL_STORAGE === 'true' ? '/local/configurations' : '/db/configurations',
+		endpoint: '/db/configurations',
 		idField: 'configurationId',
 		displayName: 'configurations'
 	});
@@ -166,6 +149,10 @@
 	];
 
 	function setStep(step: number) {
+		// Warn before leaving the annotation page (step 2) with unsaved changes.
+		if (currentStep === 2 && step !== 2 && !confirmDiscardUnsavedAnnotation()) {
+			return;
+		}
 		currentStep = step;
 		runMetadata.currentStep = step;
 		runService.saveRun(runMetadata).catch((err) => {
@@ -187,17 +174,17 @@
 
 	async function loadRunData() {
 		try {
-			const runId = $page.params.runId;
+			const runUUID = $page.params.runUUID;
 			const allRuns = await runService.fetchAll();
-			const existing = allRuns.find((r) => r.runId === runId);
+			const existing = allRuns.find((r) => r.runUUID === runUUID);
 
 			if (!existing) {
-				console.error('Run not found:', runId);
+				console.error('Run not found:', runUUID);
 				loading = false;
 				return;
 			}
 
-			runMetadata = toPlainObject(existing);
+			runMetadata = existing;
 			experimentNumber = existing.experimentNumber;
 			sampleNumber = existing.sampleNumber;
 			runNumber = existing.runNumber;
@@ -233,7 +220,7 @@
 
 	async function loadPulses() {
 		try {
-			pulses = await runService.fetchPulses(experimentNumber, sampleNumber, runNumber);
+			pulses = await runService.fetchPulseCombinedMetadata(runMetadata);
 		} catch (error) {
 			console.error('Error loading pulses:', error);
 		}
@@ -281,7 +268,8 @@
 		if (testMode) {
 			dagStatusText = 'Triggering pipeline...';
 			try {
-				await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
+				const seedResult = await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
+				runMetadata.pulseMap = seedResult.pulses ?? [];
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
 				await loadPulses();
@@ -321,10 +309,17 @@
 		})
 			.then(async () => {
 				dagStatusText = '';
-				processingDone = true;
+
+				if (!testMode) {
+					const postprocessResults = await runService.fetchPostprocessResults(dagRunId);
+					runMetadata.pulseMap = postprocessResults.pulses ?? [];
+				}
+
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
+
 				await loadPulses();
+				processingDone = true;
 			})
 			.catch((err) => {
 				dagError = err.message || 'DAG processing failed';
@@ -342,7 +337,8 @@
 					experimentNumber,
 					sampleNumber,
 					runNumber,
-					pulse
+					pulse.pulseNumber,
+					pulse.annotationData
 				);
 			}
 
@@ -367,11 +363,11 @@
 			// Ensure processed data is loaded for every pulse
 			for (const pulse of pulses) {
 				if (!processedDataByPulse.has(pulse.pulseNumber)) {
-					const sequences = await runService.fetchProcessedData(
-						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber
+					const data = await runService.fetchPostprocessData(
+						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
 					);
-					if (sequences.length > 0) {
-						processedDataByPulse.set(pulse.pulseNumber, sequences[0]);
+					if (data) {
+						processedDataByPulse.set(pulse.pulseNumber, data);
 					}
 				}
 			}
@@ -506,7 +502,7 @@
 		{#if currentStep === 0}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content">
 				<h3 class="text-lg font-bold mb-4">Add Metadata</h3>
-				<Form initial={runMetadata} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
+				<Form initial={formInitial} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
 					<div class="grid grid-cols-3 gap-4">
 						<TextField
 							label="Experiment Number"
@@ -731,7 +727,7 @@
 								variant="fill"
 								disabled={saving}
 								on:click={() => {
-									runMetadata = { ...runMetadata, ...current };
+									runMetadata = RunMetadata.fromJSON(current);
 									handleSaveMetadata();
 								}}
 							>
@@ -821,7 +817,7 @@
 								>
 									<span class="font-semibold">Pulse {pulse.pulseNumber}</span>
 									<span
-										class="w-3 h-3 rounded-full {pulse.pulseQuality === 'Success' ? 'bg-green-500' : pulse.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
+										class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
 									></span>
 								</button>
 							{/each}
@@ -877,10 +873,10 @@
 									<div class="mb-4">
 										<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">Coolant Information</h5>
 										<div class="grid grid-cols-3 gap-3">
-											<TextField label="Coolant Type" value={selectedProcessedData.coolantInformation.coolantType} disabled />
-											<TextField label="Target Coolant Flow" value={selectedProcessedData.coolantInformation.targetCoolantFlow} disabled />
-											<TextField label="Target Coolant Temperature" value={selectedProcessedData.coolantInformation.targetCoolantTemperature} disabled />
-											<TextField label="Measured Coolant Flow" value={selectedProcessedData.coolantInformation.measuredCoolantFlow} disabled />
+											<TextField label="Coolant Flow" value={selectedProcessedData.coolantInformation.coolantFlow} disabled />
+											<TextField label="Coolant Temperature In" value={selectedProcessedData.coolantInformation.coolantTemperatureIn} disabled />
+											<TextField label="Coolant Temperature Out" value={selectedProcessedData.coolantInformation.coolantTemperatureOut} disabled />
+											<TextField label="Delta Temperature" value={selectedProcessedData.coolantInformation.deltaTemperature} disabled />
 										</div>
 									</div>
 								{:else}
@@ -894,11 +890,11 @@
 										<SelectField
 											label="Pulse Quality"
 											options={pulseQualityOptions}
-											value={pulses[selectedPulseIndex].pulseQuality}
+											value={pulses[selectedPulseIndex].annotationData.pulseQuality}
 											autoplacement={false}
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
-													pulses[selectedPulseIndex].pulseQuality = e.detail.value;
+													pulses[selectedPulseIndex].annotationData.pulseQuality = e.detail.value;
 													pulses = pulses;
 													hasUnsavedAnnotation = true;
 												}
@@ -906,10 +902,10 @@
 										/>
 										<TextField
 											label="Comment"
-											value={pulses[selectedPulseIndex].comment}
+											value={pulses[selectedPulseIndex].annotationData.comment}
 											on:change={(e) => {
 												if (selectedPulseIndex !== null) {
-													pulses[selectedPulseIndex].comment = String(e.detail.value ?? '');
+													pulses[selectedPulseIndex].annotationData.comment = String(e.detail.value ?? '');
 													hasUnsavedAnnotation = true;
 												}
 											}}
@@ -971,8 +967,8 @@
 									{#each pulses as pulse}
 										<tr>
 											<td>{pulse.pulseNumber}</td>
-											<td>{pulse.pulseQuality}</td>
-											<td>{pulse.comment}</td>
+											<td>{pulse.annotationData.pulseQuality}</td>
+											<td>{pulse.annotationData.comment}</td>
 										</tr>
 									{/each}
 								</tbody>

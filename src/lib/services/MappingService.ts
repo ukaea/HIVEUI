@@ -4,6 +4,7 @@ import { env } from '$env/dynamic/private';
 const BACKWARD_JQ_FILES: Record<string, string> = {
     pulse: 'dataset.jq',
     experiments: 'experiment.jq',
+    samples: 'sample.jq',
     camera: 'instrument/camera.jq',
     flowmeter: 'instrument/flowmeter.jq',
     pyrometer: 'instrument/pyrometer.jq',
@@ -13,6 +14,7 @@ const BACKWARD_JQ_FILES: Record<string, string> = {
 const FORWARD_JQ_FILES: Record<string, string> = {
     instruments: 'instrument.jq',
     experiments: 'experiment.jq',
+    samples: 'sample.jq',
     pulse: 'dataset.jq',
 };
 

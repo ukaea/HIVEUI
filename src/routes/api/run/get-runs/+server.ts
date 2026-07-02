@@ -1,8 +1,7 @@
 import { env } from '$env/dynamic/private';
-import { error, json } from '@sveltejs/kit';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises';
 import { join, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 async function findRunMetadataFiles(rootDir: string): Promise<string[]> {
     const results: string[] = [];

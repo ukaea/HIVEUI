@@ -1,12 +1,12 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
-import { getAllRecords, getRecordById } from '$lib/services/DatabaseService';
+import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
+import { getAllCombinations, getCombinationById } from '$lib/server/db/combinationsRepository';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
-import { error, json } from '@sveltejs/kit';
-import { readdir, readFile, stat } from 'fs/promises';
+import { error, json, type RequestHandler } from '@sveltejs/kit';
+import { mkdir, readdir, readFile, stat } from 'fs/promises';
 import jq from "node-jq";
 import { extname, join, normalize, resolve } from 'path';
-import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
   const endpoint = url.searchParams.get('endpoint');
@@ -33,18 +33,19 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
 
   // --- BRANCH 1: Local File System ---
   if (endpoint.startsWith('/local/')) {
+    const rootFolder = env.ROOT_FOLDER_LOCATION;
+    if (!rootFolder) throw error(500, 'ROOT_FOLDER_LOCATION not set');
+
+    const relativePath = endpoint.replace(/^\/local\//, '');
+    const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
+    const dirPath = resolve(rootFolder, sanitizedPath);
+    const fullPath = id ? resolve(dirPath, `${id}.json`) : dirPath;
+
+    if (!fullPath.startsWith(resolve(rootFolder))) {
+      throw error(403, 'Access denied: Invalid file path');
+    }
+
     try {
-      const rootFolder = env.ROOT_FOLDER_LOCATION;
-      if (!rootFolder) throw new Error('ROOT_FOLDER_LOCATION not set');
-
-      const relativePath = endpoint.replace(/^\/local\//, '');
-      const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
-      let fullPath = id ? resolve(rootFolder, sanitizedPath, `${id}.json`) : resolve(rootFolder, sanitizedPath);
-
-      if (!fullPath.startsWith(resolve(rootFolder))) {
-        throw error(403, 'Access denied: Invalid file path');
-      }
-
       const stats = await stat(fullPath);
 
       if (stats.isFile()) {
@@ -65,6 +66,10 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
       throw error(400, 'Invalid path type');
     } catch (err: any) {
       if (err.status) throw err;
+      if (err.code === 'ENOENT' && !id) {
+        await mkdir(dirPath, { recursive: true });
+        return json([]);
+      }
       if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
       throw error(500, 'Internal server error reading files');
     }
@@ -76,12 +81,25 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
       const tableName = endpoint.replace(/^\/db\//, '');
       if (!/^[a-zA-Z0-9_]+$/.test(tableName)) throw error(400, 'Invalid table name');
 
-      if (id) {
-        const record = getRecordById(tableName, id);
-        if (!record) throw error(404, `Record ${id} not found`);
-        return json(record);
+      if (tableName === 'configurations') {
+        if (id) {
+          const record = await getConfigurationById(id);
+          if (!record) throw error(404, `Record ${id} not found`);
+          return json(record);
+        }
+        return json(await getAllConfigurations());
       }
-      return json(getAllRecords(tableName));
+
+      if (tableName === 'combinations') {
+        if (id) {
+          const record = await getCombinationById(id);
+          if (!record) throw error(404, `Record ${id} not found`);
+          return json(record);
+        }
+        return json(await getAllCombinations());
+      }
+
+      throw error(400, `Unsupported table: ${tableName}`);
     } catch (err: any) {
       if (err.status) throw err;
       throw error(500, 'Database error');

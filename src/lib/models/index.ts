@@ -1,6 +1,5 @@
 export { CameraMetadata } from './CameraMetadata';
 export { CombinationMetadata } from './CombinationMetadata';
-export { CompiledPulseMetadata } from './CompiledPulseMetadata';
 export { ConfigurationMetadata } from './ConfigurationMetadata';
 export { CustomerMetadata } from './CustomerMetadata';
 export { DicMetadata } from './DicMetadata';
@@ -11,8 +10,11 @@ export { HeatingTypeMetadata } from './HeatingTypeMetadata';
 export { IrCameraMetadata } from './IrCameraMetadata';
 export { LensMetadata } from './LensMetadata';
 export { PersonMetadata } from './PersonMetadata';
-export { PulseAnnotation } from './PulseAnnotation';
+export { PulseAnnotationMetadata } from './PulseAnnotationMetadata';
+export { PulseProcessedMetadata } from './PulseProcessedMetadata';
+export { PulseCombinedMetadata } from './PulseCombinedMetadata';
 export { PyrometerMetadata } from './PyrometerMetadata';
 export { RunMetadata } from './RunMetadata';
+export { SampleMetadata } from './SampleMetadata';
 export { ThermocoupleMetadata } from './ThermocoupleMetadata';
 

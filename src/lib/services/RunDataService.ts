@@ -1,11 +1,15 @@
 import { RunMetadata } from '$lib/models/RunMetadata';
-import { PulseAnnotation } from '$lib/models/PulseAnnotation';
-import { ProcessMetadata } from '$lib/models/ProcessingMetadata';
+import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
+import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+
+export interface PostprocessResult {
+    experimentNumber: number;
+    sampleNumber: number;
+    runNumber: number;
+    pulses: Array<{ pulseNumber: number; sequenceNumber: number }>;
+}
 
 export class RunDataService {
-
-    // ─── Run endpoints (local disk) ─────────────────────────────────────
-    // Runs contain top-level metadata and are persisted to the local filesystem.
 
     async fetchAll(sortHandler?: (a: RunMetadata, b: RunMetadata) => number): Promise<RunMetadata[]> {
         try {
@@ -73,41 +77,35 @@ export class RunDataService {
         }
     }
 
-    // ─── Pulse endpoints (local disk + data catalogue) ──────────────────
-    // Pulses combine top-level run metadata, post-processing results from
-    // the Airflow DAG, and the user's pulse annotation. The compiled pulse
-    // JSON is what gets sent to the backend data catalogue during ingestion.
-
-    async fetchPulses(experimentNumber: number, sampleNumber: number, runNumber: number): Promise<PulseAnnotation[]> {
+    async fetchPulseCombinedMetadata(run : RunMetadata): Promise<PulseCombinedMetadata[]> {
         try {
-            const params = new URLSearchParams({
-                experimentNumber: String(experimentNumber),
-                sampleNumber: String(sampleNumber),
-                runNumber: String(runNumber)
+            const response = await fetch('/api/run/get-pulse-combined-metadata', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({runMetadata: RunMetadata.toJSON(run)})
             });
 
-            const response = await fetch(`/api/run/get-pulses?${params}`);
-
             if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
+                throw new Error(`Failed to fetch pulse combined metadata: ${response.status} ${response.statusText}`);
             }
 
             const data = await response.json();
-            const rawItems = Array.isArray(data) ? data : [data];
-            return rawItems.map((json: any) => PulseAnnotation.fromJSON(json));
+            return Array.isArray(data) ? data.map((json: any) => PulseCombinedMetadata.fromJSON(json)) : [];
         } catch (error) {
-            console.error('Error fetching pulses:', error);
-            throw new Error('Failed to load pulses.');
+            console.error('Error fetching pulse combined metadata:', error);
+            throw error;
         }
     }
+
 
     async savePulseAnnotation(
         experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
-        annotation: PulseAnnotation
+        pulseNumber: number,
+        annotation: PulseAnnotationMetadata
     ): Promise<void> {
-        const cleanedData = PulseAnnotation.toJSON(annotation);
+        const cleanedData = PulseAnnotationMetadata.toJSON(annotation);
 
         try {
             const response = await fetch('/api/run/save-pulse-annotation', {
@@ -117,7 +115,7 @@ export class RunDataService {
                     experimentNumber,
                     sampleNumber,
                     runNumber,
-                    pulseNumber: annotation.pulseNumber,
+                    pulseNumber,
                     annotation: cleanedData
                 })
             });
@@ -132,33 +130,20 @@ export class RunDataService {
         }
     }
 
-    async fetchProcessedData(
-        experimentNumber: number,
-        sampleNumber: number,
-        runNumber: number,
-        pulseNumber: number
-    ): Promise<ProcessMetadata[]> {
-        try {
-            const params = new URLSearchParams({
-                experimentNumber: String(experimentNumber),
-                sampleNumber: String(sampleNumber),
-                runNumber: String(runNumber),
-                pulseNumber: String(pulseNumber)
-            });
+    async fetchPostprocessData(
+        postprocessResult: PostprocessResult
+    ): Promise<any> {
+        const response = await fetch('/api/run/get-postprocessed-data', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ postprocessResult })
+        });
 
-            const response = await fetch(`/api/run/get-processed-data?${params}`);
-
-            if (!response.ok) {
-                throw new Error(`Server responded with ${response.status}: ${response.statusText}`);
-            }
-
-            const data = await response.json();
-            const rawItems = Array.isArray(data) ? data : [data];
-            return rawItems.map((json: any) => ProcessMetadata.fromJSON(json));
-        } catch (error) {
-            console.error('Error fetching processed data:', error);
-            throw new Error('Failed to load processed data.');
+        if (!response.ok) {
+            throw new Error(`Failed to fetch postprocessed data: ${response.status} ${response.statusText}`);
         }
+
+        return response.json();
     }
 
     async triggerPostprocess(
@@ -184,13 +169,31 @@ export class RunDataService {
         }
     }
 
+    async fetchPostprocessResults(dagRunId: string, taskId?: string): Promise<PostprocessResult> {
+        try {
+            const params = new URLSearchParams({ dagRunId, type: 'postprocessing' });
+            if (taskId) params.set('taskId', taskId);
+
+            const response = await fetch(`/api/airflow/result?${params}`);
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch postprocess data: ${response.status} ${response.statusText}`);
+            }
+
+            return await response.json();
+        } catch (error) {
+            console.error('Error fetching postprocess data:', error);
+            throw error;
+        }
+    }
+
     async seedTestData(
         experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
         pulseCount: number = 3,
         sequenceCount: number = 2
-    ): Promise<{ pulseCount: number; sequenceCount: number }> {
+    ): Promise<{ pulseCount: number; sequenceCount: number; pulses: Array<{ pulseNumber: number; sequenceNumber: number }> }> {
         try {
             const response = await fetch('/api/run/seed-test-data', {
                 method: 'POST',
