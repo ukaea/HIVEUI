@@ -41,6 +41,10 @@
 			return;
 		}
 
+		//Special fields for sample
+		selectedSample.ownerGroup = "HIVE";
+		selectedSample.accessGroups = ["HIVE"];
+
 		// Validate against zod schema
 		const parseResult = SampleMetadata.schema.safeParse(selectedSample);
 		if (!parseResult.success) {
