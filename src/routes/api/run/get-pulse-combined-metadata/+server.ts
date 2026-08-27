@@ -3,6 +3,8 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 
+const SCOPE = 'get-pulse-combined-metadata';
+
 export const POST: RequestHandler = async ({ request, locals }) => {
     if (env.AUTHN_ENABLE === 'true' && !locals.user) {
         throw error(401, 'Unauthorized: No active session');
@@ -25,8 +27,17 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const pulseList = Array.isArray(runMetadata.pulseMap) ? runMetadata.pulseMap : [];
 
+    console.log(
+        `[${SCOPE}] request E-${experimentNumber}/S-${sampleNumber}/R-${runNumber} pulses=${pulseList.length}`
+    );
+
+    if (pulseList.length === 0) {
+        console.warn(`[${SCOPE}] runMetadata.pulseMap is empty — no pulse files will be read`);
+    }
+
     const rootFolder = env.ROOT_FOLDER_LOCATION;
     if (!rootFolder) {
+        console.error(`[${SCOPE}] ROOT_FOLDER_LOCATION is not set`);
         throw error(500, 'ROOT_FOLDER_LOCATION is not set');
     }
 
@@ -35,24 +46,51 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const runPath = resolve(rootFolder, sanitizedPath);
 
     if (!runPath.startsWith(resolve(rootFolder))) {
+        console.error(`[${SCOPE}] rejected path outside root rootFolder=${rootFolder} runPath=${runPath}`);
         throw error(403, 'Access denied: Invalid file path');
     }
+
+    console.log(`[${SCOPE}] reading from runPath=${runPath}`);
 
     const pulses = await Promise.all(
         pulseList.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
             // Postprocess output lives at the sequence level.
             const processedPath = join(runPath, `P-${pulseNumber}`, `Seq-${sequenceNumber}`, 'processed_metadata.json');
-            const processedData = await readFile(processedPath, 'utf-8').then(JSON.parse).catch(() => null);
+            console.log(`[${SCOPE}] reading processed data P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}`);
+
+            const processedData = await readFile(processedPath, 'utf-8')
+                .then(JSON.parse)
+                .catch((err) => {
+                    console.error(
+                        `[${SCOPE}] failed to read processed data P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}:`,
+                        err?.code ?? err?.message ?? err
+                    );
+                    return null;
+                });
 
             // Annotations are saved at the pulse level by save-pulse-annotation.
             const annotationPath = join(runPath, `P-${pulseNumber}`, 'pulse_manual_metadata.json');
-            const annotationData = await readFile(annotationPath, 'utf-8').then(JSON.parse).catch(() => null);
+            const annotationData = await readFile(annotationPath, 'utf-8')
+                .then(JSON.parse)
+                .catch((err) => {
+                    console.error(
+                        `[${SCOPE}] failed to read annotation P-${pulseNumber} path=${annotationPath}:`,
+                        err?.code ?? err?.message ?? err
+                    );
+                    return null;
+                });
 
             return { pulseNumber, sequenceNumber, processedData, annotationData };
         })
     );
 
     pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
+
+    const withProcessed = pulses.filter((pulse) => pulse.processedData !== null).length;
+    const withAnnotation = pulses.filter((pulse) => pulse.annotationData !== null).length;
+    console.log(
+        `[${SCOPE}] returning ${pulses.length} pulses for E-${experimentNumber}/S-${sampleNumber}/R-${runNumber} (processed=${withProcessed}, annotated=${withAnnotation})`
+    );
 
     return json(pulses);
 };

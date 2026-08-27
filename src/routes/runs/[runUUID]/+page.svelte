@@ -14,7 +14,7 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { MemberService } from '$lib/services/MembersService';
 	import { RunDataService } from '$lib/services/RunDataService';
-	import { mdiCheck, mdiCheckCircleOutline } from '@mdi/js';
+	import { mdiCheck, mdiCheckCircleOutline, mdiRefresh } from '@mdi/js';
 	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { onMount } from 'svelte';
 	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
@@ -26,6 +26,7 @@
 
 	let runMetadata: RunMetadata;
 	let pulses: PulseCombinedMetadata[] = [];
+	let processedDataByPulse = new Map<number, PulseProcessedMetadata>();
 	let currentStep = 0;
 
 	// svelte-ux's <Form> drafts `initial` with Immer, which only accepts plain
@@ -38,8 +39,8 @@
 	let delteNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
-	let ingestStatusText = '';
-	let ingestError = '';
+	let publishStatusText = '';
+	let publishError = '';
 	let inputPowerToggle = true;
 	let coolantToggle = true;
 
@@ -48,6 +49,8 @@
 	let selectedProcessedData: PulseProcessedMetadata | null = null;
 	let loadingProcessedData = false;
 	let hasUnsavedAnnotation = false;
+	let reloadingPulses = false;
+	let pulseLoadError = '';
 
 	function confirmDiscardUnsavedAnnotation() {
 		if (hasUnsavedAnnotation) {
@@ -96,7 +99,7 @@
 		{ label: 'Metadata', description: 'Fill in run details' },
 		{ label: 'Processing', description: 'Start analysis pipeline' },
 		{ label: 'Annotation', description: 'Annotate pulses' },
-		{ label: 'Ingestion', description: 'Ingest to Data Catalogue' }
+		{ label: 'Publish', description: 'Publish to Data Catalogue' }
 	];
 
 	const runService = new RunDataService();
@@ -165,9 +168,9 @@
 			case 'draft': return 1; // metadata exists, show trigger
 			case 'processing': return 2; // resume polling / annotation
 			case 'processed': return 2; // show annotation
-			case 'annotated': return 3; // show ingest
-			case 'ingesting': return 3; // resume ingest polling
-			case 'ingested': return 3; // read-only ingest
+			case 'annotated': return 3; // show publish
+			case 'ingesting': return 3; // resume publish polling
+			case 'ingested': return 3; // read-only publish
 			default: return 0;
 		}
 	}
@@ -200,7 +203,7 @@
 			}
 
 			if (existing.status === 'ingesting' && existing.ingestDagRunId) {
-				startIngestPolling(existing.ingestDagRunId);
+				startPublishPolling(existing.ingestDagRunId);
 			}
 
 			if (['processed', 'annotated', 'ingested'].includes(existing.status)) {
@@ -220,9 +223,38 @@
 
 	async function loadPulses() {
 		try {
+			pulseLoadError = '';
 			pulses = await runService.fetchPulseCombinedMetadata(runMetadata);
 		} catch (error) {
 			console.error('Error loading pulses:', error);
+			pulseLoadError = (error as Error).message;
+		}
+	}
+
+	// Re-pull the pulse data for this run — the pipeline output may not have been
+	// readable yet on the first attempt.
+	async function handleRetryLoadPulses() {
+		if (!confirmDiscardUnsavedAnnotation()) {
+			return;
+		}
+
+		const previousPulseNumber =
+			selectedPulseIndex !== null ? pulses[selectedPulseIndex]?.pulseNumber ?? null : null;
+
+		reloadingPulses = true;
+		try {
+			await loadPulses();
+
+			// Keep the viewer on the same pulse number if it is still there.
+			const index =
+				previousPulseNumber !== null
+					? pulses.findIndex((pulse) => pulse.pulseNumber === previousPulseNumber)
+					: -1;
+			selectedPulseIndex = index >= 0 ? index : null;
+			selectedProcessedData = index >= 0 ? pulses[index].processedData : null;
+			hasUnsavedAnnotation = false;
+		} finally {
+			reloadingPulses = false;
 		}
 	}
 
@@ -356,31 +388,40 @@
 		}
 	}
 
-	async function handleIngest() {
+	async function handlePublish() {
 		saving = true;
-		ingestError = '';
+		publishError = '';
 		try {
 			// Ensure processed data is loaded for every pulse
-			for (const pulse of pulses) {
-				if (!processedDataByPulse.has(pulse.pulseNumber)) {
-					const data = await runService.fetchPostprocessData(
-						experimentNumber, sampleNumber, runNumber, pulse.pulseNumber, pulse.sequenceNumber
-					);
-					if (data) {
-						processedDataByPulse.set(pulse.pulseNumber, data);
+			const pulsesToFetch = pulses.filter((pulse) => !processedDataByPulse.has(pulse.pulseNumber));
+
+			if (pulsesToFetch.length > 0) {
+				const postprocessResponse = await runService.fetchPostprocessData({
+					experimentNumber,
+					sampleNumber,
+					runNumber,
+					pulses: pulsesToFetch.map((pulse) => ({
+						pulseNumber: pulse.pulseNumber,
+						sequenceNumber: pulse.sequenceNumber
+					}))
+				});
+
+				for (const { pulseNumber, processedData } of postprocessResponse.pulses ?? []) {
+					if (processedData) {
+						processedDataByPulse.set(pulseNumber, PulseProcessedMetadata.fromJSON(processedData));
 					}
 				}
 			}
 
 			// Combine each pulse annotation with its processed data
 			const pulsesMetadata = pulses.map((pulse) => ({
-				annotation: PulseAnnotation.toJSON(pulse),
+				annotation: PulseAnnotationMetadata.toJSON(pulse.annotationData),
 				processedData: processedDataByPulse.has(pulse.pulseNumber)
-					? ProcessMetadata.toJSON(processedDataByPulse.get(pulse.pulseNumber)!)
+					? PulseProcessedMetadata.toJSON(processedDataByPulse.get(pulse.pulseNumber)!)
 					: null
 			}));
 
-			const result = await runService.ingestToDataCatalogue(runMetadata, pulsesMetadata);
+			const result = await runService.publishToDataCatalogue(runMetadata, pulsesMetadata);
 
 			if (result.testMode) {
 				runMetadata.status = 'ingested';
@@ -391,35 +432,35 @@
 				runMetadata.ingestDagRunId = result.dag_run_id;
 				runMetadata.status = 'ingesting';
 				await runService.saveRun(runMetadata);
-				startIngestPolling(result.dag_run_id);
+				startPublishPolling(result.dag_run_id);
 			} else {
-				ingestError = 'Ingest DAG did not return a run ID. Check server logs.';
+				publishError = 'Publish DAG did not return a run ID. Check server logs.';
 			}
 		} catch (error) {
-			console.error('Error ingesting to Data Catalogue:', error);
-			ingestError = (error as Error).message;
+			console.error('Error publishing to Data Catalogue:', error);
+			publishError = (error as Error).message;
 		} finally {
 			saving = false;
 		}
 	}
 
-	function startIngestPolling(dagRunId: string) {
-		ingestStatusText = 'Ingesting...';
-		ingestError = '';
+	function startPublishPolling(dagRunId: string) {
+		publishStatusText = 'Publishing...';
+		publishError = '';
 
 		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'ingest', (status: DAGStatus) => {
-			ingestStatusText = `State: ${status.state}`;
+			publishStatusText = `State: ${status.state}`;
 		})
 			.then(async () => {
-				ingestStatusText = '';
+				publishStatusText = '';
 				runMetadata.status = 'ingested';
 				await runService.saveRun(runMetadata);
 				saveNotify = true;
 				setTimeout(() => { saveNotify = false; }, 3000);
 			})
 			.catch((err) => {
-				ingestError = err.message || 'Ingest DAG failed';
-				ingestStatusText = '';
+				publishError = err.message || 'Publish DAG failed';
+				publishStatusText = '';
 			});
 	}
 
@@ -797,7 +838,16 @@
 		<!-- Step 3: Annotation -->
 		{#if currentStep === 2}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content mt-4">
-				<h3 class="text-lg font-bold mb-4">Pulse Annotation</h3>
+				<div class="flex items-center justify-between mb-4">
+					<h3 class="text-lg font-bold">Pulse Annotation</h3>
+					<Button icon={mdiRefresh} disabled={reloadingPulses} on:click={handleRetryLoadPulses}>
+						{reloadingPulses ? 'Retrying...' : 'Retry Pulse Data'}
+					</Button>
+				</div>
+
+				{#if pulseLoadError}
+					<p class="text-red-500 text-sm mb-4">Failed to load pulse data: {pulseLoadError}</p>
+				{/if}
 
 				{#if pulses.length === 0}
 					<p class="text-gray-400">No pulses discovered. The pipeline may not have produced any pulse directories.</p>
@@ -928,7 +978,7 @@
 								disabled={!annotationsSaved}
 								on:click={() => setStep(3)}
 							>
-								Continue to Ingestion
+								Continue to Publish
 							</Button>
 						</div>
 					</div>
@@ -936,10 +986,10 @@
 			</div>
 		{/if}
 
-		<!-- Step 4: Ingest -->
+		<!-- Step 4: Publish -->
 		{#if currentStep === 3}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content mt-4">
-				<h3 class="text-lg font-bold mb-4">Ingest to Data Catalogue</h3>
+				<h3 class="text-lg font-bold mb-4">Publish to Data Catalogue</h3>
 				<div class="mb-4">
 					<h4 class="font-semibold mb-2">Run Summary</h4>
 					<div class="grid grid-cols-3 gap-2 text-sm">
@@ -978,23 +1028,23 @@
 				{/if}
 
 				{#if runMetadata.status !== 'ingested'}
-					{#if ingestStatusText}
+					{#if publishStatusText}
 						<div class="flex items-center gap-3 mb-4">
 							<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-							<span class="text-gray-300">{ingestStatusText}</span>
+							<span class="text-gray-300">{publishStatusText}</span>
 						</div>
 					{/if}
-					{#if ingestError}
+					{#if publishError}
 						<div class="mt-4">
-							<p class="text-red-600 mb-2">{ingestError}</p>
-							<Button variant="outline" on:click={() => handleIngest()}>Retry</Button>
+							<p class="text-red-600 mb-2">{publishError}</p>
+							<Button variant="outline" on:click={() => handlePublish()}>Retry</Button>
 						</div>
 					{/if}
-					{#if !ingestStatusText && !ingestError}
+					{#if !publishStatusText && !publishError}
 						<div class="flex justify-between">
 							<Button on:click={() => setStep(2)}>Back</Button>
-							<Button variant="fill" color="success" disabled={saving} on:click={handleIngest}>
-								{saving ? 'Triggering...' : 'Ingest to Data Catalogue'}
+							<Button variant="fill" color="success" disabled={saving} on:click={handlePublish}>
+								{saving ? 'Triggering...' : 'Publish to Data Catalogue'}
 							</Button>
 						</div>
 					{/if}
@@ -1003,7 +1053,7 @@
 						<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
 							<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7" />
 						</svg>
-						Successfully ingested to Data Catalogue
+						Successfully published to Data Catalogue
 					</div>
 				{/if}
 			</div>

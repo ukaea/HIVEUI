@@ -219,7 +219,7 @@ export class RunDataService {
         }
     }
 
-    async ingestToDataCatalogue(
+    async publishToDataCatalogue(
         runMetadata: RunMetadata,
         pulsesMetadata: Array<{ annotation: any; processedData: any }>
     ): Promise<{ dag_run_id?: string; testMode?: boolean }> {
@@ -235,12 +235,12 @@ export class RunDataService {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Ingestion failed');
+                throw new Error(errorData.message || 'Publish failed');
             }
 
             return await response.json();
         } catch (error) {
-            console.error('Error ingesting to Data Catalogue:', error);
+            console.error('Error publishing to Data Catalogue:', error);
             throw error;
         }
     }

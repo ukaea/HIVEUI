@@ -59,10 +59,12 @@ export const GET: RequestHandler = async ({ url }) => {
 
         const raw = await response.json();
         // Airflow wraps the value in { value: ... }
+        console.log('Fetched data from Airflow:', raw);
         const data = typeof raw.value === 'string'
             ? JSON.parse(raw.value)
             : raw.value;
 
+        console.log('Parsed data:', data);
         return json(data);
     } catch (error) {
         console.error('Error fetching airflow data:', error);

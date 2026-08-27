@@ -3,6 +3,8 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 
+const SCOPE = 'get-postprocessed-data';
+
 export const POST: RequestHandler = async ({ request, locals }) => {
     if (env.AUTHN_ENABLE === 'true' && !locals.user) {
         throw error(401, 'Unauthorized: No active session');
@@ -24,8 +26,13 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const { experimentNumber, sampleNumber, runNumber } = postprocessResult;
 
+    console.log(
+        `[${SCOPE}] request E-${experimentNumber}/S-${sampleNumber}/R-${runNumber} pulses=${postprocessResult.pulses.length}`
+    );
+
     const rootFolder = env.ROOT_FOLDER_LOCATION;
     if (!rootFolder) {
+        console.error(`[${SCOPE}] ROOT_FOLDER_LOCATION is not set`);
         throw error(500, 'ROOT_FOLDER_LOCATION is not set');
     }
 
@@ -34,19 +41,37 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const runPath = resolve(rootFolder, sanitizedPath);
 
     if (!runPath.startsWith(resolve(rootFolder))) {
+        console.error(`[${SCOPE}] rejected path outside root rootFolder=${rootFolder} runPath=${runPath}`);
         throw error(403, 'Access denied: Invalid file path');
     }
+
+    console.log(`[${SCOPE}] reading from runPath=${runPath}`);
 
     const pulses = await Promise.all(
         postprocessResult.pulses.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
             const processedPath = join(runPath, `P-${pulseNumber}`, `Seq-${sequenceNumber}`, 'processed_metadata.json');
-            const processedData = await readFile(processedPath, 'utf-8').then(JSON.parse).catch(() => null);
+            console.log(`[${SCOPE}] reading P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}`);
+
+            const processedData = await readFile(processedPath, 'utf-8')
+                .then(JSON.parse)
+                .catch((err) => {
+                    console.error(
+                        `[${SCOPE}] failed to read P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}:`,
+                        err?.code ?? err?.message ?? err
+                    );
+                    return null;
+                });
 
             return { pulseNumber, sequenceNumber, processedData };
         })
     );
 
     pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
+
+    const resolved = pulses.filter((pulse) => pulse.processedData !== null).length;
+    console.log(
+        `[${SCOPE}] returning ${resolved}/${pulses.length} pulses with processed data for E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`
+    );
 
     return json({
         experimentNumber,
