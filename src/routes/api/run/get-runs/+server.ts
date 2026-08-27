@@ -3,45 +3,74 @@ import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readdir, readFile, stat } from 'fs/promises';
 import { join, resolve } from 'path';
 
+const METADATA_FILENAME = 'manual_metadata.json';
+
+// Runs live at a fixed depth: <root>/E-*/S-*/R-*/manual_metadata.json (see save-run).
+// Only those three levels are listed, so the pulse/sequence folders inside a run are
+// never walked.
+async function listSubdirectories(dir: string, label: string): Promise<string[]> {
+    console.log(`[get-runs] listSubdirectories: reading ${label} level at:`, dir);
+    try {
+        const entries = await readdir(dir, { withFileTypes: true });
+        console.log(`[get-runs] listSubdirectories: ${label} level has ${entries.length} entries:`, entries.map(e => e.name));
+
+        const dirs: string[] = [];
+        for (const entry of entries) {
+            const fullPath = join(dir, entry.name);
+            const stats = await stat(fullPath);
+            if (stats.isDirectory()) {
+                console.log(`[get-runs] listSubdirectories: ${label} directory:`, fullPath);
+                dirs.push(fullPath);
+            } else {
+                console.log(`[get-runs] listSubdirectories: skipping non-directory at ${label} level:`, fullPath);
+            }
+        }
+
+        console.log(`[get-runs] listSubdirectories: ${label} level yielded ${dirs.length} directory(ies)`);
+        return dirs;
+    } catch (err: any) {
+        console.error('Error reading local path:', err);
+        console.error(`[get-runs] listSubdirectories: failed reading ${label} level at:`, dir, 'code:', err?.code, 'status:', err?.status, 'message:', err?.message);
+        if (err.status) throw err;
+        if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
+        throw error(500, 'Internal server error reading files');
+    }
+}
+
 async function findRunMetadataFiles(rootDir: string): Promise<string[]> {
     console.log('[get-runs] findRunMetadataFiles called with rootDir:', rootDir);
     const results: string[] = [];
 
-    async function walk(dir: string): Promise<void> {
-        console.log('[get-runs] walk: entering directory:', dir);
-        try {
-            const entries = await readdir(dir, { withFileTypes: true });
-            console.log(`[get-runs] walk: read ${entries.length} entries in ${dir}`, entries.map(e => e.name));
+    const experimentDirs = await listSubdirectories(rootDir, 'experiment');
 
-            for (const entry of entries) {
-                const fullPath = join(dir, entry.name);
-                console.log('[get-runs] walk: stat-ing entry:', fullPath);
-                const stats = await stat(fullPath);
-                console.log(`[get-runs] walk: ${fullPath} -> isDirectory=${stats.isDirectory()} isFile=${stats.isFile()} size=${stats.size}`);
+    for (const experimentDir of experimentDirs) {
+        const sampleDirs = await listSubdirectories(experimentDir, 'sample');
 
-                if (stats.isDirectory()) {
-                    console.log('[get-runs] walk: recursing into directory:', fullPath);
-                    await walk(fullPath);
-                    console.log('[get-runs] walk: finished recursing into directory:', fullPath);
-                } else if (stats.isFile() && entry.name === 'manual_metadata.json') {
-                    console.log('[get-runs] walk: MATCH manual_metadata.json at:', fullPath);
-                    results.push(fullPath);
-                    console.log('[get-runs] walk: results count is now:', results.length);
-                } else {
-                    console.log('[get-runs] walk: skipping non-matching entry:', fullPath);
+        for (const sampleDir of sampleDirs) {
+            const runDirs = await listSubdirectories(sampleDir, 'run');
+
+            for (const runDir of runDirs) {
+                const metadataPath = join(runDir, METADATA_FILENAME);
+                try {
+                    const stats = await stat(metadataPath);
+                    if (stats.isFile()) {
+                        console.log(`[get-runs] MATCH ${METADATA_FILENAME} at:`, metadataPath, 'size:', stats.size);
+                        results.push(metadataPath);
+                        console.log('[get-runs] results count is now:', results.length);
+                    } else {
+                        console.log(`[get-runs] ${METADATA_FILENAME} exists but is not a file, skipping:`, metadataPath);
+                    }
+                } catch (err: any) {
+                    if (err?.code === 'ENOENT') {
+                        console.log(`[get-runs] No ${METADATA_FILENAME} in run folder:`, runDir);
+                    } else {
+                        console.warn(`[get-runs] Failed to stat ${metadataPath}`, err);
+                    }
                 }
             }
-            console.log('[get-runs] walk: leaving directory:', dir);
-        } catch (err: any) {
-            console.error('Error reading local path:', err);
-            console.error('[get-runs] walk: failed on directory:', dir, 'code:', err?.code, 'status:', err?.status, 'message:', err?.message);
-            if (err.status) throw err;
-            if (err.code === 'ENOENT') throw error(404, 'Local resource not found');
-            throw error(500, 'Internal server error reading files');
         }
     }
 
-    await walk(rootDir);
     console.log(`[get-runs] findRunMetadataFiles: found ${results.length} metadata file(s):`, results);
     return results;
 }
