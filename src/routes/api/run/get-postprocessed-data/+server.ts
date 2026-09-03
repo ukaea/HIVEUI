@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
+import { normalizePulseMap } from '$lib/models/RunMetadata';
 
 const SCOPE = 'get-postprocessed-data';
 
@@ -47,8 +48,16 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     console.log(`[${SCOPE}] reading from runPath=${runPath}`);
 
+    const pulseList = normalizePulseMap(postprocessResult.pulses);
+
+    if (pulseList.length < postprocessResult.pulses.length) {
+        console.warn(
+            `[${SCOPE}] ignored ${postprocessResult.pulses.length - pulseList.length}/${postprocessResult.pulses.length} pulses with no usable pulseId/seqId`
+        );
+    }
+
     const pulses = await Promise.all(
-        postprocessResult.pulses.map(async ({ pulseId, seqId }: { pulseId: number; seqId: number }) => {
+        pulseList.map(async ({ pulseId, seqId }) => {
             const processedPath = join(runPath, `P-${pulseId}`, `Seq-${seqId}`, 'processed_metadata.json');
             console.log(`[${SCOPE}] reading P-${pulseId}/Seq-${seqId} path=${processedPath}`);
 

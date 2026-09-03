@@ -42,7 +42,7 @@ export const GET: RequestHandler = async ({ url }) => {
             );
         }
 
-        const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${dagId}/dagRuns/${dagRunId}/taskInstances/${taskId}/xcomEntries/${xcomKey}`;
+        const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}/taskInstances/${encodeURIComponent(taskId)}/xcomEntries/${encodeURIComponent(xcomKey)}`;
         const token = await airflowTokenManager.getToken();
 
         const response = await fetch(endpoint, {

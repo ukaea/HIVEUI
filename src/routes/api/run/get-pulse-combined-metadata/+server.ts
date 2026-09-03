@@ -2,6 +2,7 @@ import { env } from '$env/dynamic/private';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { readFile } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
+import { normalizePulseMap } from '$lib/models/RunMetadata';
 
 const SCOPE = 'get-pulse-combined-metadata';
 
@@ -25,7 +26,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     const { experimentNumber, sampleNumber, runNumber } = runMetadata;
 
-    const pulseList = Array.isArray(runMetadata.pulseMap) ? runMetadata.pulseMap : [];
+    const rawPulseList = Array.isArray(runMetadata.pulseMap) ? runMetadata.pulseMap : [];
+    const pulseList = normalizePulseMap(rawPulseList);
+
+    if (pulseList.length < rawPulseList.length) {
+        console.warn(
+            `[${SCOPE}] ignored ${rawPulseList.length - pulseList.length}/${rawPulseList.length} pulse map entries with no usable pulseId/seqId`
+        );
+    }
 
     console.log(
         `[${SCOPE}] request E-${experimentNumber}/S-${sampleNumber}/R-${runNumber} pulses=${pulseList.length}`

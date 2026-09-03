@@ -12,6 +12,48 @@ function generateUUID(): string {
     });
 }
 
+export interface PulseMapEntry {
+    pulseId: number;
+    seqId: number;
+}
+
+function toPulseNumber(value: any): number | null {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+}
+
+export function normalizePulseMap(raw: any): PulseMapEntry[] {
+    if (!Array.isArray(raw)) {
+        return [];
+    }
+
+    const entries: PulseMapEntry[] = [];
+    let dropped = 0;
+
+    for (const pulse of raw) {
+        const pulseId = toPulseNumber(pulse?.pulseId ?? pulse?.pulseNumber);
+        const seqId = toPulseNumber(pulse?.seqId ?? pulse?.sequenceNumber);
+
+        if (pulseId === null || seqId === null) {
+            dropped++;
+            continue;
+        }
+
+        entries.push({ pulseId, seqId });
+    }
+
+    if (dropped > 0) {
+        console.warn(
+            `normalizePulseMap: dropped ${dropped}/${raw.length} pulse map entries with no usable pulseId/seqId`
+        );
+    }
+
+    return entries;
+}
+
 export class HeatingInformation {
     heatingType: string;
     currentType: string;
@@ -103,7 +145,7 @@ export class RunMetadata {
     ingestDagRunId: string;
     currentStep: number;
     createdAt: string;
-    pulseMap: Array<{ pulseId: number; seqId: number }>
+    pulseMap: PulseMapEntry[];
 
     static schema = Zod.object({
         runNumber: Zod.number().min(1, 'Run Number is required'),
@@ -178,14 +220,7 @@ export class RunMetadata {
         run.ingestDagRunId = json.ingestDagRunId || '';
         run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
-        // Runs saved before the pulse map adopted the DAG's field names still
-        // carry pulseNumber/sequenceNumber on disk.
-        run.pulseMap = Array.isArray(json.pulseMap)
-            ? json.pulseMap.map((pulse: any) => ({
-                pulseId: pulse?.pulseId ?? pulse?.pulseNumber,
-                seqId: pulse?.seqId ?? pulse?.sequenceNumber
-            }))
-            : [];
+        run.pulseMap = normalizePulseMap(json.pulseMap);
         return run;
     }
 
@@ -205,7 +240,7 @@ export class RunMetadata {
             ingestDagRunId: metadata.ingestDagRunId,
             currentStep: metadata.currentStep,
             createdAt: metadata.createdAt,
-            pulseMap: metadata.pulseMap.map(({ pulseId, seqId }) => ({ pulseId, seqId }))
+            pulseMap: normalizePulseMap(metadata.pulseMap)
         };
     }
 }

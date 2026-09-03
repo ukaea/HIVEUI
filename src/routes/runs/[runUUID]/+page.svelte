@@ -6,7 +6,7 @@
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 
-	import { RunMetadata } from '$lib/models/RunMetadata';
+	import { RunMetadata, normalizePulseMap } from '$lib/models/RunMetadata';
 	import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
 	import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
     import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
@@ -208,7 +208,14 @@
 
 			if (['processed', 'annotated', 'ingested'].includes(existing.status)) {
 				processingDone = true;
+				const xcomWarning =
+					runMetadata.pulseMap.length === 0 ? await refreshPulseMapFromXCom() : '';
+
 				await loadPulses();
+
+				if (xcomWarning && !pulseLoadError) {
+					pulseLoadError = xcomWarning;
+				}
 			}
 
 			if (['annotated', 'ingested'].includes(existing.status)) {
@@ -231,12 +238,7 @@
 		}
 	}
 
-	// Re-pull the pulse map from the postprocessing DAG's XCom (dag run id + task
-	// id) and persist it, so a retry also recovers a run whose map was never saved
-	// — e.g. the XCom fetch that follows DAG completion failed. Returns a warning
-	// to surface, or '' when there is nothing to report.
 	async function refreshPulseMapFromXCom(): Promise<string> {
-		// Seeded test runs have no DAG run behind them.
 		if (testMode) {
 			return '';
 		}
@@ -247,16 +249,13 @@
 
 		try {
 			const postprocessResults = await runService.fetchPostprocessResults(runMetadata.dagRunId);
-			const pulseMap = postprocessResults.pulses ?? [];
+			const pulseMap = normalizePulseMap(postprocessResults.pulses);
 
-			// Don't overwrite a usable map with an empty one — keep what is on disk.
 			if (pulseMap.length === 0) {
 				return `Airflow returned no pulses for DAG run ${runMetadata.dagRunId}.`;
 			}
 
 			runMetadata.pulseMap = pulseMap;
-			// Persist the refreshed map to the run's manual_metadata.json so the next
-			// page load reads the same pulses without hitting Airflow again.
 			await runService.saveRun(runMetadata);
 			return '';
 		} catch (error) {
@@ -280,7 +279,6 @@
 			const xcomWarning = await refreshPulseMapFromXCom();
 			await loadPulses();
 
-			// A file-read failure is the more specific error, so let it win.
 			if (xcomWarning && !pulseLoadError) {
 				pulseLoadError = xcomWarning;
 			}
@@ -341,7 +339,7 @@
 			dagStatusText = 'Triggering pipeline...';
 			try {
 				const seedResult = await runService.seedTestData(experimentNumber, sampleNumber, runNumber);
-				runMetadata.pulseMap = seedResult.pulses ?? [];
+				runMetadata.pulseMap = normalizePulseMap(seedResult.pulses);
 				runMetadata.status = 'processed';
 				await runService.saveRun(runMetadata);
 				await loadPulses();
@@ -384,7 +382,7 @@
 
 				if (!testMode) {
 					const postprocessResults = await runService.fetchPostprocessResults(dagRunId);
-					runMetadata.pulseMap = postprocessResults.pulses ?? [];
+					runMetadata.pulseMap = normalizePulseMap(postprocessResults.pulses);
 				}
 
 				runMetadata.status = 'processed';
