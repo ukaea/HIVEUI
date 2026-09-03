@@ -2,11 +2,12 @@ import { RunMetadata } from '$lib/models/RunMetadata';
 import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
 import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
 
+/** Result of the postprocessing DAG, in the DAG's own vocabulary. */
 export interface PostprocessResult {
-    experimentNumber: number;
-    sampleNumber: number;
-    runNumber: number;
-    pulses: Array<{ pulseNumber: number; sequenceNumber: number }>;
+    experimentId: number;
+    sampleId: number;
+    runId: number;
+    pulses: Array<{ pulseId: number; seqId: number }>;
 }
 
 export class RunDataService {
@@ -102,7 +103,7 @@ export class RunDataService {
         experimentNumber: number,
         sampleNumber: number,
         runNumber: number,
-        pulseNumber: number,
+        pulseId: number,
         annotation: PulseAnnotationMetadata
     ): Promise<void> {
         const cleanedData = PulseAnnotationMetadata.toJSON(annotation);
@@ -115,7 +116,7 @@ export class RunDataService {
                     experimentNumber,
                     sampleNumber,
                     runNumber,
-                    pulseNumber,
+                    pulseId,
                     annotation: cleanedData
                 })
             });
@@ -193,7 +194,7 @@ export class RunDataService {
         runNumber: number,
         pulseCount: number = 3,
         sequenceCount: number = 2
-    ): Promise<{ pulseCount: number; sequenceCount: number; pulses: Array<{ pulseNumber: number; sequenceNumber: number }> }> {
+    ): Promise<{ pulseCount: number; sequenceCount: number; pulses: Array<{ pulseId: number; seqId: number }> }> {
         try {
             const response = await fetch('/api/run/seed-test-data', {
                 method: 'POST',
@@ -221,7 +222,7 @@ export class RunDataService {
 
     async publishToDataCatalogue(
         runMetadata: RunMetadata,
-        pulsesMetadata: Array<{ annotation: any; processedData: any }>
+        pulsesMetadata: Array<{ pulseId: number; annotation: any; processedData: any }>
     ): Promise<{ dag_run_id?: string; testMode?: boolean }> {
         try {
             const response = await fetch('/api/airflow/ingest', {

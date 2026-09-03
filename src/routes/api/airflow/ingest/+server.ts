@@ -31,11 +31,11 @@ export const POST: RequestHandler = async ({ request }) => {
                 diagnostics,
                 schemaVersion: '1.0.0'
             },
-            pulseData: pulsesMetadata.map(({ annotation, processedData }: { annotation: any; processedData: any }) => {
+            pulseData: pulsesMetadata.map(({ pulseId, annotation, processedData }: { pulseId: number; annotation: any; processedData: any }) => {
                 const pulseStart = processedData ? new Date(processedData.pulseStartTimestamp).getTime() : 0;
                 const pulseEnd = processedData ? new Date(processedData.pulseEndTimestamp).getTime() : 0;
                 return {
-                    pulseNumber: annotation.pulseNumber,
+                    pulseNumber: pulseId,
                     pulseQuality: annotation.pulseQuality,
                     comment: annotation.comment,
                     powerSupplyReportedPower: processedData?.powerSupplyReportedPower ?? 0,

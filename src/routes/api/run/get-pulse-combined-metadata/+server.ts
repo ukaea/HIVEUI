@@ -53,38 +53,38 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     console.log(`[${SCOPE}] reading from runPath=${runPath}`);
 
     const pulses = await Promise.all(
-        pulseList.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
+        pulseList.map(async ({ pulseId, seqId }: { pulseId: number; seqId: number }) => {
             // Postprocess output lives at the sequence level.
-            const processedPath = join(runPath, `P-${pulseNumber}`, `Seq-${sequenceNumber}`, 'processed_metadata.json');
-            console.log(`[${SCOPE}] reading processed data P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}`);
+            const processedPath = join(runPath, `P-${pulseId}`, `Seq-${seqId}`, 'processed_metadata.json');
+            console.log(`[${SCOPE}] reading processed data P-${pulseId}/Seq-${seqId} path=${processedPath}`);
 
             const processedData = await readFile(processedPath, 'utf-8')
                 .then(JSON.parse)
                 .catch((err) => {
                     console.error(
-                        `[${SCOPE}] failed to read processed data P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}:`,
+                        `[${SCOPE}] failed to read processed data P-${pulseId}/Seq-${seqId} path=${processedPath}:`,
                         err?.code ?? err?.message ?? err
                     );
                     return null;
                 });
 
             // Annotations are saved at the pulse level by save-pulse-annotation.
-            const annotationPath = join(runPath, `P-${pulseNumber}`, 'pulse_manual_metadata.json');
+            const annotationPath = join(runPath, `P-${pulseId}`, 'pulse_manual_metadata.json');
             const annotationData = await readFile(annotationPath, 'utf-8')
                 .then(JSON.parse)
                 .catch((err) => {
                     console.error(
-                        `[${SCOPE}] failed to read annotation P-${pulseNumber} path=${annotationPath}:`,
+                        `[${SCOPE}] failed to read annotation P-${pulseId} path=${annotationPath}:`,
                         err?.code ?? err?.message ?? err
                     );
                     return null;
                 });
 
-            return { pulseNumber, sequenceNumber, processedData, annotationData };
+            return { pulseId, seqId, processedData, annotationData };
         })
     );
 
-    pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
+    pulses.sort((a, b) => a.pulseId - b.pulseId);
 
     const withProcessed = pulses.filter((pulse) => pulse.processedData !== null).length;
     const withAnnotation = pulses.filter((pulse) => pulse.annotationData !== null).length;

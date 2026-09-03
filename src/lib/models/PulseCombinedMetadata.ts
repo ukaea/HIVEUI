@@ -5,8 +5,8 @@ import { PulseAnnotationMetadata } from "./PulseAnnotationMetadata";
 
 export class PulseCombinedMetadata {
     // Pulse identity
-    pulseNumber: number;
-    sequenceNumber: number;
+    pulseId: number;
+    seqId: number;
 
     // Postprocess outputs
     processedData: PulseProcessedMetadata;
@@ -15,16 +15,16 @@ export class PulseCombinedMetadata {
     annotationData: PulseAnnotationMetadata;
 
     constructor() {
-        this.pulseNumber = 0;
-        this.sequenceNumber = 0;
+        this.pulseId = 0;
+        this.seqId = 0;
         this.processedData = new PulseProcessedMetadata();
         this.annotationData = new PulseAnnotationMetadata();
     }
 
     static fromJSON(json: any): PulseCombinedMetadata {
         const p = new PulseCombinedMetadata();
-        p.pulseNumber = json.pulseNumber ?? 0;
-        p.sequenceNumber = json.sequenceNumber ?? 0;
+        p.pulseId = json.pulseId ?? 0;
+        p.seqId = json.seqId ?? 0;
         p.processedData = json.processedData ? PulseProcessedMetadata.fromJSON(json.processedData) : new PulseProcessedMetadata();
         p.annotationData = json.annotationData ? PulseAnnotationMetadata.fromJSON(json.annotationData) : new PulseAnnotationMetadata();
         return p;
@@ -32,8 +32,8 @@ export class PulseCombinedMetadata {
 
     static toJSON(p: PulseCombinedMetadata): any {
         return {
-            pulseNumber: p.pulseNumber,
-            sequenceNumber: p.sequenceNumber,
+            pulseId: p.pulseId,
+            seqId: p.seqId,
             processedData: PulseProcessedMetadata.toJSON(p.processedData),
             annotationData: PulseAnnotationMetadata.toJSON(p.annotationData)
         };

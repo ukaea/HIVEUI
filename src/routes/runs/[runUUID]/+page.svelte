@@ -227,7 +227,41 @@
 			pulses = await runService.fetchPulseCombinedMetadata(runMetadata);
 		} catch (error) {
 			console.error('Error loading pulses:', error);
-			pulseLoadError = (error as Error).message;
+			pulseLoadError = `Failed to load pulse data: ${(error as Error).message}`;
+		}
+	}
+
+	// Re-pull the pulse map from the postprocessing DAG's XCom (dag run id + task
+	// id) and persist it, so a retry also recovers a run whose map was never saved
+	// — e.g. the XCom fetch that follows DAG completion failed. Returns a warning
+	// to surface, or '' when there is nothing to report.
+	async function refreshPulseMapFromXCom(): Promise<string> {
+		// Seeded test runs have no DAG run behind them.
+		if (testMode) {
+			return '';
+		}
+
+		if (!runMetadata.dagRunId) {
+			return 'No pipeline run is recorded for this run, so the pulse map cannot be re-fetched from Airflow.';
+		}
+
+		try {
+			const postprocessResults = await runService.fetchPostprocessResults(runMetadata.dagRunId);
+			const pulseMap = postprocessResults.pulses ?? [];
+
+			// Don't overwrite a usable map with an empty one — keep what is on disk.
+			if (pulseMap.length === 0) {
+				return `Airflow returned no pulses for DAG run ${runMetadata.dagRunId}.`;
+			}
+
+			runMetadata.pulseMap = pulseMap;
+			// Persist the refreshed map to the run's manual_metadata.json so the next
+			// page load reads the same pulses without hitting Airflow again.
+			await runService.saveRun(runMetadata);
+			return '';
+		} catch (error) {
+			console.error('Error re-fetching pulse map from XCom:', error);
+			return `Could not re-fetch the pulse map from Airflow (${(error as Error).message}); using the saved pulse map instead.`;
 		}
 	}
 
@@ -238,17 +272,23 @@
 			return;
 		}
 
-		const previousPulseNumber =
-			selectedPulseIndex !== null ? pulses[selectedPulseIndex]?.pulseNumber ?? null : null;
+		const previousPulseId =
+			selectedPulseIndex !== null ? pulses[selectedPulseIndex]?.pulseId ?? null : null;
 
 		reloadingPulses = true;
 		try {
+			const xcomWarning = await refreshPulseMapFromXCom();
 			await loadPulses();
+
+			// A file-read failure is the more specific error, so let it win.
+			if (xcomWarning && !pulseLoadError) {
+				pulseLoadError = xcomWarning;
+			}
 
 			// Keep the viewer on the same pulse number if it is still there.
 			const index =
-				previousPulseNumber !== null
-					? pulses.findIndex((pulse) => pulse.pulseNumber === previousPulseNumber)
+				previousPulseId !== null
+					? pulses.findIndex((pulse) => pulse.pulseId === previousPulseId)
 					: -1;
 			selectedPulseIndex = index >= 0 ? index : null;
 			selectedProcessedData = index >= 0 ? pulses[index].processedData : null;
@@ -369,7 +409,7 @@
 					experimentNumber,
 					sampleNumber,
 					runNumber,
-					pulse.pulseNumber,
+					pulse.pulseId,
 					pulse.annotationData
 				);
 			}
@@ -393,31 +433,32 @@
 		publishError = '';
 		try {
 			// Ensure processed data is loaded for every pulse
-			const pulsesToFetch = pulses.filter((pulse) => !processedDataByPulse.has(pulse.pulseNumber));
+			const pulsesToFetch = pulses.filter((pulse) => !processedDataByPulse.has(pulse.pulseId));
 
 			if (pulsesToFetch.length > 0) {
 				const postprocessResponse = await runService.fetchPostprocessData({
-					experimentNumber,
-					sampleNumber,
-					runNumber,
+					experimentId: experimentNumber,
+					sampleId: sampleNumber,
+					runId: runNumber,
 					pulses: pulsesToFetch.map((pulse) => ({
-						pulseNumber: pulse.pulseNumber,
-						sequenceNumber: pulse.sequenceNumber
+						pulseId: pulse.pulseId,
+						seqId: pulse.seqId
 					}))
 				});
 
-				for (const { pulseNumber, processedData } of postprocessResponse.pulses ?? []) {
+				for (const { pulseId, processedData } of postprocessResponse.pulses ?? []) {
 					if (processedData) {
-						processedDataByPulse.set(pulseNumber, PulseProcessedMetadata.fromJSON(processedData));
+						processedDataByPulse.set(pulseId, PulseProcessedMetadata.fromJSON(processedData));
 					}
 				}
 			}
 
 			// Combine each pulse annotation with its processed data
 			const pulsesMetadata = pulses.map((pulse) => ({
+				pulseId: pulse.pulseId,
 				annotation: PulseAnnotationMetadata.toJSON(pulse.annotationData),
-				processedData: processedDataByPulse.has(pulse.pulseNumber)
-					? PulseProcessedMetadata.toJSON(processedDataByPulse.get(pulse.pulseNumber)!)
+				processedData: processedDataByPulse.has(pulse.pulseId)
+					? PulseProcessedMetadata.toJSON(processedDataByPulse.get(pulse.pulseId)!)
 					: null
 			}));
 
@@ -846,7 +887,7 @@
 				</div>
 
 				{#if pulseLoadError}
-					<p class="text-red-500 text-sm mb-4">Failed to load pulse data: {pulseLoadError}</p>
+					<p class="text-red-500 text-sm mb-4">{pulseLoadError}</p>
 				{/if}
 
 				{#if pulses.length === 0}
@@ -865,7 +906,7 @@
 										{selectedPulseIndex === i ? 'bg-blue-600 text-white' : 'hover:bg-surface-300'}"
 									on:click={() => handleSelectPulse(i)}
 								>
-									<span class="font-semibold">Pulse {pulse.pulseNumber}</span>
+									<span class="font-semibold">Pulse {pulse.pulseId}</span>
 									<span
 										class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
 									></span>
@@ -885,7 +926,7 @@
 									<span class="ml-2 text-gray-400">Loading processed data...</span>
 								</div>
 							{:else}
-								<h4 class="text-md font-bold mb-3">Pulse {pulses[selectedPulseIndex].pulseNumber} Data</h4>
+								<h4 class="text-md font-bold mb-3">Pulse {pulses[selectedPulseIndex].pulseId} Data</h4>
 
 								{#if selectedProcessedData}
 									<!-- Run Information -->
@@ -1016,7 +1057,7 @@
 								<tbody>
 									{#each pulses as pulse}
 										<tr>
-											<td>{pulse.pulseNumber}</td>
+											<td>{pulse.pulseId}</td>
 											<td>{pulse.annotationData.pulseQuality}</td>
 											<td>{pulse.annotationData.comment}</td>
 										</tr>

@@ -20,14 +20,14 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     const body = await request.json();
     const { postprocessResult } = body;
 
-    if (!postprocessResult?.experimentNumber || !postprocessResult?.sampleNumber || !postprocessResult?.runNumber || !postprocessResult?.pulses) {
-        throw error(400, 'postprocessResult with experimentNumber, sampleNumber, runNumber, and pulses is required');
+    if (!postprocessResult?.experimentId || !postprocessResult?.sampleId || !postprocessResult?.runId || !postprocessResult?.pulses) {
+        throw error(400, 'postprocessResult with experimentId, sampleId, runId, and pulses is required');
     }
 
-    const { experimentNumber, sampleNumber, runNumber } = postprocessResult;
+    const { experimentId, sampleId, runId } = postprocessResult;
 
     console.log(
-        `[${SCOPE}] request E-${experimentNumber}/S-${sampleNumber}/R-${runNumber} pulses=${postprocessResult.pulses.length}`
+        `[${SCOPE}] request E-${experimentId}/S-${sampleId}/R-${runId} pulses=${postprocessResult.pulses.length}`
     );
 
     const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -36,7 +36,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
         throw error(500, 'ROOT_FOLDER_LOCATION is not set');
     }
 
-    const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`;
+    const relativePath = `E-${experimentId}/S-${sampleId}/R-${runId}`;
     const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
     const runPath = resolve(rootFolder, sanitizedPath);
 
@@ -48,35 +48,35 @@ export const POST: RequestHandler = async ({ request, locals }) => {
     console.log(`[${SCOPE}] reading from runPath=${runPath}`);
 
     const pulses = await Promise.all(
-        postprocessResult.pulses.map(async ({ pulseNumber, sequenceNumber }: { pulseNumber: number; sequenceNumber: number }) => {
-            const processedPath = join(runPath, `P-${pulseNumber}`, `Seq-${sequenceNumber}`, 'processed_metadata.json');
-            console.log(`[${SCOPE}] reading P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}`);
+        postprocessResult.pulses.map(async ({ pulseId, seqId }: { pulseId: number; seqId: number }) => {
+            const processedPath = join(runPath, `P-${pulseId}`, `Seq-${seqId}`, 'processed_metadata.json');
+            console.log(`[${SCOPE}] reading P-${pulseId}/Seq-${seqId} path=${processedPath}`);
 
             const processedData = await readFile(processedPath, 'utf-8')
                 .then(JSON.parse)
                 .catch((err) => {
                     console.error(
-                        `[${SCOPE}] failed to read P-${pulseNumber}/Seq-${sequenceNumber} path=${processedPath}:`,
+                        `[${SCOPE}] failed to read P-${pulseId}/Seq-${seqId} path=${processedPath}:`,
                         err?.code ?? err?.message ?? err
                     );
                     return null;
                 });
 
-            return { pulseNumber, sequenceNumber, processedData };
+            return { pulseId, seqId, processedData };
         })
     );
 
-    pulses.sort((a, b) => a.pulseNumber - b.pulseNumber);
+    pulses.sort((a, b) => a.pulseId - b.pulseId);
 
     const resolved = pulses.filter((pulse) => pulse.processedData !== null).length;
     console.log(
-        `[${SCOPE}] returning ${resolved}/${pulses.length} pulses with processed data for E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}`
+        `[${SCOPE}] returning ${resolved}/${pulses.length} pulses with processed data for E-${experimentId}/S-${sampleId}/R-${runId}`
     );
 
     return json({
-        experimentNumber,
-        sampleNumber,
-        runNumber,
+        experimentId,
+        sampleId,
+        runId,
         pulses
     });
 };

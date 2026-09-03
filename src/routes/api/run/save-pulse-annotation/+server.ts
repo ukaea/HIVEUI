@@ -20,10 +20,10 @@ export const POST: RequestHandler = async ({ request, locals }) => {
 
     try {
         const body = await request.json();
-        const { experimentNumber, sampleNumber, runNumber, pulseNumber, annotation } = body;
+        const { experimentNumber, sampleNumber, runNumber, pulseId, annotation } = body;
 
-        if (!experimentNumber || !sampleNumber || !runNumber || !pulseNumber || !annotation) {
-            throw error(400, 'experimentNumber, sampleNumber, runNumber, pulseNumber, and annotation are required');
+        if (!experimentNumber || !sampleNumber || !runNumber || !pulseId || !annotation) {
+            throw error(400, 'experimentNumber, sampleNumber, runNumber, pulseId, and annotation are required');
         }
 
         const rootFolder = env.ROOT_FOLDER_LOCATION;
@@ -31,7 +31,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw new Error('ROOT_FOLDER_LOCATION is not set in environment variables');
         }
 
-        const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseNumber}`;
+        const relativePath = `E-${experimentNumber}/S-${sampleNumber}/R-${runNumber}/P-${pulseId}`;
 
         const sanitizedPath = normalize(relativePath).replace(/^(\.\.[\/\\])+/, '');
         const fullPath = resolve(rootFolder, sanitizedPath);

@@ -78,7 +78,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             throw error(403, 'Access denied: Invalid file path');
         }
 
-        const pulses: Array<{ pulseNumber: number; sequenceNumber: number }> = [];
+        const pulses: Array<{ pulseId: number; seqId: number }> = [];
         for (let p = 1; p <= numPulses; p++) {
             for (let s = 1; s <= numSequences; s++) {
                 const seqDir = join(runPath, `P-${p}`, `Seq-${s}`);
@@ -91,7 +91,7 @@ export const POST: RequestHandler = async ({ request, locals }) => {
             }
             // One entry per pulse, pointing at the latest sequence (matches the real
             // postprocess output, where each pulse resolves to its final sequence).
-            pulses.push({ pulseNumber: p, sequenceNumber: numSequences });
+            pulses.push({ pulseId: p, seqId: numSequences });
         }
 
         return json({

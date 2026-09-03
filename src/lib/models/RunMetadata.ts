@@ -103,7 +103,7 @@ export class RunMetadata {
     ingestDagRunId: string;
     currentStep: number;
     createdAt: string;
-    pulseMap: Array<{ pulseNumber: number; sequenceNumber: number }>
+    pulseMap: Array<{ pulseId: number; seqId: number }>
 
     static schema = Zod.object({
         runNumber: Zod.number().min(1, 'Run Number is required'),
@@ -178,7 +178,14 @@ export class RunMetadata {
         run.ingestDagRunId = json.ingestDagRunId || '';
         run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
-        run.pulseMap = Array.isArray(json.pulseMap) ? json.pulseMap : [];
+        // Runs saved before the pulse map adopted the DAG's field names still
+        // carry pulseNumber/sequenceNumber on disk.
+        run.pulseMap = Array.isArray(json.pulseMap)
+            ? json.pulseMap.map((pulse: any) => ({
+                pulseId: pulse?.pulseId ?? pulse?.pulseNumber,
+                seqId: pulse?.seqId ?? pulse?.sequenceNumber
+            }))
+            : [];
         return run;
     }
 
@@ -198,7 +205,7 @@ export class RunMetadata {
             ingestDagRunId: metadata.ingestDagRunId,
             currentStep: metadata.currentStep,
             createdAt: metadata.createdAt,
-            pulseMap: metadata.pulseMap.map(({ pulseNumber, sequenceNumber }) => ({ pulseNumber, sequenceNumber }))
+            pulseMap: metadata.pulseMap.map(({ pulseId, seqId }) => ({ pulseId, seqId }))
         };
     }
 }
