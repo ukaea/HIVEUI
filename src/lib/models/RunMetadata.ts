@@ -120,11 +120,11 @@ export class CoolantInformation {
 
     static toJSON(metadata: CoolantInformation): any {
         return {
-        sampleCooling: metadata.sampleCooling,
-        coolantType: metadata.coolantType,
-        targetCoolantFlow: metadata.targetCoolantFlow,
-        targetCoolantTemperature: metadata.targetCoolantTemperature,
-        measuredCoolantFlow: metadata.measuredCoolantFlow
+        sampleCooling: metadata.sampleCooling === true,
+        coolantType: metadata.coolantType || '',
+        targetCoolantFlow: Number(metadata.targetCoolantFlow) || 0.0,
+        targetCoolantTemperature: Number(metadata.targetCoolantTemperature) || 0.0,
+        measuredCoolantFlow: Number(metadata.measuredCoolantFlow) || 0.0
         }
     }
 
