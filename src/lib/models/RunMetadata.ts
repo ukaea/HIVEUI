@@ -95,14 +95,14 @@ export class HeatingInformation {
 }
 
 export class CoolantInformation {
-    sampleCooling: boolean | null;
+    sampleCooling: boolean;
     coolantType: string;
     targetCoolantFlow: number;
     targetCoolantTemperature: number;
     measuredCoolantFlow: number;
 
     constructor() {
-        this.sampleCooling = null;
+        this.sampleCooling = false;
         this.coolantType = '';
         this.targetCoolantFlow = 0.0;
         this.targetCoolantTemperature = 0.0;
@@ -110,11 +110,11 @@ export class CoolantInformation {
     }
     static fromJSON(json: any): CoolantInformation{
         const coolant = new CoolantInformation();
-        coolant.sampleCooling = json.sampleCooling || '';
+        coolant.sampleCooling = json.sampleCooling === true;
         coolant.coolantType = json.coolantType || '';
-        coolant.targetCoolantFlow = json.targetCoolantFlow || '';
-        coolant.targetCoolantTemperature = json.targetCoolantTemperature || '';
-        coolant.measuredCoolantFlow = json.measuredCoolantFlow || 0.0;
+        coolant.targetCoolantFlow = Number(json.targetCoolantFlow) || 0.0;
+        coolant.targetCoolantTemperature = Number(json.targetCoolantTemperature) || 0.0;
+        coolant.measuredCoolantFlow = Number(json.measuredCoolantFlow) || 0.0;
         return coolant
     }
 

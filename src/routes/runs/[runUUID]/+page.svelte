@@ -188,6 +188,10 @@
 			}
 
 			runMetadata = existing;
+			// The coolant fields are only enabled when sample cooling is on, so restore
+			// that toggle from the loaded run instead of leaving it disabled until the
+			// user re-picks the option.
+			coolantToggle = !existing.coolantInformation.sampleCooling;
 			experimentNumber = existing.experimentNumber;
 			sampleNumber = existing.sampleNumber;
 			runNumber = existing.runNumber;
