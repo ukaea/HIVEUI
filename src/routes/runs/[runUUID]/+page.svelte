@@ -42,7 +42,6 @@
 	let publishStatusText = '';
 	let publishError = '';
 	let inputPowerToggle = true;
-	let coolantToggle = true;
 
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
@@ -188,7 +187,6 @@
 			}
 
 			runMetadata = existing;
-			coolantToggle = !existing.coolantInformation.sampleCooling;
 			experimentNumber = existing.experimentNumber;
 			sampleNumber = existing.sampleNumber;
 			runNumber = existing.runNumber;
@@ -753,7 +751,6 @@
 							autoplacement={false}
 							on:change={(e) => { 
 								draft.coolantInformation.sampleCooling = e.detail.value; 
-								coolantToggle = e.detail.value === false;
 								refresh(); 
 							}}
 							error={errors['coolantInformation.sampleCooling']}
@@ -764,7 +761,7 @@
 							value={draft.coolantInformation.coolantType}
 							autoplacement={false}
 							on:change={(e) => { draft.coolantInformation.coolantType = e.detail.value; refresh(); }}
-							disabled={coolantToggle}
+							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.coolantType']}
 						/>
 						<TextField
@@ -772,7 +769,7 @@
 							value={draft.coolantInformation.targetCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantFlow = e.detail.value; refresh(); }}
-							disabled={coolantToggle}
+							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.targetCoolantFlow']}
 						/>
 						<TextField
@@ -780,7 +777,7 @@
 							value={draft.coolantInformation.targetCoolantTemperature}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantTemperature = e.detail.value; refresh(); }}
-							disabled={coolantToggle}
+							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.targetCoolantTemperature']}
 						/>
 						<TextField
@@ -788,7 +785,7 @@
 							value={draft.coolantInformation.measuredCoolantFlow}
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.measuredCoolantFlow = e.detail.value; refresh(); }}
-							disabled={coolantToggle}
+							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.measuredCoolantFlow']}
 						/>
 					</div>
