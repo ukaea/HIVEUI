@@ -9,10 +9,10 @@ realm-data
 !.env.example
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
-/exampleData
+/example_data
 /sampleData
 KeyChallenge4
 /diagnostics
 /experiments
 .claude
-/postgres_data/*
+/postgres_data/

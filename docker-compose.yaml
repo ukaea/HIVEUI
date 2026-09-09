@@ -3,8 +3,11 @@ services:
     image: hive-ui:dev
     pull_policy: never
     env_file: .env
+    working_dir: /app
     ports:
       - "3003:3003"
+    volumes:
+      - ./example_data:/app/example_data
     depends_on:
       postgres:
         condition: service_healthy
