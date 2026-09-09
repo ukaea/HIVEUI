@@ -171,10 +171,29 @@ export class RunMetadata {
         }),
         coolantInformation: Zod.object({
             sampleCooling: Zod.boolean(),
-            coolantType: Zod.string().min(1, "Coolant Type is required"),
-            targetCoolantFlow: Zod.number().min(1, 'Target Coolant Flow is required'),
-            targetCoolantTemperature: Zod.number().min(1, 'Target Coolant Temperature is required'),
-            measuredCoolantFlow: Zod.number().min(1, 'Measured Coolant Flow is required')
+            coolantType: Zod.string(),
+            targetCoolantFlow: Zod.number(),
+            targetCoolantTemperature: Zod.number(),
+            measuredCoolantFlow: Zod.number()
+        }).superRefine((coolant, ctx) => {
+            if (!coolant.sampleCooling) {
+                return;
+            }
+
+            const required: [keyof typeof coolant, string][] = [
+                ['coolantType', 'Coolant Type is required'],
+                ['targetCoolantFlow', 'Target Coolant Flow is required'],
+                ['targetCoolantTemperature', 'Target Coolant Temperature is required'],
+                ['measuredCoolantFlow', 'Measured Coolant Flow is required']
+            ];
+
+            for (const [field, message] of required) {
+                const value = coolant[field];
+                const missing = typeof value === 'string' ? value.length < 1 : Number(value) < 1;
+                if (missing) {
+                    ctx.addIssue({ code: 'custom', path: [field], message });
+                }
+            }
         }),
     });
 
