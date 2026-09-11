@@ -429,6 +429,17 @@
 		saving = true;
 		publishError = '';
 		try {
+			if (pulses.length === 0) {
+				await loadPulses();
+			}
+
+			if (pulses.length === 0) {
+				publishError =
+					pulseLoadError ||
+					'No pulses loaded for this run — publishing would send an empty pulse list. Reload the run and check the postprocessing output before publishing.';
+				return;
+			}
+
 			// Ensure processed data is loaded for every pulse
 			const pulsesToFetch = pulses.filter((pulse) => !processedDataByPulse.has(pulse.pulseId));
 
@@ -458,6 +469,14 @@
 					? PulseProcessedMetadata.toJSON(processedDataByPulse.get(pulse.pulseId)!)
 					: null
 			}));
+
+			const missingProcessed = pulsesMetadata.filter((pulse) => !pulse.processedData);
+			if (missingProcessed.length > 0) {
+				publishError = `No processed data for pulse(s) ${missingProcessed
+					.map((pulse) => pulse.pulseId)
+					.join(', ')}. Re-run postprocessing before publishing.`;
+				return;
+			}
 
 			const result = await runService.publishToDataCatalogue(runMetadata, pulsesMetadata);
 

@@ -218,9 +218,9 @@ export class RunMetadata {
     static fromJSON(json: any): RunMetadata {
         const run = new RunMetadata();
         run.runUUID = json.runUUID || run.runUUID;
-        run.runNumber = json.runNumber || 0;
-        run.sampleNumber = json.sampleNumber || 0;
-        run.experimentNumber = json.experimentNumber || 0;
+        run.runNumber = Number(json.runNumber) || 0;
+        run.sampleNumber = Number(json.sampleNumber) || 0;
+        run.experimentNumber = Number(json.experimentNumber) || 0;
         run.configurationId = json.configurationId || '';
         run.operator1 = json.operator1 ?
             PersonMetadata.fromJSON(json.operator1) :
@@ -246,9 +246,9 @@ export class RunMetadata {
     static toJSON(metadata: RunMetadata): any {
         return {
             runUUID: metadata.runUUID,
-            runNumber: metadata.runNumber,
-            sampleNumber: metadata.sampleNumber,
-            experimentNumber: metadata.experimentNumber,
+            runNumber: Number(metadata.runNumber) || 0,
+            sampleNumber: Number(metadata.sampleNumber) || 0,
+            experimentNumber: Number(metadata.experimentNumber) || 0,
             configurationId: metadata.configurationId,
             operator1: PersonMetadata.toJSON(metadata.operator1),
             operator2: PersonMetadata.toJSON(metadata.operator2),

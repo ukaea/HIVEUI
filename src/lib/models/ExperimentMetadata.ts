@@ -42,7 +42,7 @@ export class ExperimentMetadata {
     static async fromJSON(json: any): Promise<ExperimentMetadata> {
         const metadata = new ExperimentMetadata();
         
-        metadata.experimentNumber = json.experimentNumber || 0;
+        metadata.experimentNumber = Number(json.experimentNumber) || 0;
         metadata.startDate = json.startDate ? new Date(json.startDate) : new Date();
         metadata.endDate = json.endDate ? new Date(json.endDate) : new Date();
         metadata.description = json.description || '';

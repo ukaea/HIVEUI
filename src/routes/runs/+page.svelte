@@ -247,7 +247,7 @@
 				value={newExperimentNumber}
 				autoplacement={false}
 				on:change={(e) => {
-					newExperimentNumber = e.detail.value;
+					newExperimentNumber = Number(e.detail.value) || 0;
 					computeNextRunNumber();
 				}}
 			/>
@@ -257,7 +257,7 @@
 				value={newSampleNumber}
 				autoplacement={false}
 				on:change={(e) => {
-					newSampleNumber = e.detail.value;
+					newSampleNumber = Number(e.detail.value) || 0;
 					computeNextRunNumber();
 				}}
 			/>
@@ -266,7 +266,7 @@
 				type="integer"
 				value={newRunNumber}
 				on:change={(e) => {
-					newRunNumber = e.detail.value;
+					newRunNumber = Number(e.detail.value) || 0;
 				}}
 			/>
 			<SelectField

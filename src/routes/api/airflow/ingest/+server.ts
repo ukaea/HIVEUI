@@ -9,6 +9,17 @@ import { join, normalize, resolve } from 'path';
 export const POST: RequestHandler = async ({ request }) => {
     try {
         const { runMetadata, pulsesMetadata } = await request.json();
+
+        if (!Array.isArray(pulsesMetadata) || pulsesMetadata.length === 0) {
+            console.error(
+                `[airflow/ingest] refusing to trigger ingest with no pulse data for E-${runMetadata?.experimentNumber}/S-${runMetadata?.sampleNumber}/R-${runMetadata?.runNumber}`
+            );
+            return json(
+                { error: 'Refusing to publish: the run has no pulse data. Re-run postprocessing and reload the run.' },
+                { status: 400 }
+            );
+        }
+
         // Look up configuration to derive diagnostics
         const configRecord = await getConfigurationById(runMetadata.configurationId);
         const diagnostics: string[][] = configRecord
@@ -20,9 +31,9 @@ export const POST: RequestHandler = async ({ request }) => {
         // Build payload
         const payload = {
             runData: {
-                runNumber: runMetadata.runNumber,
-                sampleNumber: runMetadata.sampleNumber,
-                experimentNumber: runMetadata.experimentNumber,
+                runNumber: Number(runMetadata.runNumber),
+                sampleNumber: Number(runMetadata.sampleNumber),
+                experimentNumber: Number(runMetadata.experimentNumber),
                 configurationId: runMetadata.configurationId,
                 operator1: runMetadata.operator1,
                 operator2: runMetadata.operator2,

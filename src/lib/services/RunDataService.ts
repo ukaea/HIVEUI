@@ -236,7 +236,7 @@ export class RunDataService {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.message || 'Publish failed');
+                throw new Error(errorData.error || errorData.message || 'Publish failed');
             }
 
             return await response.json();
