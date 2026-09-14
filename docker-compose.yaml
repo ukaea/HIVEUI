@@ -1,7 +1,7 @@
 services:
   hiveui:
     image: hive-ui:dev
-    pull_policy: never
+    build: .
     env_file: .env
     working_dir: /app
     ports:

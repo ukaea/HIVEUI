@@ -12,6 +12,7 @@ export const configurations = pgTable('configurations', {
 export const combinations = pgTable('combinations', {
     combinationId: text('combination_id').primaryKey(),
     combinationName: text('combination_name').notNull().default(''),
+    port: text('port').notNull().default(''),
     // Standalone, reusable combination: full equipment objects stored denormalized.
     equipment: jsonb('equipment').notNull().default(sql`'[]'::jsonb`),
 });

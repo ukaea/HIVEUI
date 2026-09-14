@@ -21,6 +21,11 @@
 	let allCombinations: CombinationMetadata[] = [];
 	let selectedCombination: CombinationMetadata | null = null;
 
+	const combinationOrder = tableOrderStore({ initialBy: 'combinationName', initialDirection: 'asc' });
+	combinationOrder.subscribe(() => {
+		allCombinations = allCombinations.sort($combinationOrder.handler);
+	});
+
 	// Main configuration dialog
 	let open = false;
 	let isNewEntry = false;
@@ -148,6 +153,13 @@
 		isNewEntry = false;
 	}
 
+	function handleCombinationRowClick(row: CombinationMetadata): void {
+		newCombination = JSON.parse(JSON.stringify(row));
+		isNewCombination = false;
+		selectedEquipment = null;
+		combinationDialogOpen = true;
+	}
+
 	function handleNewCombination(): void {
 		newCombination = JSON.parse(JSON.stringify(new CombinationMetadata()));
 		isNewCombination = true;
@@ -196,12 +208,35 @@
 </script>
 
 <div class="flex flex-col min-h-screen bg-neutral p-4 w-full">
+	<h2 class="text-2xl font-bold mb-4">Configurations</h2>
+
 	<div class="mb-4 flex justify-between items-center">
-		<h2 class="text-2xl font-bold">Configurations</h2>
-		<div>
-			<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
-			<Button on:click={handleNewCombination} variant="fill">New Diagnostic</Button>
-		</div>
+		<h3 class="text-xl font-bold">Diagnostics</h3>
+		<Button on:click={handleNewCombination} variant="fill">New Diagnostic</Button>
+	</div>
+	<div class="table-container mb-8">
+		<Table
+			data={allCombinations}
+			columns={[
+				{ name: 'combinationName', align: 'left', header: 'Diagnostic Name' },
+				{ name: 'combinationId', align: 'left', header: 'Diagnostic Id' },
+				{ name: 'port', align: 'left', header: 'Port', format: (value) => value || '-' },
+				{
+					name: 'equipment',
+					align: 'left',
+					header: 'Equipment',
+					format: (value) => (Array.isArray(value) ? `${value.length} equipment` : '0 equipment')
+				}
+			]}
+			order={combinationOrder}
+			on:cellClick={(e) => handleCombinationRowClick(e.detail.rowData)}
+			class="styled-table"
+		/>
+	</div>
+
+	<div class="mb-4 flex justify-between items-center">
+		<h3 class="text-xl font-bold">Configurations</h3>
+		<Button on:click={handleNewEntry} variant="fill">New Configuration</Button>
 	</div>
 	<div class="table-container">
 		<Table
@@ -355,7 +390,7 @@
 
 <!-- Diagnostic Creation Dialog -->
 <Dialog open={combinationDialogOpen} on:close={handleCombinationDialogClose} class="combinationInputDialog">
-	<div slot="title">Create New Diagnostic</div>
+	<div slot="title">{isNewCombination ? 'Create New Diagnostic' : 'Edit Diagnostic'}</div>
 	<div class="p-4">
 		<Form initial={newCombination} let:draft let:refresh let:current let:revertAll>
 			<div class="p-4 grid grid-cols-2 gap-4">
@@ -377,6 +412,17 @@
 					on:change={(e) => {
 						if (draft) {
 							draft.combinationId = e.detail.value;
+							newCombination = draft;
+							refresh();
+						}
+					}}
+				/>
+				<TextField
+					label="Port (optional)"
+					value={draft?.port || ''}
+					on:change={(e) => {
+						if (draft) {
+							draft.port = e.detail.value;
 							newCombination = draft;
 							refresh();
 						}

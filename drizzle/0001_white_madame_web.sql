@@ -1,0 +1,1 @@
+ALTER TABLE "combinations" ADD COLUMN "port" text DEFAULT '' NOT NULL;

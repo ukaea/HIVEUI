@@ -5,6 +5,7 @@ import { combinations } from './schema';
 type CombinationRow = {
     combinationId: string;
     combinationName: string;
+    port: string;
     equipment: unknown[];
 };
 
@@ -12,6 +13,7 @@ function rowToCombination(row: typeof combinations.$inferSelect): CombinationRow
     return {
         combinationId: row.combinationId,
         combinationName: row.combinationName,
+        port: row.port ?? '',
         equipment: (row.equipment as unknown[]) ?? [],
     };
 }
@@ -31,6 +33,7 @@ export async function upsertCombination(id: string, data: any): Promise<void> {
     const values = {
         combinationId: id,
         combinationName: data.combinationName ?? '',
+        port: data.port ?? '',
         equipment: data.equipment ?? [],
     };
 
@@ -40,6 +43,7 @@ export async function upsertCombination(id: string, data: any): Promise<void> {
             target: combinations.combinationId,
             set: {
                 combinationName: values.combinationName,
+                port: values.port,
                 equipment: values.equipment,
             },
         });

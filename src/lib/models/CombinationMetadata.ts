@@ -4,11 +4,13 @@ import { EquipmentMetadata } from './EquipmentMetadata';
 export class CombinationMetadata {
     combinationId: string;
     combinationName: string;
+    port: string;
     equipment: EquipmentMetadata[];
 
     constructor() {
         this.combinationId = '';
         this.combinationName = '';
+        this.port = '';
         this.equipment = [];
     }
 
@@ -16,6 +18,7 @@ export class CombinationMetadata {
         const combination = new CombinationMetadata();
         combination.combinationId = json.combinationId ?? '';
         combination.combinationName = json.combinationName ?? '';
+        combination.port = json.port ?? '';
 
         // Parse nested equipment - stored as full objects in JSONB
         if (json.equipment && Array.isArray(json.equipment)) {
@@ -31,6 +34,7 @@ export class CombinationMetadata {
         return {
             combinationId: combination.combinationId,
             combinationName: combination.combinationName,
+            port: combination.port ?? '',
             // Store full equipment objects for denormalized DB storage
             equipment: combination.equipment.map(
                 (eq) => EquipmentMetadata.toJSON(eq)
