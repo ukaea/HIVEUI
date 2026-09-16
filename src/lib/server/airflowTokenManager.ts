@@ -12,11 +12,17 @@ type TokenResponse = {
 const EXPIRY_SKEW_MS = 60 * 1000; // 60 seconds
 // Fallback lifetime if the token carries no exp claim and no expires_in.
 const DEFAULT_LIFETIME_MS = 50 * 60 * 1000; // 50 minutes
+// Hold off after a failed refresh so a fast poll loop cannot hammer the auth endpoint.
+const FAILURE_BACKOFF_MS = 10 * 1000; // 10 seconds
+
+const SCOPE = 'airflow/token';
 
 class TokenManager {
     private token: string | null = null;
     private expiry = 0;
     private refresh: Promise<string> | null = null;
+    private lastError: Error | null = null;
+    private backoffUntil = 0;
 
     private async fetchToken(): Promise<string> {
         let response: Response;
@@ -31,22 +37,19 @@ class TokenManager {
             });
         } catch (error) {
             // Never leave a stale token behind on a failed refresh.
-            this.token = null;
-            this.expiry = 0;
+            this.reset();
             throw new Error(`Failed to reach Airflow token endpoint: ${(error as Error).message}`);
         }
 
         if (!response.ok) {
             const text = await response.text().catch(() => '<unreadable body>');
-            this.token = null;
-            this.expiry = 0;
+            this.reset();
             throw new Error(`Failed to fetch Airflow token: ${response.status} - ${text}`);
         }
 
         const data = (await response.json()) as TokenResponse;
         if (!data.access_token) {
-            this.token = null;
-            this.expiry = 0;
+            this.reset();
             throw new Error('Airflow token endpoint returned no access_token');
         }
 
@@ -64,17 +67,44 @@ class TokenManager {
         try {
             const { exp } = jwtDecode(data.access_token) as { exp?: number };
             if (exp) {
+                this.logExpirySource('exp claim', exp * 1000);
                 return exp * 1000 - EXPIRY_SKEW_MS;
             }
+            console.warn(`[${SCOPE}] token decoded but carries no exp claim`);
         } catch {
-            // Not a decodable JWT (or opaque token) - fall through.
+            console.warn(`[${SCOPE}] token is not a decodable JWT, falling back to a lifetime estimate`);
         }
 
         if (data.expires_in) {
+            this.logExpirySource('expires_in', Date.now() + data.expires_in * 1000);
             return Date.now() + data.expires_in * 1000 - EXPIRY_SKEW_MS;
         }
 
+        this.logExpirySource('default estimate', Date.now() + DEFAULT_LIFETIME_MS);
         return Date.now() + DEFAULT_LIFETIME_MS - EXPIRY_SKEW_MS;
+    }
+
+    private logExpirySource(source: string, expiresAt: number): void {
+        console.log(
+            `[${SCOPE}] token cached from ${source}, expires ${new Date(expiresAt).toISOString()} (in ${Math.round((expiresAt - Date.now()) / 1000)}s)`
+        );
+    }
+
+    private reset(): void {
+        this.token = null;
+        this.expiry = 0;
+    }
+
+    /**
+     * Drop a token Airflow has rejected. Pass the token that failed so a refresh
+     * won by another request is not thrown away.
+     */
+    public invalidate(staleToken?: string): void {
+        if (staleToken && this.token !== staleToken) {
+            return;
+        }
+        console.warn(`[${SCOPE}] invalidating cached token after rejection`);
+        this.reset();
     }
 
     public async getToken(): Promise<string> {
@@ -82,10 +112,25 @@ class TokenManager {
             return this.token;
         }
 
+        if (this.lastError && Date.now() < this.backoffUntil) {
+            throw this.lastError;
+        }
+
         if (!this.refresh) {
-            this.refresh = this.fetchToken().finally(() => {
-                this.refresh = null;
-            });
+            this.refresh = this.fetchToken()
+                .then((token) => {
+                    this.lastError = null;
+                    this.backoffUntil = 0;
+                    return token;
+                })
+                .catch((error: Error) => {
+                    this.lastError = error;
+                    this.backoffUntil = Date.now() + FAILURE_BACKOFF_MS;
+                    throw error;
+                })
+                .finally(() => {
+                    this.refresh = null;
+                });
         }
         return this.refresh;
     }

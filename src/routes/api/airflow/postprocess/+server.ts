@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json } from '@sveltejs/kit';
-import { airflowTokenManager } from '$lib/server/airflowTokenManager';
+import { airflowFetch } from '$lib/server/airflowFetch';
 
 const SCOPE = 'airflow/postprocess';
 
@@ -23,10 +23,6 @@ export async function POST({ request }) {
 
         const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${env.AIRFLOW_POSTPROCESSING_DAG_ID}/dagRuns`;
 
-        console.log(`[${SCOPE}] requesting Airflow token`);
-        const token = await airflowTokenManager.getToken();
-        console.log(`[${SCOPE}] token acquired`);
-
         const payload = {
             logical_date: new Date().toISOString(),
             conf: {
@@ -38,11 +34,10 @@ export async function POST({ request }) {
 
         console.log(`[${SCOPE}] triggering DAG endpoint=${endpoint} payload:`, JSON.stringify(payload));
 
-        const response = await fetch(endpoint, {
+        const response = await airflowFetch(endpoint, {
             method: 'POST',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             },
             body: JSON.stringify(payload),
         });

@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { airflowTokenManager } from '$lib/server/airflowTokenManager';
+import { airflowFetch } from '$lib/server/airflowFetch';
 
 const DATA_TYPE_CONFIG: Record<string, { dagIdEnvKey: keyof typeof env; taskIdEnvKey: keyof typeof env }> = {
     postprocessing: {
@@ -43,13 +43,10 @@ export const GET: RequestHandler = async ({ url }) => {
         }
 
         const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${encodeURIComponent(dagId)}/dagRuns/${encodeURIComponent(dagRunId)}/taskInstances/${encodeURIComponent(taskId)}/xcomEntries/${encodeURIComponent(xcomKey)}`;
-        const token = await airflowTokenManager.getToken();
-
-        const response = await fetch(endpoint, {
+        const response = await airflowFetch(endpoint, {
             method: 'GET',
             headers: {
-                'Content-Type': 'application/json',
-                'Authorization': `Bearer ${token}`
+                'Content-Type': 'application/json'
             }
         });
 

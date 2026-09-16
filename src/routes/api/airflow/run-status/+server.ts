@@ -1,6 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { json, type RequestHandler } from '@sveltejs/kit';
-import { airflowTokenManager } from '$lib/server/airflowTokenManager';
+import { airflowFetch } from '$lib/server/airflowFetch';
 
 
 export const GET: RequestHandler = async ({ url }) => {
@@ -14,14 +14,11 @@ export const GET: RequestHandler = async ({ url }) => {
     try {
         const dagId = dagType === 'ingest' ? env.AIRFLOW_INGEST_DAG_ID : env.AIRFLOW_POSTPROCESSING_DAG_ID;
         const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${dagId}/dagRuns/${dagRunId}`;
-        const token = await airflowTokenManager.getToken();
-
-        const response = await fetch(endpoint, {
+        const response = await airflowFetch(endpoint, {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache',
-                'Authorization': `Bearer ${token}`
+                'Cache-Control': 'no-cache'
             }
         });
 

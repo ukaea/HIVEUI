@@ -2,7 +2,7 @@ import { env } from '$env/dynamic/private';
 import { env as publicEnv } from '$env/dynamic/public';
 import { json, type RequestHandler } from '@sveltejs/kit';
 import { getConfigurationById } from '$lib/server/db/configurationsRepository';
-import { airflowTokenManager } from '$lib/server/airflowTokenManager';
+import { airflowFetch } from '$lib/server/airflowFetch';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
 
@@ -79,15 +79,13 @@ export const POST: RequestHandler = async ({ request }) => {
             return json({ success: true, testMode: true });
         }
 
-        const token = await airflowTokenManager.getToken();
         const endpoint = `${env.AIRFLOW_URL}/api/v2/dags/${env.AIRFLOW_INGEST_DAG_ID}/dagRuns`;
 
-        const response = await fetch(endpoint, {
+        const response = await airflowFetch(endpoint, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'Cache-Control': 'no-cache',
-                'Authorization': `Bearer ${token}`
+                'Cache-Control': 'no-cache'
             },
             body: JSON.stringify({ logical_date: new Date().toISOString(), conf: payload })
         });
