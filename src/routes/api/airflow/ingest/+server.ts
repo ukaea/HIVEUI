@@ -28,8 +28,6 @@ export const POST: RequestHandler = async ({ request }) => {
               )
             : [];
 
-        const { outputCurrent: _outputCurrent, ...runHeatingInformation } = runMetadata.heatingInformation ?? {};
-
         // Build payload
         const payload = {
             runData: {
@@ -39,7 +37,7 @@ export const POST: RequestHandler = async ({ request }) => {
                 configurationId: runMetadata.configurationId,
                 operator1: runMetadata.operator1,
                 operator2: runMetadata.operator2,
-                heatingInformation: runHeatingInformation,
+                heatingInformation: runMetadata.heatingInformation,
                 coolantInformation: runMetadata.coolantInformation,
                 diagnostics,
                 schemaVersion: '1.0.0'
