@@ -1,19 +1,27 @@
 // $lib/models/ConfigurationMetadata.ts
 
-import { CombinationMetadata } from './CombinationMetadata';
+import { DiagnosticMetadata } from './DiagnosticMetadata';
 import type { MetadataModel } from '$lib/services/GenericDataService';
+import Zod from 'zod';
 
 export class ConfigurationMetadata {
     configurationId: string;
     configurationName: string;
     configurationDescription: string;
-    equipmentCombinations: CombinationMetadata[];
+    diagnostics: DiagnosticMetadata[];
+
+    static schema = Zod.object({
+        configurationId: Zod.string({ error: 'Configuration Id is required' }).trim().min(1, 'Configuration Id is required'),
+        configurationName: Zod.string({ error: 'Configuration Name is required' }).trim().min(1, 'Configuration Name is required'),
+        configurationDescription: Zod.string().optional(),
+        diagnostics: Zod.array(Zod.any())
+    });
 
     constructor() {
         this.configurationId = '';
         this.configurationName = '';
         this.configurationDescription = '';
-        this.equipmentCombinations = [];
+        this.diagnostics = [];
     }
 
     static fromJSON(json: any): ConfigurationMetadata {
@@ -22,10 +30,10 @@ export class ConfigurationMetadata {
         config.configurationName = json.configurationName ?? '';
         config.configurationDescription = json.configurationDescription ?? '';
 
-        // Parse nested combinations - stored as full objects in JSONB
-        if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
-            config.equipmentCombinations = json.equipmentCombinations.map(
-                (combo: any) => CombinationMetadata.fromJSON(combo)
+        // Parse nested diagnostics - stored as full objects in JSONB
+        if (json.diagnostics && Array.isArray(json.diagnostics)) {
+            config.diagnostics = json.diagnostics.map(
+                (diagnostic: any) => DiagnosticMetadata.fromJSON(diagnostic)
             );
         }
 
@@ -37,9 +45,9 @@ export class ConfigurationMetadata {
             configurationId: config.configurationId,
             configurationName: config.configurationName,
             configurationDescription: config.configurationDescription,
-            // Store full combination objects for denormalized DB storage
-            equipmentCombinations: config.equipmentCombinations.map(
-                (combo) => CombinationMetadata.toJSON(combo)
+            // Store full diagnostic objects for denormalized DB storage
+            diagnostics: config.diagnostics.map(
+                (diagnostic) => DiagnosticMetadata.toJSON(diagnostic)
             )
         };
     }

@@ -1,7 +1,7 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
-import { getAllCombinations, getCombinationById } from '$lib/server/db/combinationsRepository';
+import { getAllDiagnostics, getDiagnosticById } from '$lib/server/db/diagnosticsRepository';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { error, json, type RequestHandler } from '@sveltejs/kit';
 import { mkdir, readdir, readFile, stat } from 'fs/promises';
@@ -90,13 +90,13 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
         return json(await getAllConfigurations());
       }
 
-      if (tableName === 'combinations') {
+      if (tableName === 'diagnostics') {
         if (id) {
-          const record = await getCombinationById(id);
+          const record = await getDiagnosticById(id);
           if (!record) throw error(404, `Record ${id} not found`);
           return json(record);
         }
-        return json(await getAllCombinations());
+        return json(await getAllDiagnostics());
       }
 
       throw error(400, `Unsupported table: ${tableName}`);

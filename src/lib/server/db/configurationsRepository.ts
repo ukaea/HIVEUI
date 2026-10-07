@@ -6,7 +6,7 @@ type ConfigurationRow = {
     configurationId: string;
     configurationName: string;
     configurationDescription: string;
-    equipmentCombinations: unknown[];
+    diagnostics: unknown[];
 };
 
 function rowToConfiguration(row: typeof configurations.$inferSelect): ConfigurationRow {
@@ -14,7 +14,7 @@ function rowToConfiguration(row: typeof configurations.$inferSelect): Configurat
         configurationId: row.configurationId,
         configurationName: row.configurationName,
         configurationDescription: row.configurationDescription,
-        equipmentCombinations: (row.equipmentCombinations as unknown[]) ?? [],
+        diagnostics: (row.diagnostics as unknown[]) ?? [],
     };
 }
 
@@ -34,7 +34,7 @@ export async function upsertConfiguration(id: string, data: any): Promise<void> 
         configurationId: id,
         configurationName: data.configurationName ?? '',
         configurationDescription: data.configurationDescription ?? '',
-        equipmentCombinations: data.equipmentCombinations ?? [],
+        diagnostics: data.diagnostics ?? [],
     };
 
     await db.insert(configurations)
@@ -44,7 +44,7 @@ export async function upsertConfiguration(id: string, data: any): Promise<void> 
             set: {
                 configurationName: values.configurationName,
                 configurationDescription: values.configurationDescription,
-                equipmentCombinations: values.equipmentCombinations,
+                diagnostics: values.diagnostics,
             },
         });
 }
