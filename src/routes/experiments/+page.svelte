@@ -8,6 +8,7 @@
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
 	import { env } from '$env/dynamic/public';
+	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -57,7 +58,7 @@
 		//Validate against zod schema
 		const parseResult = ExperimentMetadata.schema.safeParse(selectedExperiment);
 		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.errors);
+			console.error('Validation errors:', parseResult.error.issues);
 			return;
 		}
 
@@ -100,14 +101,13 @@
 	function handleNewEntry(): void {
 		selectedExperiment = { ...new ExperimentMetadata() };
 		isNewEntry = true;
+		isManualEdit = false;
 		open = true;
 	}
 
 	function handleModalClose() {
 		open = false;
 		selectedExperiment = null;
-		isNewEntry = false;
-		isManualEdit = false;
 	}
 
 	function handleFormCancel() {
@@ -129,7 +129,13 @@
 		<Table
 			data={allExperiments}
 			columns={[
-				{ name: 'experimentNumber', align: 'left', header: 'Experiment Number' },
+				{
+					name: 'experimentNumber',
+					align: 'left',
+					header: 'Experiment Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `HIVE-E-${value}`)
+				},
 				{ name: 'title', align: 'left', header: 'Title' },
 				{ name: 'description', align: 'left', header: 'Description' },
 				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
@@ -142,19 +148,11 @@
 					format: (value) => {
 						if (!value) return '';
 						const date = new Date(value);
-						return (
-							date.toLocaleDateString('en-GB', {
-								day: '2-digit',
-								month: '2-digit',
-								year: 'numeric'
-							}) +
-							' (' +
-							date.toLocaleTimeString('en-GB', {
-								hour: '2-digit',
-								minute: '2-digit'
-							}) +
-							')'
-						);
+						return date.toLocaleDateString('en-GB', {
+							day: '2-digit',
+							month: '2-digit',
+							year: 'numeric'
+						});
 					}
 				}
 			]}
@@ -171,30 +169,41 @@
 		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
-				<TextField
-					label="Experiment Number"
-					type="integer"
-					value={draft.experimentNumber}
-					disabled={!isNewEntry}
-					on:change={(e) => {
-						draft.experimentNumber = e.detail.value;
-						refresh();
-					}}
-					error={errors.experimentNumber}
-				/>
-				<TextField
-					label="Title"
-					value={draft.title}
-					required
-					on:change={(e) => {
-						draft.title = e.detail.value;
-						refresh();
-					}}
-					error={errors.title}
-				/>
+				<div class="col-span-2 flex gap-4">
+					<TextField
+						label="Experiment Number"
+						type="integer"
+						value={draft.experimentNumber}
+						disabled={!isNewEntry}
+						required
+						class="w-40 shrink-0"
+						on:keydown={allowDigitsOnly}
+						on:change={(e) => {
+							draft.experimentNumber = e.detail.value;
+							refresh();
+						}}
+						error={errors.experimentNumber}
+					/>
+					<TextField
+						label="Title"
+						value={draft.title}
+						required
+						disabled={!isNewEntry}
+						class="flex-1 min-w-0"
+						on:change={(e) => {
+							draft.title = e.detail.value;
+							refresh();
+						}}
+						error={errors.title}
+					/>
+				</div>
 				<TextField
 					label="Description"
+					class="col-span-2"
+					multiline
 					value={draft.description}
+					required
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.description = e.detail.value;
 						refresh();
@@ -206,8 +215,11 @@
 					value={draft.startDate}
 					format="dd/MM/yyyy"
 					picker
+					required
 					clearable
+					disabled={!isNewEntry}
 					on:change={(e) => {
+						if (!isNewEntry) return;
 						draft.startDate = e.detail.value;
 						refresh();
 					}}
@@ -219,7 +231,9 @@
 					format="dd/MM/yyyy"
 					picker
 					clearable
+					disabled={!isNewEntry}
 					on:change={(e) => {
+						if (!isNewEntry) return;
 						draft.endDate = e.detail.value;
 						refresh();
 					}}
@@ -233,6 +247,7 @@
 					<div>
 						<SelectField
 							label="Select from Members"
+							disabled={!isNewEntry}
 							value={isManualEdit ? '' : current.leadInvestigator?.email}
 							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
 							on:change={(e) => {
@@ -253,6 +268,8 @@
 				<TextField
 					label="First Name"
 					value={current.leadInvestigator?.firstName}
+					disabled={!isNewEntry}
+					required
 					on:change={(e) => {
 						draft.leadInvestigator.firstName = e.detail.value;
 						isManualEdit = true;
@@ -263,6 +280,8 @@
 				<TextField
 					label="Last Name"
 					value={current.leadInvestigator?.lastName}
+					disabled={!isNewEntry}
+					required
 					on:change={(e) => {
 						draft.leadInvestigator.lastName = e.detail.value;
 						isManualEdit = true;
@@ -273,6 +292,8 @@
 				<TextField
 					label="Email"
 					value={current.leadInvestigator?.email}
+					disabled={!isNewEntry}
+					required
 					on:change={(e) => {
 						draft.leadInvestigator.email = e.detail.value;
 						isManualEdit = true;
@@ -288,6 +309,7 @@
 					<TextField
 						label="Organisation Name"
 						value={draft.customer.organisation}
+						disabled={!isNewEntry}
 						on:change={(e) => {
 							draft.customer.organisation = e.detail.value;
 							refresh();
@@ -298,6 +320,7 @@
 				<TextField
 					label="Contact First Name"
 					value={draft.customer.contactPerson.firstName}
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.customer.contactPerson.firstName = e.detail.value;
 						refresh();
@@ -307,6 +330,7 @@
 				<TextField
 					label="Contact Last Name"
 					value={draft.customer.contactPerson.lastName}
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.customer.contactPerson.lastName = e.detail.value;
 						refresh();
@@ -316,6 +340,7 @@
 				<TextField
 					label="Contact Email"
 					value={draft.customer.contactPerson.email}
+					disabled={!isNewEntry}
 					on:change={(e) => {
 						draft.customer.contactPerson.email = e.detail.value;
 						refresh();
@@ -331,20 +356,22 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button
-						type="submit"
-						variant="fill"
-						on:click={() => {
-							selectedExperiment = current;
-							handleMetadataSubmit();
-						}}>Save</Button
-					>
+					{#if isNewEntry}
+						<Button
+							type="submit"
+							variant="fill"
+							on:click={() => {
+								selectedExperiment = current;
+								handleMetadataSubmit();
+							}}>Save</Button
+						>
+					{/if}
 					<Button
 						on:click={() => {
 							revertAll();
 							handleFormCancel();
 						}}
-						style={{ marginLeft: 'auto' }}>Cancel</Button
+						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
 					>
 				</div>
 			</div>
@@ -362,7 +389,13 @@
 		overflow-x: auto;
 	}
 
+	:global(.experimentInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
+	}
+
 	:global(.experimentInputDialog) {
+		width: min(48rem, calc(100vw - 2rem));
 		max-height: 90vh;
 		overflow-y: auto;
 		display: flex;

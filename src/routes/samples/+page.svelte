@@ -6,6 +6,7 @@
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { SampleMetadataModel } from '$lib/models/SampleMetadata';
 	import { env } from '$env/dynamic/public';
+	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
 
 	let allSamples: SampleMetadata[] = [];
 	let selectedSample: SampleMetadata | null = null;
@@ -48,7 +49,7 @@
 		// Validate against zod schema
 		const parseResult = SampleMetadata.schema.safeParse(selectedSample);
 		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.errors);
+			console.error('Validation errors:', parseResult.error.issues);
 			return;
 		}
 
@@ -94,7 +95,6 @@
 	function handleModalClose() {
 		open = false;
 		selectedSample = null;
-		isNewEntry = false;
 	}
 
 	function handleFormCancel() {
@@ -115,7 +115,13 @@
 		<Table
 			data={allSamples}
 			columns={[
-				{ name: 'sampleNumber', align: 'left', header: 'Sample Number' },
+				{
+					name: 'sampleNumber',
+					align: 'left',
+					header: 'Sample Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `S-${value}`)
+				},
 				{ name: 'name', align: 'left', header: 'Name' }
 			]}
 			order={sampleOrder}
@@ -129,12 +135,15 @@
 	<div slot="title">{isNewEntry ? 'Create New Sample' : 'Edit Sample Metadata'}</div>
 	<div class="p-4">
 		<Form initial={selectedSample} schema={SampleMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
-			<div class="p-4 grid grid-cols-1 gap-4">
+			<div class="p-4 flex gap-4">
 				<TextField
 					label="Sample Number"
 					type="integer"
 					value={draft.sampleNumber}
 					disabled={!isNewEntry}
+					required
+					class="w-40 shrink-0"
+					on:keydown={allowDigitsOnly}
 					on:change={(e) => {
 						draft.sampleNumber = e.detail.value;
 						refresh();
@@ -145,6 +154,8 @@
 					label="Name"
 					value={draft.name}
 					required
+					disabled={!isNewEntry}
+					class="flex-1 min-w-0"
 					on:change={(e) => {
 						draft.name = e.detail.value;
 						refresh();
@@ -160,20 +171,22 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button
-						type="submit"
-						variant="fill"
-						on:click={() => {
-							selectedSample = current;
-							handleMetadataSubmit();
-						}}>Save</Button
-					>
+					{#if isNewEntry}
+						<Button
+							type="submit"
+							variant="fill"
+							on:click={() => {
+								selectedSample = current;
+								handleMetadataSubmit();
+							}}>Save</Button
+						>
+					{/if}
 					<Button
 						on:click={() => {
 							revertAll();
 							handleFormCancel();
 						}}
-						style={{ marginLeft: 'auto' }}>Cancel</Button
+						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
 					>
 				</div>
 			</div>
@@ -191,7 +204,13 @@
 		overflow-x: auto;
 	}
 
+	:global(.sampleInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
+	}
+
 	:global(.sampleInputDialog) {
+		width: min(48rem, calc(100vw - 2rem));
 		max-height: 90vh;
 		overflow-y: auto;
 		display: flex;
