@@ -21,7 +21,7 @@
 	let newRunNumber = 0;
 	let newSampleNumber = 0;
 	let newExperimentNumber: number = 0;
-	let newConfigurationId: string = '';
+	let newConfigurationNumber: number | null = null;
 
 	const order = tableOrderStore({ initialBy: 'runNumber', initialDirection: 'asc' });
 
@@ -41,7 +41,7 @@
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadataModel,
 		endpoint: '/db/configurations',
-		idField: 'configurationId',
+		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
@@ -82,8 +82,8 @@
 		try {
 			allConfigurations = await configurationService.fetchAll();
 			configurationOptions = allConfigurations.map((config) => ({
-				label: `${config.configurationId} - ${config.configurationName}`,
-				value: config.configurationId
+				label: `${config.configurationNumber} - ${config.configurationName}`,
+				value: config.configurationNumber
 			}));
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
@@ -122,7 +122,7 @@
 		newRunNumber = 0;
 		newSampleNumber = 0;
 		newExperimentNumber = 0;
-		newConfigurationId = '';
+		newConfigurationNumber = null;
 		open = true;
 	}
 
@@ -131,7 +131,7 @@
 	}
 
 	async function handleCreateRun() {
-		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationId) {
+		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationNumber) {
 			alert('All fields are required');
 			return;
 		}
@@ -153,7 +153,7 @@
 		newRun.experimentNumber = newExperimentNumber;
 		newRun.sampleNumber = newSampleNumber;
 		newRun.runNumber = newRunNumber;
-		newRun.configurationId = newConfigurationId;
+		newRun.configurationNumber = newConfigurationNumber;
 
 		try {
 			await runService.saveRun(newRun);
@@ -272,10 +272,10 @@
 			<SelectField
 				options={configurationOptions}
 				label="Configuration"
-				value={newConfigurationId}
+				value={newConfigurationNumber}
 				autoplacement={false}
 				on:change={(e) => {
-					newConfigurationId = e.detail.value;
+					newConfigurationNumber = e.detail.value;
 				}}
 			/>
 		</div>

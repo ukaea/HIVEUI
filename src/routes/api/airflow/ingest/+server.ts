@@ -21,7 +21,7 @@ export const POST: RequestHandler = async ({ request }) => {
         }
 
         // Look up configuration to derive diagnostics
-        const configRecord = await getConfigurationById(runMetadata.configurationId);
+        const configRecord = await getConfigurationById(String(runMetadata.configurationNumber));
         const diagnostics: string[][] = configRecord
             ? (configRecord.diagnostics ?? []).map((diagnostic: any) =>
                 (diagnostic.equipment ?? []).map((eq: any) => eq.equipmentName)
@@ -34,7 +34,7 @@ export const POST: RequestHandler = async ({ request }) => {
                 runNumber: Number(runMetadata.runNumber),
                 sampleNumber: Number(runMetadata.sampleNumber),
                 experimentNumber: Number(runMetadata.experimentNumber),
-                configurationId: runMetadata.configurationId,
+                configurationNumber: runMetadata.configurationNumber,
                 operator1: runMetadata.operator1,
                 operator2: runMetadata.operator2,
                 heatingInformation: runMetadata.heatingInformation,

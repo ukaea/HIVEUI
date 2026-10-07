@@ -5,7 +5,6 @@ import { diagnostics } from './schema';
 type DiagnosticRow = {
     diagnosticNumber: number;
     diagnosticName: string;
-    port: string;
     equipment: unknown[];
 };
 
@@ -13,7 +12,6 @@ function rowToDiagnostic(row: typeof diagnostics.$inferSelect): DiagnosticRow {
     return {
         diagnosticNumber: row.diagnosticNumber,
         diagnosticName: row.diagnosticName,
-        port: row.port ?? '',
         equipment: (row.equipment as unknown[]) ?? [],
     };
 }
@@ -33,7 +31,6 @@ export async function upsertDiagnostic(id: string, data: any): Promise<void> {
     const values = {
         diagnosticNumber: Number(id),
         diagnosticName: data.diagnosticName ?? '',
-        port: data.port ?? '',
         equipment: data.equipment ?? [],
     };
 
@@ -43,7 +40,6 @@ export async function upsertDiagnostic(id: string, data: any): Promise<void> {
             target: diagnostics.diagnosticNumber,
             set: {
                 diagnosticName: values.diagnosticName,
-                port: values.port,
                 equipment: values.equipment,
             },
         });

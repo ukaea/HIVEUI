@@ -113,7 +113,7 @@
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
 		endpoint: '/db/configurations',
-		idField: 'configurationId',
+		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
@@ -545,8 +545,8 @@
 		try {
 			const configurations = await configurationService.fetchAll();
 			configurationOptions = configurations.map((config) => ({
-				label: `${config.configurationId} - ${config.configurationName}`,
-				value: config.configurationId
+				label: `${config.configurationNumber} - ${config.configurationName}`,
+				value: config.configurationNumber
 			}));
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
@@ -622,13 +622,13 @@
 						<SelectField
 							options={configurationOptions}
 							label="Configuration"
-							value={draft.configurationId}
+							value={draft.configurationNumber}
 							autoplacement={false}
 							on:change={(e) => {
-								draft.configurationId = e.detail.value;
+								draft.configurationNumber = e.detail.value;
 								refresh();
 							}}
-							error={errors.configurationId}
+							error={errors.configurationNumber}
 						/>
 
 						<h3 class="col-span-3 font-bold mt-4 flex items-center gap-3">

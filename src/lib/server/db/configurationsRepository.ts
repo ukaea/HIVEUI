@@ -3,7 +3,7 @@ import { db } from './index';
 import { configurations } from './schema';
 
 type ConfigurationRow = {
-    configurationId: string;
+    configurationNumber: number;
     configurationName: string;
     configurationDescription: string;
     diagnostics: unknown[];
@@ -11,7 +11,7 @@ type ConfigurationRow = {
 
 function rowToConfiguration(row: typeof configurations.$inferSelect): ConfigurationRow {
     return {
-        configurationId: row.configurationId,
+        configurationNumber: row.configurationNumber,
         configurationName: row.configurationName,
         configurationDescription: row.configurationDescription,
         diagnostics: (row.diagnostics as unknown[]) ?? [],
@@ -25,13 +25,13 @@ export async function getAllConfigurations(): Promise<ConfigurationRow[]> {
 
 export async function getConfigurationById(id: string): Promise<ConfigurationRow | null> {
     const [row] = await db.select().from(configurations)
-        .where(eq(configurations.configurationId, id));
+        .where(eq(configurations.configurationNumber, Number(id)));
     return row ? rowToConfiguration(row) : null;
 }
 
 export async function upsertConfiguration(id: string, data: any): Promise<void> {
     const values = {
-        configurationId: id,
+        configurationNumber: Number(id),
         configurationName: data.configurationName ?? '',
         configurationDescription: data.configurationDescription ?? '',
         diagnostics: data.diagnostics ?? [],
@@ -40,7 +40,7 @@ export async function upsertConfiguration(id: string, data: any): Promise<void> 
     await db.insert(configurations)
         .values(values)
         .onConflictDoUpdate({
-            target: configurations.configurationId,
+            target: configurations.configurationNumber,
             set: {
                 configurationName: values.configurationName,
                 configurationDescription: values.configurationDescription,
@@ -50,5 +50,5 @@ export async function upsertConfiguration(id: string, data: any): Promise<void> 
 }
 
 export async function deleteConfiguration(id: string): Promise<void> {
-    await db.delete(configurations).where(eq(configurations.configurationId, id));
+    await db.delete(configurations).where(eq(configurations.configurationNumber, Number(id)));
 }

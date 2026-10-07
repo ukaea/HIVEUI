@@ -21,6 +21,7 @@
 
 	let allDiagnostics: DiagnosticMetadata[] = [];
 	let selectedDiagnostic: DiagnosticMetadata | null = null;
+	let newDiagnosticPort = '';
 
 	const diagnosticOrder = tableOrderStore({ initialBy: 'diagnosticName', initialDirection: 'asc' });
 	diagnosticOrder.subscribe(() => {
@@ -39,7 +40,7 @@
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
 		endpoint: '/db/configurations',
-		idField: 'configurationId',
+		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
@@ -93,9 +94,9 @@
 			return;
 		}
 
-		const configurationId = selectedConfiguration.configurationId.trim();
-		if (isNewEntry && allConfigurations.some((config) => config.configurationId === configurationId)) {
-			alert(`Configuration Id ${configurationId} already exists.`);
+		const configurationNumber = selectedConfiguration.configurationNumber;
+		if (isNewEntry && allConfigurations.some((config) => config.configurationNumber === configurationNumber)) {
+			alert(`Configuration Number ${configurationNumber} already exists.`);
 			return;
 		}
 
@@ -154,14 +155,45 @@
 		}
 	}
 
+	async function handleDiagnosticDelete() {
+		if (!newDiagnostic) return;
+
+		const diagnosticNumber = newDiagnostic.diagnosticNumber;
+		const usedBy = allConfigurations.filter((config) =>
+			config.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === diagnosticNumber)
+		).length;
+		const usageNote = usedBy
+			? `\n\nIt is used by ${usedBy} configuration(s), which will keep their copy of it.`
+			: '';
+
+		if (confirm(`Are you sure you want to delete diagnostic ${diagnosticNumber} - ${newDiagnostic.diagnosticName}?${usageNote}`)) {
+			try {
+				await diagnosticService.delete(newDiagnostic);
+				alert('Diagnostic deleted successfully');
+				handleDiagnosticDialogClose();
+				await fetchDiagnostics();
+			} catch (error) {
+				console.error('Delete error:', error);
+				alert(`Failed to delete diagnostic: ${(error as Error).message}`);
+			}
+		}
+	}
+
 	function handleRowClick(row: ConfigurationMetadata): void {
 		selectedConfiguration = JSON.parse(JSON.stringify(row));
 		isNewEntry = false;
 		open = true;
 	}
 
+	function nextConfigurationNumber(): number {
+		return Math.max(0, ...allConfigurations.map((config) => config.configurationNumber ?? 0)) + 1;
+	}
+
 	function handleNewEntry(): void {
 		selectedConfiguration = JSON.parse(JSON.stringify(new ConfigurationMetadata()));
+		selectedConfiguration!.configurationNumber = nextConfigurationNumber();
+		selectedDiagnostic = null;
+		newDiagnosticPort = '';
 		isNewEntry = true;
 		open = true;
 	}
@@ -240,14 +272,20 @@
 		<Table
 			data={allDiagnostics}
 			columns={[
-				{ name: 'diagnosticNumber', align: 'left', header: 'Diagnostic Number' },
+				{
+					name: 'diagnosticNumber',
+					align: 'left',
+					header: 'Diagnostic Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `D-${value}`)
+				},
 				{ name: 'diagnosticName', align: 'left', header: 'Diagnostic Name' },
-				{ name: 'port', align: 'left', header: 'Port', format: (value) => value || '-' },
 				{
 					name: 'equipment',
 					align: 'left',
 					header: 'Equipment',
-					format: (value) => (Array.isArray(value) ? `${value.length} equipment` : '0 equipment')
+					format: (value) =>
+						Array.isArray(value) && value.length ? value.map((equipment) => equipment.equipmentName).join('\n') : '-'
 				}
 			]}
 			order={diagnosticOrder}
@@ -264,13 +302,20 @@
 		<Table
 			data={allConfigurations}
 			columns={[
+				{
+					name: 'configurationNumber',
+					align: 'left',
+					header: 'Configuration Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `C-${value}`)
+				},
 				{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
-				{ name: 'configurationDescription', align: 'left', header: 'Description' },
 				{
 					name: 'diagnostics',
 					align: 'left',
 					header: 'Diagnostics',
-					format: (value) => (Array.isArray(value) ? `${value.length} diagnostics` : '0 diagnostics')
+					format: (value) =>
+						Array.isArray(value) && value.length ? value.map((diagnostic) => diagnostic.diagnosticName).join('\n') : '-'
 				}
 			]}
 			order={configurationOrder}
@@ -286,28 +331,34 @@
 		<Form initial={selectedConfiguration} schema={ConfigurationMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Configuration Details</h4>
-				<TextField
-					label="Configuration Name"
-					value={draft.configurationName}
-					required
-					disabled={!isNewEntry}
-					on:change={(e) => {
-						draft.configurationName = e.detail.value;
-						refresh();
-					}}
-					error={errors.configurationName}
-				/>
-				<TextField
-					label="Configuration Id"
-					value={draft.configurationId}
-					required
-					disabled={!isNewEntry}
-					on:change={(e) => {
-						draft.configurationId = e.detail.value;
-						refresh();
-					}}
-					error={errors.configurationId}
-				/>
+				<div class="col-span-2 flex gap-4">
+					<TextField
+						label="Configuration Number"
+						type="integer"
+						value={draft.configurationNumber}
+						required
+						disabled={!isNewEntry}
+						class="w-48 shrink-0"
+						on:keydown={allowDigitsOnly}
+						on:change={(e) => {
+							draft.configurationNumber = e.detail.value;
+							refresh();
+						}}
+						error={errors.configurationNumber}
+					/>
+					<TextField
+						label="Configuration Name"
+						value={draft.configurationName}
+						required
+						disabled={!isNewEntry}
+						class="flex-1 min-w-0"
+						on:change={(e) => {
+							draft.configurationName = e.detail.value;
+							refresh();
+						}}
+						error={errors.configurationName}
+					/>
+				</div>
 				<div class="col-span-2">
 					<TextField
 						label="Description"
@@ -322,12 +373,13 @@
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment Diagnostic</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Attached Diagnostics<span class="required-marker"> *</span></h4>
 				<div class="space-y-3">
-					{#each draft.diagnostics as diagnostic, index (diagnostic.diagnosticNumber)}
+					{#each current.diagnostics as diagnostic, index (diagnostic.diagnosticNumber)}
 						<div class="flex gap-2">
 							<TextField label="Diagnostic Number" value={diagnostic.diagnosticNumber} disabled class="w-40 shrink-0" />
 							<TextField label="Diagnostic Name" value={diagnostic.diagnosticName} disabled class="flex-1 min-w-0" />
+							<TextField label="Port" value={diagnostic.port} disabled class="w-24 shrink-0" />
 							{#if isNewEntry}
 								<Button
 									on:click={() => {
@@ -356,16 +408,25 @@
 									selectedDiagnostic = allDiagnostics.find((diagnostic) => diagnostic.diagnosticNumber === e.detail.value) || null;
 								}}
 							/>
+							<TextField
+								label="Port"
+								value={newDiagnosticPort}
+								class="w-24 shrink-0"
+								on:change={(e) => {
+									newDiagnosticPort = e.detail.value ?? '';
+								}}
+							/>
 							<Button
 								on:click={() => {
 									if (selectedDiagnostic) {
 										if (!draft.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === selectedDiagnostic?.diagnosticNumber)) {
-											draft.diagnostics = [...draft.diagnostics, selectedDiagnostic];
+											draft.diagnostics = [...draft.diagnostics, { ...selectedDiagnostic, port: String(newDiagnosticPort).trim() }];
 										} else {
 											alert('Diagnostic already added to this configuration.');
 										}
 
 										selectedDiagnostic = null;
+										newDiagnosticPort = '';
 										refresh();
 									}
 								}}
@@ -375,6 +436,9 @@
 								class="w-24 h-12">Add</Button
 							>
 						</div>
+					{/if}
+					{#if errors.diagnostics && current.diagnostics.length === 0}
+						<div class="required-error text-xs">{errors.diagnostics}</div>
 					{/if}
 				</div>
 			</div>
@@ -444,21 +508,12 @@
 						error={errors.diagnosticName}
 					/>
 				</div>
-				<TextField
-					label="Port (optional)"
-					value={draft.port}
-					disabled={!isNewDiagnostic}
-					on:change={(e) => {
-						draft.port = e.detail.value;
-						refresh();
-					}}
-				/>
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Equipment<span class="required-marker"> *</span></h4>
 				<div class="space-y-3">
-					{#each draft.equipment as equipment, index (equipment.equipmentName)}
+					{#each current.equipment as equipment, index (equipment.equipmentName)}
 						<div class="flex items-center gap-2">
 							<div class="flex-grow">
 								<TextField label="Equipment Name" value={equipment.equipmentName} disabled />
@@ -509,32 +564,51 @@
 							>
 						</div>
 					{/if}
+					{#if errors.equipment && current.equipment.length === 0}
+						<div class="required-error text-xs">{errors.equipment}</div>
+					{/if}
 				</div>
 			</div>
 
-			<div class="flex gap-2 mt-4 justify-end">
-				{#if isNewDiagnostic}
-					<Button
-						type="submit"
-						variant="fill"
-						on:click={() => {
-							newDiagnostic = current;
-							handleDiagnosticSubmit();
-						}}>Save</Button
-					>
+			<div class="flex gap-2 mt-4 {!isNewDiagnostic ? 'justify-between' : 'justify-end'}">
+				{#if !isNewDiagnostic}
+					<div>
+						<Button on:click={handleDiagnosticDelete} variant="outline" color="danger">Delete</Button>
+					</div>
 				{/if}
-				<Button
-					on:click={() => {
-						revertAll();
-						handleDiagnosticFormCancel();
-					}}>{isNewDiagnostic ? 'Cancel' : 'Close'}</Button
-				>
+				<div class="flex gap-2">
+					{#if isNewDiagnostic}
+						<Button
+							type="submit"
+							variant="fill"
+							on:click={() => {
+								newDiagnostic = current;
+								handleDiagnosticSubmit();
+							}}>Save</Button
+						>
+					{/if}
+					<Button
+						on:click={() => {
+							revertAll();
+							handleDiagnosticFormCancel();
+						}}>{isNewDiagnostic ? 'Cancel' : 'Close'}</Button
+					>
+				</div>
 			</div>
 		</Form>
 	</div>
 </Dialog>
 
 <style>
+	.table-container :global(td.column-equipment),
+	.table-container :global(td.column-diagnostics) {
+		width: 16rem;
+		min-width: 16rem;
+		max-width: 16rem;
+		white-space: pre-line;
+		overflow-wrap: anywhere;
+	}
+
 	.table-container {
 		background-color: white;
 		box-shadow:
@@ -547,6 +621,11 @@
 	:global(.configurationInputDialog label:has(input:required, textarea:required) .label::after),
 	:global(.diagnosticInputDialog label:has(input:required, textarea:required) .label::after) {
 		content: ' *';
+		color: hsl(0 85% 65%);
+	}
+
+	.required-marker,
+	.required-error {
 		color: hsl(0 85% 65%);
 	}
 
