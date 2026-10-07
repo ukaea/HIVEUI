@@ -130,6 +130,7 @@
 			data={allExperiments}
 			columns={[
 				{ name: 'experimentNumber', align: 'left', header: 'Experiment Number' },
+				{ name: 'title', align: 'left', header: 'Title' },
 				{ name: 'description', align: 'left', header: 'Description' },
 				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
 				{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
@@ -180,6 +181,16 @@
 						refresh();
 					}}
 					error={errors.experimentNumber}
+				/>
+				<TextField
+					label="Title"
+					value={draft.title}
+					required
+					on:change={(e) => {
+						draft.title = e.detail.value;
+						refresh();
+					}}
+					error={errors.title}
 				/>
 				<TextField
 					label="Description"

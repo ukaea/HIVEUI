@@ -4,6 +4,7 @@ import Zod from 'zod';
 
 export class ExperimentMetadata {
     experimentNumber: number;
+    title: string;
     startDate: Date;
     endDate: Date;
     description: string;
@@ -12,6 +13,7 @@ export class ExperimentMetadata {
 
     static schema = Zod.object({
 		experimentNumber: Zod.number().min(1, 'Experiment Number must be greater than 0'),
+		title: Zod.string().trim().min(1, 'Title is required'),
 		startDate: Zod.date(),
 		endDate: Zod.date().optional(),
 		description: Zod.string().min(1, 'Description is required'),
@@ -32,6 +34,7 @@ export class ExperimentMetadata {
 
     constructor() {
         this.experimentNumber = 0;
+        this.title = '';
         this.startDate = new Date();
         this.endDate = new Date();
         this.description = '';
@@ -43,6 +46,7 @@ export class ExperimentMetadata {
         const metadata = new ExperimentMetadata();
         
         metadata.experimentNumber = Number(json.experimentNumber) || 0;
+        metadata.title = json.title || '';
         metadata.startDate = json.startDate ? new Date(json.startDate) : new Date();
         metadata.endDate = json.endDate ? new Date(json.endDate) : new Date();
         metadata.description = json.description || '';
@@ -60,6 +64,7 @@ export class ExperimentMetadata {
     static toJSON(experiment: ExperimentMetadata): any {
         return {
             experimentNumber: experiment.experimentNumber,
+            title: experiment.title,
             startDate: experiment.startDate.toISOString(),
             endDate: experiment.endDate ? experiment.endDate.toISOString() : null,
             description: experiment.description,

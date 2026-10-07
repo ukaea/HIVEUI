@@ -114,7 +114,10 @@
 	<div class="table-container">
 		<Table
 			data={allSamples}
-			columns={[{ name: 'sampleNumber', align: 'left', header: 'Sample Number' }]}
+			columns={[
+				{ name: 'sampleNumber', align: 'left', header: 'Sample Number' },
+				{ name: 'name', align: 'left', header: 'Name' }
+			]}
 			order={sampleOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -137,6 +140,16 @@
 						refresh();
 					}}
 					error={errors.sampleNumber}
+				/>
+				<TextField
+					label="Name"
+					value={draft.name}
+					required
+					on:change={(e) => {
+						draft.name = e.detail.value;
+						refresh();
+					}}
+					error={errors.name}
 				/>
 			</div>
 
