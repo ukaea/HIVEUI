@@ -4,6 +4,7 @@
 	"private": true,
 	"type": "module",
 	"scripts": {
+		"predev": "node scripts/ensure-data-dir.js && npm run db:migrate",
 		"dev": "vite dev",
 		"build": "vite build",
 		"preview": "vite preview",
