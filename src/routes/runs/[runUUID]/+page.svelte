@@ -1,21 +1,21 @@
 <script lang="ts">
-	import { page } from '$app/stores';
 	import { beforeNavigate } from '$app/navigation';
+	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 
-	import { RunMetadata, normalizePulseMap } from '$lib/models/RunMetadata';
-	import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
 	import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
-    import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+	import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+	import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
+	import { RunMetadata, normalizePulseMap } from '$lib/models/RunMetadata';
 
 	import { GenericDataService } from '$lib/services/GenericDataService';
+	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { MemberService } from '$lib/services/MembersService';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { mdiCheck, mdiCheckCircleOutline, mdiRefresh } from '@mdi/js';
-	import type { KeycloakMember } from '$lib/services/MembersService';
 	import { onMount } from 'svelte';
 	import { Button, Form, Notification, SelectField, Step, Steps, TextField, type MenuOption } from 'svelte-ux';
 
@@ -718,18 +718,6 @@
 							on:change={(e) => { draft.heatingInformation.heatingType = e.detail.value; refresh(); }}
 							error={errors['heatingInformation.heatingType']}
 						/>
-						<SelectField
-							options={coilCurrentTypeOptions}
-							label="Current Type"
-							value={draft.heatingInformation.currentType}
-							autoplacement={false}
-							on:change={(e) => {
-								draft.heatingInformation.currentType = e.detail.value;
-								inputPowerToggle = e.detail.value === 'AC';
-								refresh();
-							}}
-							error={errors['heatingInformation.currentType']}
-						/>
 						<TextField
 							label="Input Power"
 							value={draft.heatingInformation.inputPower}
@@ -753,13 +741,6 @@
 							on:change={(e) => { draft.heatingInformation.inputVoltage = e.detail.value; refresh(); }}
 							disabled={inputPowerToggle}
 							error={errors['heatingInformation.inputVoltage']}
-						/>
-						<TextField
-							label="Output Current"
-							value={draft.heatingInformation.outputCurrent}
-							type="integer"
-							on:change={(e) => { draft.heatingInformation.outputCurrent = e.detail.value; refresh(); }}
-							error={errors['heatingInformation.outputCurrent']}
 						/>
 
 						<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
@@ -798,14 +779,6 @@
 							on:change={(e) => { draft.coolantInformation.targetCoolantTemperature = e.detail.value; refresh(); }}
 							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.targetCoolantTemperature']}
-						/>
-						<TextField
-							label="Measured Coolant Flow"
-							value={draft.coolantInformation.measuredCoolantFlow}
-							type="integer"
-							on:change={(e) => { draft.coolantInformation.measuredCoolantFlow = e.detail.value; refresh(); }}
-							disabled={!current.coolantInformation?.sampleCooling}
-							error={errors['coolantInformation.measuredCoolantFlow']}
 						/>
 					</div>
 
