@@ -135,8 +135,8 @@
 	];
 
 	let coilHeatingTypeOptions: MenuOption[] = [
-		{ label: 'Induction', value: 'Induction' },
-		{ label: 'DC', value: 'DC' }
+		{ label: 'AC Induction', value: 'Induction' },
+		{ label: 'DC Heater', value: 'DC' }
 	];
 
 	let sampleCoolingOption: MenuOption[] = [
