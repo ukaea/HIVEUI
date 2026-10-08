@@ -135,7 +135,7 @@ export class RunMetadata {
     runNumber: number;
     sampleNumber: number;
     experimentNumber: number;
-    configurationId: string;
+    configurationNumber: number | null;
     operator1: PersonMetadata;
     operator2: PersonMetadata;
     heatingInformation: HeatingInformation;
@@ -202,7 +202,7 @@ export class RunMetadata {
         this.runNumber = 0;
         this.sampleNumber = 0;
         this.experimentNumber = 0;
-        this.configurationId = '';
+        this.configurationNumber = null;
         this.operator1 = new PersonMetadata();
         this.operator2 = new PersonMetadata();
         this.heatingInformation = new HeatingInformation();
@@ -221,7 +221,7 @@ export class RunMetadata {
         run.runNumber = Number(json.runNumber) || 0;
         run.sampleNumber = Number(json.sampleNumber) || 0;
         run.experimentNumber = Number(json.experimentNumber) || 0;
-        run.configurationId = json.configurationId || '';
+        run.configurationNumber = Number(json.configurationNumber ?? json.configurationId) || null;
         run.operator1 = json.operator1 ?
             PersonMetadata.fromJSON(json.operator1) :
             new PersonMetadata();
@@ -249,7 +249,7 @@ export class RunMetadata {
             runNumber: Number(metadata.runNumber) || 0,
             sampleNumber: Number(metadata.sampleNumber) || 0,
             experimentNumber: Number(metadata.experimentNumber) || 0,
-            configurationId: metadata.configurationId,
+            configurationNumber: metadata.configurationNumber,
             operator1: PersonMetadata.toJSON(metadata.operator1),
             operator2: PersonMetadata.toJSON(metadata.operator2),
             heatingInformation: HeatingInformation.toJSON(metadata.heatingInformation),

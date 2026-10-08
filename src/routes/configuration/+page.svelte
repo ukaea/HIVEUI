@@ -3,9 +3,10 @@
 	import { Button, Table, Dialog, Form, TextField} from 'svelte-ux';
 	import { SelectField,} from 'svelte-ux';
 	import { tableOrderStore } from '@layerstack/svelte-table';
-	import { ConfigurationMetadata, CombinationMetadata, EquipmentMetadata } from '$lib/models';
+	import { ConfigurationMetadata, DiagnosticMetadata, EquipmentMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { env } from '$env/dynamic/public';
+	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
 
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let selectedConfiguration: ConfigurationMetadata | null = null;
@@ -18,12 +19,13 @@
 	let allEquipment: EquipmentMetadata[] = [];
 	let selectedEquipment: EquipmentMetadata | null = null;
 
-	let allCombinations: CombinationMetadata[] = [];
-	let selectedCombination: CombinationMetadata | null = null;
+	let allDiagnostics: DiagnosticMetadata[] = [];
+	let selectedDiagnostic: DiagnosticMetadata | null = null;
+	let newDiagnosticPort = '';
 
-	const combinationOrder = tableOrderStore({ initialBy: 'combinationName', initialDirection: 'asc' });
-	combinationOrder.subscribe(() => {
-		allCombinations = allCombinations.sort($combinationOrder.handler);
+	const diagnosticOrder = tableOrderStore({ initialBy: 'diagnosticName', initialDirection: 'asc' });
+	diagnosticOrder.subscribe(() => {
+		allDiagnostics = allDiagnostics.sort($diagnosticOrder.handler);
 	});
 
 	// Main configuration dialog
@@ -31,22 +33,22 @@
 	let isNewEntry = false;
 
 	// Diagnostic creation dialog
-	let combinationDialogOpen = false;
-	let newCombination: CombinationMetadata | null = null;
-	let isNewCombination = false;
+	let diagnosticDialogOpen = false;
+	let newDiagnostic: DiagnosticMetadata | null = null;
+	let isNewDiagnostic = false;
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
 		endpoint: '/db/configurations',
-		idField: 'configurationId',
+		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
-	const combinationService = new GenericDataService<CombinationMetadata>({
-		modelClass: CombinationMetadata,
-		endpoint: '/db/combinations',
-		idField: 'combinationId',
-		displayName: 'combinations'
+	const diagnosticService = new GenericDataService<DiagnosticMetadata>({
+		modelClass: DiagnosticMetadata,
+		endpoint: '/db/diagnostics',
+		idField: 'diagnosticNumber',
+		displayName: 'diagnostics'
 	});
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
@@ -65,9 +67,9 @@
 		}
 	}
 
-	async function fetchCombinations() {
+	async function fetchDiagnostics() {
 		try {
-			allCombinations = await combinationService.fetchAll();
+			allDiagnostics = await diagnosticService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching diagnostics:', error);
 			alert((error as Error).message);
@@ -84,8 +86,17 @@
 	}
 
 	async function handleConfigurationSubmit() {
-		if (!selectedConfiguration || !selectedConfiguration.configurationId) {
-			alert('Configuration Id is required.');
+		if (!selectedConfiguration) return;
+
+		const parseResult = ConfigurationMetadata.schema.safeParse(selectedConfiguration);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.issues);
+			return;
+		}
+
+		const configurationNumber = selectedConfiguration.configurationNumber;
+		if (isNewEntry && allConfigurations.some((config) => config.configurationNumber === configurationNumber)) {
+			alert(`Configuration Number ${configurationNumber} already exists.`);
 			return;
 		}
 
@@ -100,17 +111,26 @@
 		}
 	}
 
-	async function handleCombinationSubmit() {
-		if (!newCombination || !newCombination.combinationId) {
-			alert('Diagnostic ID is required.');
+	async function handleDiagnosticSubmit() {
+		if (!newDiagnostic) return;
+
+		const parseResult = DiagnosticMetadata.schema.safeParse(newDiagnostic);
+		if (!parseResult.success) {
+			console.error('Validation errors:', parseResult.error.issues);
+			return;
+		}
+
+		const diagnosticNumber = newDiagnostic.diagnosticNumber;
+		if (isNewDiagnostic && allDiagnostics.some((diagnostic) => diagnostic.diagnosticNumber === diagnosticNumber)) {
+			alert(`Diagnostic Number ${diagnosticNumber} already exists.`);
 			return;
 		}
 
 		try {
-			await combinationService.submit(newCombination);
-			alert(isNewCombination ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
-			handleCombinationDialogClose();
-			await fetchCombinations();
+			await diagnosticService.submit(newDiagnostic);
+			alert(isNewDiagnostic ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
+			handleDiagnosticDialogClose();
+			await fetchDiagnostics();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit diagnostic: ${(error as Error).message}`);
@@ -135,14 +155,45 @@
 		}
 	}
 
+	async function handleDiagnosticDelete() {
+		if (!newDiagnostic) return;
+
+		const diagnosticNumber = newDiagnostic.diagnosticNumber;
+		const usedBy = allConfigurations.filter((config) =>
+			config.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === diagnosticNumber)
+		).length;
+		const usageNote = usedBy
+			? `\n\nIt is used by ${usedBy} configuration(s), which will keep their copy of it.`
+			: '';
+
+		if (confirm(`Are you sure you want to delete diagnostic ${diagnosticNumber} - ${newDiagnostic.diagnosticName}?${usageNote}`)) {
+			try {
+				await diagnosticService.delete(newDiagnostic);
+				alert('Diagnostic deleted successfully');
+				handleDiagnosticDialogClose();
+				await fetchDiagnostics();
+			} catch (error) {
+				console.error('Delete error:', error);
+				alert(`Failed to delete diagnostic: ${(error as Error).message}`);
+			}
+		}
+	}
+
 	function handleRowClick(row: ConfigurationMetadata): void {
 		selectedConfiguration = JSON.parse(JSON.stringify(row));
 		isNewEntry = false;
 		open = true;
 	}
 
+	function nextConfigurationNumber(): number {
+		return Math.max(0, ...allConfigurations.map((config) => config.configurationNumber ?? 0)) + 1;
+	}
+
 	function handleNewEntry(): void {
 		selectedConfiguration = JSON.parse(JSON.stringify(new ConfigurationMetadata()));
+		selectedConfiguration!.configurationNumber = nextConfigurationNumber();
+		selectedDiagnostic = null;
+		newDiagnosticPort = '';
 		isNewEntry = true;
 		open = true;
 	}
@@ -150,59 +201,62 @@
 	function handleModalClose() {
 		open = false;
 		selectedConfiguration = null;
-		isNewEntry = false;
 	}
 
-	function handleCombinationRowClick(row: CombinationMetadata): void {
-		newCombination = JSON.parse(JSON.stringify(row));
-		isNewCombination = false;
+	function handleDiagnosticRowClick(row: DiagnosticMetadata): void {
+		newDiagnostic = JSON.parse(JSON.stringify(row));
+		isNewDiagnostic = false;
 		selectedEquipment = null;
-		combinationDialogOpen = true;
+		diagnosticDialogOpen = true;
 	}
 
-	function handleNewCombination(): void {
-		newCombination = JSON.parse(JSON.stringify(new CombinationMetadata()));
-		isNewCombination = true;
-		selectedEquipment = null;
-		combinationDialogOpen = true;
+	function nextDiagnosticNumber(): number {
+		return Math.max(0, ...allDiagnostics.map((diagnostic) => diagnostic.diagnosticNumber ?? 0)) + 1;
 	}
 
-	function handleCombinationDialogClose() {
-		combinationDialogOpen = false;
-		newCombination = null;
+	function handleNewDiagnostic(): void {
+		newDiagnostic = JSON.parse(JSON.stringify(new DiagnosticMetadata()));
+		newDiagnostic!.diagnosticNumber = nextDiagnosticNumber();
+		isNewDiagnostic = true;
 		selectedEquipment = null;
-		isNewCombination = false;
+		diagnosticDialogOpen = true;
+	}
+
+	function handleDiagnosticDialogClose() {
+		diagnosticDialogOpen = false;
+		newDiagnostic = null;
+		selectedEquipment = null;
 	}
 
 	function handleFormCancel() {
 		handleModalClose();
 	}
 
-	function handleCombinationFormCancel() {
-		handleCombinationDialogClose();
+	function handleDiagnosticFormCancel() {
+		handleDiagnosticDialogClose();
 	}
 
-	function addEquipmentToCombination(equipment: any) {
-		if (newCombination && !newCombination.equipment.some((eq) => eq.equipmentName === equipment.equipmentName)) {
-			newCombination.equipment = [...newCombination.equipment, equipment];
+	function addEquipmentToDiagnostic(equipment: any) {
+		if (newDiagnostic && !newDiagnostic.equipment.some((eq) => eq.equipmentName === equipment.equipmentName)) {
+			newDiagnostic.equipment = [...newDiagnostic.equipment, equipment];
 		}
 	}
 
-	function removeEquipmentFromCombination(equipmentName: string) {
-		if (newCombination) {
-			newCombination.equipment = newCombination.equipment.filter((eq) => eq.equipmentName !== equipmentName);
+	function removeEquipmentFromDiagnostic(equipmentName: string) {
+		if (newDiagnostic) {
+			newDiagnostic.equipment = newDiagnostic.equipment.filter((eq) => eq.equipmentName !== equipmentName);
 		}
 	}
 
-	function removeCombinationFromConfiguration(index: number) {
+	function removeDiagnosticFromConfiguration(index: number) {
 		if (selectedConfiguration) {
-			selectedConfiguration.equipmentCombinations = selectedConfiguration.equipmentCombinations.filter((_, i) => i !== index);
+			selectedConfiguration.diagnostics = selectedConfiguration.diagnostics.filter((_, i) => i !== index);
 		}
 	}
 
 	onMount(() => {
 		fetchConfigurations();
-		fetchCombinations();
+		fetchDiagnostics();
 		fetchEquipment();
 	});
 </script>
@@ -212,24 +266,30 @@
 
 	<div class="mb-4 flex justify-between items-center">
 		<h3 class="text-xl font-bold">Diagnostics</h3>
-		<Button on:click={handleNewCombination} variant="fill">New Diagnostic</Button>
+		<Button on:click={handleNewDiagnostic} variant="fill">New Diagnostic</Button>
 	</div>
 	<div class="table-container mb-8">
 		<Table
-			data={allCombinations}
+			data={allDiagnostics}
 			columns={[
-				{ name: 'combinationName', align: 'left', header: 'Diagnostic Name' },
-				{ name: 'combinationId', align: 'left', header: 'Diagnostic Id' },
-				{ name: 'port', align: 'left', header: 'Port', format: (value) => value || '-' },
+				{
+					name: 'diagnosticNumber',
+					align: 'left',
+					header: 'Diagnostic Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `D-${value}`)
+				},
+				{ name: 'diagnosticName', align: 'left', header: 'Diagnostic Name' },
 				{
 					name: 'equipment',
 					align: 'left',
 					header: 'Equipment',
-					format: (value) => (Array.isArray(value) ? `${value.length} equipment` : '0 equipment')
+					format: (value) =>
+						Array.isArray(value) && value.length ? value.map((equipment) => equipment.equipmentName).join('\n') : '-'
 				}
 			]}
-			order={combinationOrder}
-			on:cellClick={(e) => handleCombinationRowClick(e.detail.rowData)}
+			order={diagnosticOrder}
+			on:cellClick={(e) => handleDiagnosticRowClick(e.detail.rowData)}
 			class="styled-table"
 		/>
 	</div>
@@ -242,13 +302,20 @@
 		<Table
 			data={allConfigurations}
 			columns={[
-				{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
-				{ name: 'configurationDescription', align: 'left', header: 'Description' },
 				{
-					name: 'equipmentCombinations',
+					name: 'configurationNumber',
+					align: 'left',
+					header: 'Configuration Number',
+					// @ts-expect-error
+					format: (value) => (value == null ? '' : `C-${value}`)
+				},
+				{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
+				{
+					name: 'diagnostics',
 					align: 'left',
 					header: 'Diagnostics',
-					format: (value) => (Array.isArray(value) ? `${value.length} diagnostics` : '0 diagnostics')
+					format: (value) =>
+						Array.isArray(value) && value.length ? value.map((diagnostic) => diagnostic.diagnosticName).join('\n') : '-'
 				}
 			]}
 			order={configurationOrder}
@@ -261,30 +328,42 @@
 <Dialog {open} on:close={handleModalClose} class="configurationInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Edit Configuration'}</div>
 	<div class="p-4">
-		<Form initial={selectedConfiguration} let:draft let:refresh let:current let:revertAll>
+		<Form initial={selectedConfiguration} schema={ConfigurationMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Configuration Details</h4>
-				<TextField
-					label="Configuration Name"
-					value={draft.configurationName}
-					on:change={(e) => {
-						draft.configurationName = e.detail.value;
-						refresh();
-					}}
-				/>
-				<TextField
-					label="Configuration Id"
-					value={isNewEntry ? '' : draft.configurationId}
-					on:change={(e) => {
-						draft.configurationId = e.detail.value;
-						refresh();
-					}}
-					enabled
-				/>
+				<div class="col-span-2 flex gap-4">
+					<TextField
+						label="Configuration Number"
+						type="integer"
+						value={draft.configurationNumber}
+						required
+						disabled={!isNewEntry}
+						class="w-48 shrink-0"
+						on:keydown={allowDigitsOnly}
+						on:change={(e) => {
+							draft.configurationNumber = e.detail.value;
+							refresh();
+						}}
+						error={errors.configurationNumber}
+					/>
+					<TextField
+						label="Configuration Name"
+						value={draft.configurationName}
+						required
+						disabled={!isNewEntry}
+						class="flex-1 min-w-0"
+						on:change={(e) => {
+							draft.configurationName = e.detail.value;
+							refresh();
+						}}
+						error={errors.configurationName}
+					/>
+				</div>
 				<div class="col-span-2">
 					<TextField
 						label="Description"
 						value={draft.configurationDescription}
+						disabled={!isNewEntry}
 						on:change={(e) => {
 							draft.configurationDescription = e.detail.value;
 							refresh();
@@ -294,70 +373,73 @@
 			</div>
 
 			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment Diagnostic</h4>
+				<h4 class="col-span-2 mt-1 mb-4">Attached Diagnostics<span class="required-marker"> *</span></h4>
 				<div class="space-y-3">
-					{#each draft.equipmentCombinations as combination, index (combination.combinationId)}
+					{#each current.diagnostics as diagnostic, index (diagnostic.diagnosticNumber)}
 						<div class="flex gap-2">
-							<TextField
-								label="Diagnostic Name"
-								value={combination.combinationName}
+							<TextField label="Diagnostic Number" value={diagnostic.diagnosticNumber} disabled class="w-40 shrink-0" />
+							<TextField label="Diagnostic Name" value={diagnostic.diagnosticName} disabled class="flex-1 min-w-0" />
+							<TextField label="Port" value={diagnostic.port} disabled class="w-24 shrink-0" />
+							{#if isNewEntry}
+								<Button
+									on:click={() => {
+										draft.diagnostics = draft.diagnostics.filter((_, i) => i !== index);
+										refresh();
+									}}
+									variant="outline"
+									color="danger"
+									size="sm"
+									class="w-20 h-12">Remove</Button
+								>
+							{/if}
+						</div>
+					{/each}
+					{#if isNewEntry}
+						<div class="flex gap-2">
+							<SelectField
+								label="Add Diagnostic"
+								value={selectedDiagnostic?.diagnosticNumber ?? null}
+								options={allDiagnostics.map((diagnostic) => ({
+									label: `${diagnostic.diagnosticNumber} - ${diagnostic.diagnosticName}`,
+									value: diagnostic.diagnosticNumber
+								}))}
+								class="flex-1 min-w-0"
 								on:change={(e) => {
-									combination.combinationName = e.detail.value;
-									refresh();
+									selectedDiagnostic = allDiagnostics.find((diagnostic) => diagnostic.diagnosticNumber === e.detail.value) || null;
 								}}
 							/>
 							<TextField
-								label="Diagnostic Id"
-								value={combination.combinationId}
+								label="Port"
+								value={newDiagnosticPort}
+								class="w-24 shrink-0"
 								on:change={(e) => {
-									combination.combinationId = e.detail.value;
-									refresh();
+									newDiagnosticPort = e.detail.value ?? '';
 								}}
 							/>
 							<Button
 								on:click={() => {
-									draft.equipmentCombinations = draft.equipmentCombinations.filter((_, i) => i !== index);
-									current = draft;
-									refresh();
+									if (selectedDiagnostic) {
+										if (!draft.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === selectedDiagnostic?.diagnosticNumber)) {
+											draft.diagnostics = [...draft.diagnostics, { ...selectedDiagnostic, port: String(newDiagnosticPort).trim() }];
+										} else {
+											alert('Diagnostic already added to this configuration.');
+										}
+
+										selectedDiagnostic = null;
+										newDiagnosticPort = '';
+										refresh();
+									}
 								}}
-								variant="outline"
-								color="danger"
+								variant="fill"
+								color="primary"
 								size="sm"
-								class="w-20 h-12">Remove</Button
+								class="w-24 h-12">Add</Button
 							>
 						</div>
-					{/each}
-					<div class="flex gap-2">
-						<SelectField
-							label="Add Diagnostic"
-							value={selectedCombination?.combinationId || ''}
-							options={allCombinations.map((combination) => ({ label: combination.combinationName, value: combination.combinationId }))}
-							on:change={(e) => {
-								selectedCombination = allCombinations.find((combination) => combination.combinationId === e.detail.value) || null;
-							}}
-						/>
-						<Button
-							on:click={() => {
-								if (selectedCombination) {
-									// Check if combination is already added
-									if (!draft.equipmentCombinations.some((combination) => combination.combinationId === selectedCombination.combinationId)) {
-										draft.equipmentCombinations = [...draft.equipmentCombinations, selectedCombination];
-										console.log('Diagnostic added:', selectedCombination);
-									} else {
-										alert('Diagnostic already added to this configuration.');
-									}
-
-									selectedCombination = null;
-									current = draft;
-									refresh();
-								}
-							}}
-							variant="fill"
-							color="primary"
-							size="sm"
-							class="w-24 h-12">Add</Button
-						>
-					</div>
+					{/if}
+					{#if errors.diagnostics && current.diagnostics.length === 0}
+						<div class="required-error text-xs">{errors.diagnostics}</div>
+					{/if}
 				</div>
 			</div>
 
@@ -368,19 +450,22 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button
-						on:click={() => {
-							selectedConfiguration = current;
-							handleConfigurationSubmit();
-						}}
-						variant="fill">Save</Button
-					>
+					{#if isNewEntry}
+						<Button
+							type="submit"
+							variant="fill"
+							on:click={() => {
+								selectedConfiguration = current;
+								handleConfigurationSubmit();
+							}}>Save</Button
+						>
+					{/if}
 					<Button
 						on:click={() => {
 							revertAll();
 							handleFormCancel();
 						}}
-						style={{ marginLeft: 'auto' }}>Cancel</Button
+						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
 					>
 				</div>
 			</div>
@@ -389,129 +474,141 @@
 </Dialog>
 
 <!-- Diagnostic Creation Dialog -->
-<Dialog open={combinationDialogOpen} on:close={handleCombinationDialogClose} class="combinationInputDialog">
-	<div slot="title">{isNewCombination ? 'Create New Diagnostic' : 'Edit Diagnostic'}</div>
+<Dialog open={diagnosticDialogOpen} on:close={handleDiagnosticDialogClose} class="diagnosticInputDialog">
+	<div slot="title">{isNewDiagnostic ? 'Create New Diagnostic' : 'Edit Diagnostic'}</div>
 	<div class="p-4">
-		<Form initial={newCombination} let:draft let:refresh let:current let:revertAll>
+		<Form initial={newDiagnostic} schema={DiagnosticMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Diagnostic Details</h4>
-				<TextField
-					label="Diagnostic Name"
-					value={draft?.combinationName || ''}
-					on:change={(e) => {
-						if (draft) {
-							draft.combinationName = e.detail.value;
-							newCombination = draft;
+				<div class="col-span-2 flex gap-4">
+					<TextField
+						label="Diagnostic Number"
+						type="integer"
+						value={draft.diagnosticNumber}
+						required
+						disabled={!isNewDiagnostic}
+						class="w-40 shrink-0"
+						on:keydown={allowDigitsOnly}
+						on:change={(e) => {
+							draft.diagnosticNumber = e.detail.value;
 							refresh();
-						}
-					}}
-				/>
-				<TextField
-					label="Diagnostic ID"
-					value={isNewCombination ? '' : draft?.combinationId || ''}
-					on:change={(e) => {
-						if (draft) {
-							draft.combinationId = e.detail.value;
-							newCombination = draft;
+						}}
+						error={errors.diagnosticNumber}
+					/>
+					<TextField
+						label="Diagnostic Name"
+						value={draft.diagnosticName}
+						required
+						disabled={!isNewDiagnostic}
+						class="flex-1 min-w-0"
+						on:change={(e) => {
+							draft.diagnosticName = e.detail.value;
 							refresh();
-						}
-					}}
-				/>
-				<TextField
-					label="Port (optional)"
-					value={draft?.port || ''}
-					on:change={(e) => {
-						if (draft) {
-							draft.port = e.detail.value;
-							newCombination = draft;
-							refresh();
-						}
-					}}
-				/>
-			</div>
-
-			<div class="p-4 gap-4">
-				<h4 class="col-span-2 mt-1 mb-4">Equipment</h4>
-				<div class="space-y-3">
-					{#each draft.equipment as equipment, index (equipment.equipmentName)}
-						<div class="flex items-center gap-2">
-							<div class="flex-grow">
-								<TextField
-									label="Equipment Name"
-									value={equipment.equipmentName}
-									on:change={(e) => {
-										equipment.equipmentName = e.detail.value;
-										refresh();
-									}}
-								/>
-							</div>
-							<Button
-								on:click={() => {
-									draft.equipment = draft.equipment.filter((_, i) => i !== index);
-									current = draft;
-									refresh();
-								}}
-								variant="outline"
-								color="danger"
-								size="sm"
-								class="w-20 h-12"
-								>Remove
-							</Button>
-						</div>
-					{/each}
-					<div class="flex items-center gap-2">
-						<SelectField
-							label="Add Equipment"
-							value={selectedEquipment?.equipmentName || ''}
-							options={allEquipment.map((equipment) => ({ label: equipment.equipmentName, value: equipment.equipmentName }))}
-							on:change={(e) => {
-								selectedEquipment = allEquipment.find((equipment) => equipment.equipmentName === e.detail.value) || null;
-							}}
-						/>
-						<Button
-							on:click={() => {
-								if (selectedEquipment) {
-									// Check if equipment is already added
-									if (!draft.equipment.some((equipment) => equipment.equipmentName === selectedEquipment.equipmentName)) {
-										draft.equipment = [...draft.equipment, selectedEquipment];
-									} else {
-										alert('Equipment already added to this diagnostic.');
-									}
-
-									selectedEquipment = null;
-									current = draft;
-									refresh();
-								}
-							}}
-							variant="fill"
-							color="primary"
-							size="sm"
-							class="w-24 h-12">Add</Button
-						>
-					</div>
+						}}
+						error={errors.diagnosticName}
+					/>
 				</div>
 			</div>
 
-			<div class="flex gap-2 mt-4 justify-end">
-				<Button
-					on:click={() => {
-						newCombination = current;
-						handleCombinationSubmit();
-					}}
-					variant="fill">Save</Button
-				>
-				<Button
-					on:click={() => {
-						revertAll();
-						handleCombinationFormCancel();
-					}}>Cancel</Button
-				>
+			<div class="p-4 gap-4">
+				<h4 class="col-span-2 mt-1 mb-4">Equipment<span class="required-marker"> *</span></h4>
+				<div class="space-y-3">
+					{#each current.equipment as equipment, index (equipment.equipmentName)}
+						<div class="flex items-center gap-2">
+							<div class="flex-grow">
+								<TextField label="Equipment Name" value={equipment.equipmentName} disabled />
+							</div>
+							{#if isNewDiagnostic}
+								<Button
+									on:click={() => {
+										draft.equipment = draft.equipment.filter((_, i) => i !== index);
+										refresh();
+									}}
+									variant="outline"
+									color="danger"
+									size="sm"
+									class="w-20 h-12"
+									>Remove
+								</Button>
+							{/if}
+						</div>
+					{/each}
+					{#if isNewDiagnostic}
+						<div class="flex items-center gap-2">
+							<SelectField
+								label="Add Equipment"
+								value={selectedEquipment?.equipmentName || ''}
+								options={allEquipment.map((equipment) => ({ label: equipment.equipmentName, value: equipment.equipmentName }))}
+								class="flex-1 min-w-0"
+								on:change={(e) => {
+									selectedEquipment = allEquipment.find((equipment) => equipment.equipmentName === e.detail.value) || null;
+								}}
+							/>
+							<Button
+								on:click={() => {
+									if (selectedEquipment) {
+										if (!draft.equipment.some((equipment) => equipment.equipmentName === selectedEquipment?.equipmentName)) {
+											draft.equipment = [...draft.equipment, selectedEquipment];
+										} else {
+											alert('Equipment already added to this diagnostic.');
+										}
+
+										selectedEquipment = null;
+										refresh();
+									}
+								}}
+								variant="fill"
+								color="primary"
+								size="sm"
+								class="w-24 h-12">Add</Button
+							>
+						</div>
+					{/if}
+					{#if errors.equipment && current.equipment.length === 0}
+						<div class="required-error text-xs">{errors.equipment}</div>
+					{/if}
+				</div>
+			</div>
+
+			<div class="flex gap-2 mt-4 {!isNewDiagnostic ? 'justify-between' : 'justify-end'}">
+				{#if !isNewDiagnostic}
+					<div>
+						<Button on:click={handleDiagnosticDelete} variant="outline" color="danger">Delete</Button>
+					</div>
+				{/if}
+				<div class="flex gap-2">
+					{#if isNewDiagnostic}
+						<Button
+							type="submit"
+							variant="fill"
+							on:click={() => {
+								newDiagnostic = current;
+								handleDiagnosticSubmit();
+							}}>Save</Button
+						>
+					{/if}
+					<Button
+						on:click={() => {
+							revertAll();
+							handleDiagnosticFormCancel();
+						}}>{isNewDiagnostic ? 'Cancel' : 'Close'}</Button
+					>
+				</div>
 			</div>
 		</Form>
 	</div>
 </Dialog>
 
 <style>
+	.table-container :global(td.column-equipment),
+	.table-container :global(td.column-diagnostics) {
+		width: 16rem;
+		min-width: 16rem;
+		max-width: 16rem;
+		white-space: pre-line;
+		overflow-wrap: anywhere;
+	}
+
 	.table-container {
 		background-color: white;
 		box-shadow:
@@ -521,14 +618,27 @@
 		overflow-x: auto;
 	}
 
+	:global(.configurationInputDialog label:has(input:required, textarea:required) .label::after),
+	:global(.diagnosticInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
+	}
+
+	.required-marker,
+	.required-error {
+		color: hsl(0 85% 65%);
+	}
+
 	:global(.configurationInputDialog) {
+		width: min(48rem, calc(100vw - 2rem));
 		max-height: 90vh;
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
 	}
 
-	:global(.combinationInputDialog) {
+	:global(.diagnosticInputDialog) {
+		width: min(48rem, calc(100vw - 2rem));
 		max-height: 90vh;
 		overflow-y: auto;
 		display: flex;

@@ -1,18 +1,17 @@
 import { sql } from 'drizzle-orm';
-import { jsonb, pgTable, text } from 'drizzle-orm/pg-core';
+import { integer, jsonb, pgTable, text } from 'drizzle-orm/pg-core';
 
 export const configurations = pgTable('configurations', {
-    configurationId: text('configuration_id').primaryKey(),
+    configurationNumber: integer('configuration_number').primaryKey(),
     configurationName: text('configuration_name').notNull().default(''),
     configurationDescription: text('configuration_description').notNull().default(''),
-    // Full combination objects (each with nested equipment) stored denormalized.
-    equipmentCombinations: jsonb('equipment_combinations').notNull().default(sql`'[]'::jsonb`),
+    // Full diagnostic objects (each with nested equipment and its port) stored denormalized.
+    diagnostics: jsonb('diagnostics').notNull().default(sql`'[]'::jsonb`),
 });
 
-export const combinations = pgTable('combinations', {
-    combinationId: text('combination_id').primaryKey(),
-    combinationName: text('combination_name').notNull().default(''),
-    port: text('port').notNull().default(''),
-    // Standalone, reusable combination: full equipment objects stored denormalized.
+export const diagnostics = pgTable('diagnostics', {
+    diagnosticNumber: integer('diagnostic_number').primaryKey(),
+    diagnosticName: text('diagnostic_name').notNull().default(''),
+    // Standalone, reusable diagnostic: full equipment objects stored denormalized.
     equipment: jsonb('equipment').notNull().default(sql`'[]'::jsonb`),
 });

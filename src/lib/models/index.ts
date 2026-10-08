@@ -1,5 +1,5 @@
 export { CameraMetadata } from './CameraMetadata';
-export { CombinationMetadata } from './CombinationMetadata';
+export { DiagnosticMetadata } from './DiagnosticMetadata';
 export { ConfigurationMetadata } from './ConfigurationMetadata';
 export { CustomerMetadata } from './CustomerMetadata';
 export { DicMetadata } from './DicMetadata';

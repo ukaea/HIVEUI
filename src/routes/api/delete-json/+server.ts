@@ -5,7 +5,7 @@ import { resolve, normalize } from 'path';
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
 import { deleteConfiguration } from '$lib/server/db/configurationsRepository';
-import { deleteCombination } from '$lib/server/db/combinationsRepository';
+import { deleteDiagnostic } from '$lib/server/db/diagnosticsRepository';
 
 export const POST: RequestHandler = async ({ request, fetch, locals }) => {
     // --- AUTHENTICATION & AUTHORIZATION ---
@@ -74,8 +74,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                 return json({ success: true });
             }
 
-            if (tableName === 'combinations') {
-                await deleteCombination(id);
+            if (tableName === 'diagnostics') {
+                await deleteDiagnostic(id);
                 return json({ success: true });
             }
 

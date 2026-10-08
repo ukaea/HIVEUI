@@ -1,31 +1,43 @@
 // $lib/models/ConfigurationMetadata.ts
 
-import { CombinationMetadata } from './CombinationMetadata';
+import { DiagnosticMetadata } from './DiagnosticMetadata';
 import type { MetadataModel } from '$lib/services/GenericDataService';
+import Zod from 'zod';
+
+export type AttachedDiagnostic = DiagnosticMetadata & { port: string };
 
 export class ConfigurationMetadata {
-    configurationId: string;
+    configurationNumber: number | null;
     configurationName: string;
     configurationDescription: string;
-    equipmentCombinations: CombinationMetadata[];
+    diagnostics: AttachedDiagnostic[];
+
+    static schema = Zod.object({
+        configurationNumber: Zod.number({ error: 'Configuration Number is required' })
+            .int('Configuration Number must be a whole number')
+            .min(1, 'Configuration Number must be greater than 0'),
+        configurationName: Zod.string({ error: 'Configuration Name is required' }).trim().min(1, 'Configuration Name is required'),
+        configurationDescription: Zod.string().optional(),
+        diagnostics: Zod.array(Zod.any()).min(1, 'At least one diagnostic is required')
+    });
 
     constructor() {
-        this.configurationId = '';
+        this.configurationNumber = null;
         this.configurationName = '';
         this.configurationDescription = '';
-        this.equipmentCombinations = [];
+        this.diagnostics = [];
     }
 
     static fromJSON(json: any): ConfigurationMetadata {
         const config = new ConfigurationMetadata();
-        config.configurationId = json.configurationId ?? '';
+        config.configurationNumber = Number(json.configurationNumber) || null;
         config.configurationName = json.configurationName ?? '';
         config.configurationDescription = json.configurationDescription ?? '';
 
-        // Parse nested combinations - stored as full objects in JSONB
-        if (json.equipmentCombinations && Array.isArray(json.equipmentCombinations)) {
-            config.equipmentCombinations = json.equipmentCombinations.map(
-                (combo: any) => CombinationMetadata.fromJSON(combo)
+        // Parse nested diagnostics - stored as full objects in JSONB
+        if (json.diagnostics && Array.isArray(json.diagnostics)) {
+            config.diagnostics = json.diagnostics.map(
+                (diagnostic: any) => ({ ...DiagnosticMetadata.fromJSON(diagnostic), port: diagnostic.port ?? '' })
             );
         }
 
@@ -34,12 +46,12 @@ export class ConfigurationMetadata {
 
     static toJSON(config: ConfigurationMetadata): any {
         return {
-            configurationId: config.configurationId,
+            configurationNumber: config.configurationNumber,
             configurationName: config.configurationName,
             configurationDescription: config.configurationDescription,
-            // Store full combination objects for denormalized DB storage
-            equipmentCombinations: config.equipmentCombinations.map(
-                (combo) => CombinationMetadata.toJSON(combo)
+            // Store full diagnostic objects for denormalized DB storage
+            diagnostics: config.diagnostics.map(
+                (diagnostic) => ({ ...DiagnosticMetadata.toJSON(diagnostic), port: diagnostic.port ?? '' })
             )
         };
     }

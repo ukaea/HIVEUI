@@ -12,16 +12,17 @@
 	import { ConfigurationMetadataModel } from '$lib/models/ConfigurationMetadata';
 	import { SampleMetadataModel } from '$lib/models/SampleMetadata';
 	import { env } from '$env/dynamic/public';
+	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
 
 	let allRuns: RunMetadata[] = [];
 	let allExperiments: ExperimentMetadata[] = [];
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let allSamples: SampleMetadata[] = [];
 	let open = false;
-	let newRunNumber = 0;
+	let newRunNumber: number | null = null;
 	let newSampleNumber = 0;
 	let newExperimentNumber: number = 0;
-	let newConfigurationId: string = '';
+	let newConfigurationNumber: number | null = null;
 
 	const order = tableOrderStore({ initialBy: 'runNumber', initialDirection: 'asc' });
 
@@ -41,7 +42,7 @@
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadataModel,
 		endpoint: '/db/configurations',
-		idField: 'configurationId',
+		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
@@ -82,8 +83,8 @@
 		try {
 			allConfigurations = await configurationService.fetchAll();
 			configurationOptions = allConfigurations.map((config) => ({
-				label: `${config.configurationId} - ${config.configurationName}`,
-				value: config.configurationId
+				label: `${config.configurationNumber} - ${config.configurationName}`,
+				value: config.configurationNumber
 			}));
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
@@ -104,25 +105,11 @@
 		}
 	}
 
-	// Auto-fill the run number as one greater than the highest existing run for the
-	// selected experiment + sample combination (or 1 if no run exists for it yet).
-	function computeNextRunNumber() {
-		if (!newExperimentNumber || !newSampleNumber) return;
-
-		const matching = allRuns.filter(
-			(run) => run.experimentNumber === newExperimentNumber && run.sampleNumber === newSampleNumber
-		);
-
-		newRunNumber = matching.length
-			? Math.max(...matching.map((run) => run.runNumber)) + 1
-			: 1;
-	}
-
 	function handleNewRun() {
-		newRunNumber = 0;
+		newRunNumber = null;
 		newSampleNumber = 0;
 		newExperimentNumber = 0;
-		newConfigurationId = '';
+		newConfigurationNumber = null;
 		open = true;
 	}
 
@@ -131,7 +118,7 @@
 	}
 
 	async function handleCreateRun() {
-		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationId) {
+		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationNumber) {
 			alert('All fields are required');
 			return;
 		}
@@ -153,7 +140,7 @@
 		newRun.experimentNumber = newExperimentNumber;
 		newRun.sampleNumber = newSampleNumber;
 		newRun.runNumber = newRunNumber;
-		newRun.configurationId = newConfigurationId;
+		newRun.configurationNumber = newConfigurationNumber;
 
 		try {
 			await runService.saveRun(newRun);
@@ -233,49 +220,52 @@
 	</div>
 </div>
 
-<Dialog {open} on:close={handleModalClose}>
+<Dialog {open} on:close={handleModalClose} class="runInputDialog">
 	<div slot="title">
 		<div class="flex justify-between mt-4 relative">
 			<div>Create New Run</div>
 		</div>
 	</div>
 	<div class="p-4">
-		<div class="grid grid-cols-1 gap-4">
-			<SelectField
-				options={experimentOptions}
-				label="Experiment Number"
-				value={newExperimentNumber}
-				autoplacement={false}
-				on:change={(e) => {
-					newExperimentNumber = Number(e.detail.value) || 0;
-					computeNextRunNumber();
-				}}
-			/>
-			<SelectField
-				options={sampleOptions}
-				label="Sample Number"
-				value={newSampleNumber}
-				autoplacement={false}
-				on:change={(e) => {
-					newSampleNumber = Number(e.detail.value) || 0;
-					computeNextRunNumber();
-				}}
-			/>
+		<div class="grid grid-cols-2 gap-4">
 			<TextField
 				label="Run Number"
 				type="integer"
 				value={newRunNumber}
+				required
+				on:keydown={allowDigitsOnly}
 				on:change={(e) => {
-					newRunNumber = Number(e.detail.value) || 0;
+					newRunNumber = Number(e.detail.value) || null;
+				}}
+			/>
+			<SelectField
+				options={experimentOptions}
+				label="Experiment"
+				value={newExperimentNumber}
+				required
+				autoplacement={false}
+				on:change={(e) => {
+					newExperimentNumber = Number(e.detail.value) || 0;
+				}}
+			/>
+			<SelectField
+				options={sampleOptions}
+				label="Sample"
+				value={newSampleNumber}
+				required
+				autoplacement={false}
+				on:change={(e) => {
+					newSampleNumber = Number(e.detail.value) || 0;
 				}}
 			/>
 			<SelectField
 				options={configurationOptions}
 				label="Configuration"
-				value={newConfigurationId}
+				value={newConfigurationNumber}
+				required
 				autoplacement={false}
 				on:change={(e) => {
-					newConfigurationId = e.detail.value;
+					newConfigurationNumber = e.detail.value;
 				}}
 			/>
 		</div>
@@ -294,5 +284,18 @@
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
 		border-radius: 0.5rem;
 		overflow-x: auto;
+	}
+
+	:global(.runInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
+	}
+
+	:global(.runInputDialog) {
+		width: min(48rem, calc(100vw - 2rem));
+		max-height: 90vh;
+		overflow-y: auto;
+		display: flex;
+		flex-direction: column;
 	}
 </style>
