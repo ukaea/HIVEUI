@@ -1,10 +1,10 @@
 <script lang="ts">
-	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
-	import { tableOrderStore } from '@layerstack/svelte-table';
-	import { ThermocoupleMetadata, CameraMetadata, LensMetadata, DicMetadata, FlowmeterMetadata, PyrometerMetadata, IrCameraMetadata, EquipmentMetadata } from '$lib/models';
-	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { env } from '$env/dynamic/public';
+	import { CameraMetadata, DicMetadata, EquipmentMetadata, FlowmeterMetadata, IrCameraMetadata, LensMetadata, PyrometerMetadata, ThermocoupleMetadata } from '$lib/models';
+	import { GenericDataService } from '$lib/services/GenericDataService';
+	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { onMount } from 'svelte';
+	import { Button, Dialog, Form, SelectField, Table, TextField } from 'svelte-ux';
 	import Zod from 'zod';
 
 	let allEquipment: EquipmentMetadata[] = [];
@@ -260,16 +260,6 @@
 						}}
 						error={errors.equipment?.circleDiameter}
 					/>
-					<TextField
-						label="Noise Floor (%)"
-						type="integer"
-						value={draft.equipment.noiseFloor}
-						on:change={(e) => {
-							draft.equipment.noiseFloor = e.detail.value;
-							refresh();
-						}}
-						error={errors.equipment?.noiseFloor}
-					/>
 				</div>
 			{:else if selectedEquipmentType === 'camera'}
 				<div class="p-4 grid grid-cols-2 gap-4">
@@ -414,15 +404,6 @@
 							refresh();
 						}}
 						error={errors.equipment?.deviceInformation?.focalLength}
-					/>
-					<TextField
-						label="Aperture"
-						value={draft.equipment.deviceInformation.aperture}
-						on:change={(e) => {
-							draft.equipment.deviceInformation.aperture = e.detail.value;
-							refresh();
-						}}
-						error={errors.equipment?.deviceInformation?.aperture}
 					/>
 					<h4 class="col-span-2 mt-4">Field of View (px)</h4>
 					<TextField
@@ -755,7 +736,7 @@
 						}}
 						error={errors.equipment?.deviceInformation?.temperatureRange?.maximum}
 					/>
-					<h4 class="col-span-2 mt-4">Device Settings</h4>
+					<!-- <h4 class="col-span-2 mt-4">Device Settings</h4>
 					<TextField
 						label="Emissivity"
 						type="decimal"
@@ -775,7 +756,7 @@
 							refresh();
 						}}
 						error={errors.equipment?.deviceSettings?.framerate}
-					/>
+					/> -->
 				</div>
 			{/if}
 
