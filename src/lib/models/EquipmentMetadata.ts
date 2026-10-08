@@ -28,27 +28,28 @@ export class EquipmentMetadata {
         const equipment = new EquipmentMetadata();
         equipment.equipmentName = json.equipmentName || '';
         equipment.equipmentType = json.equipmentType || '';
+        const details = json.equipment ?? json;
         switch (json.equipmentType) {
             case "thermocouple":
-                equipment.equipment = ThermocoupleMetadata.fromJSON(json);
+                equipment.equipment = ThermocoupleMetadata.fromJSON(details);
                 break;
             case "camera":
-                equipment.equipment = CameraMetadata.fromJSON(json);
+                equipment.equipment = CameraMetadata.fromJSON(details);
                 break;
             case "lens":
-                equipment.equipment = LensMetadata.fromJSON(json);
+                equipment.equipment = LensMetadata.fromJSON(details);
                 break;
             case "dic":
-                equipment.equipment = DicMetadata.fromJSON(json);
+                equipment.equipment = DicMetadata.fromJSON(details);
                 break;
             case "flowmeter":
-                equipment.equipment = FlowmeterMetadata.fromJSON(json);
+                equipment.equipment = FlowmeterMetadata.fromJSON(details);
                 break;
             case "pyrometer":
-                equipment.equipment = PyrometerMetadata.fromJSON(json);
+                equipment.equipment = PyrometerMetadata.fromJSON(details);
                 break;
             case "ir-camera":
-                equipment.equipment = IrCameraMetadata.fromJSON(json);
+                equipment.equipment = IrCameraMetadata.fromJSON(details);
                 break;
             default:
                 equipment.equipment = null;

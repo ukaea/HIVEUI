@@ -1,18 +1,18 @@
 import Zod from "zod";
 
 export class SpectralRange {
-    minimum: number;
-    maximum: number;
+    minimum: number | null;
+    maximum: number | null;
 
     constructor() {
-        this.minimum = 0;
-        this.maximum = 0;
+        this.minimum = null;
+        this.maximum = null;
     }
 
     static fromJSON(json: any): SpectralRange {
         const range = new SpectralRange();
-        range.minimum = json.minimum || 0;
-        range.maximum = json.maximum || 0;
+        range.minimum = json.minimum ?? null;
+        range.maximum = json.maximum ?? null;
         return range;
     }
 
@@ -25,18 +25,18 @@ export class SpectralRange {
 }
 
 export class TemperatureRange {
-    minimum: number;
-    maximum: number;
+    minimum: number | null;
+    maximum: number | null;
 
     constructor() {
-        this.minimum = 0;
-        this.maximum = 0;
+        this.minimum = null;
+        this.maximum = null;
     }
 
     static fromJSON(json: any): TemperatureRange {
         const range = new TemperatureRange();
-        range.minimum = json.minimum || 0;
-        range.maximum = json.maximum || 0;
+        range.minimum = json.minimum ?? null;
+        range.maximum = json.maximum ?? null;
         return range;
     }
 
@@ -65,12 +65,12 @@ export class PyrometerMetadata {
 			serialNumber: Zod.string().optional(),
 			assetId: Zod.string().optional(),
 			spectralRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
-				maximum: Zod.number().min(0, 'Maximum Wavelength is required')
+				minimum: Zod.number({ error: 'Minimum Wavelength is required' }).min(0, 'Minimum Wavelength must be 0 or greater'),
+				maximum: Zod.number({ error: 'Maximum Wavelength is required' }).min(0, 'Maximum Wavelength must be 0 or greater')
 			}),
 			temperatureRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Temperature is required'),
-				maximum: Zod.number().min(0, 'Maximum Temperature is required')
+				minimum: Zod.number({ error: 'Minimum Temperature is required' }).min(0, 'Minimum Temperature must be 0 or greater'),
+				maximum: Zod.number({ error: 'Maximum Temperature is required' }).min(0, 'Maximum Temperature must be 0 or greater')
 			})
 		})
 	});

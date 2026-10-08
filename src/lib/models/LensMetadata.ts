@@ -55,7 +55,7 @@ export class LensMetadata {
 				model: Zod.string().min(1, 'Model is required'),
 				serialNumber: Zod.string().min(1, 'Serial Number is required'),
 				focalLength: Zod.string().min(1, 'Focal Length is required'),
-				aperture: Zod.string().min(1, 'Aperture is required'),
+				aperture: Zod.string().optional(),
 				fieldOfViewX: Zod.string().min(1, 'Field of View X is required'),
 				fieldOfViewY: Zod.string().min(1, 'Field of View Y is required')
 			})

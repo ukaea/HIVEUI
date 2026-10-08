@@ -3,14 +3,14 @@ import Zod from "zod";
 export class ThermocoupleMetadata {
     attachment: string;
     thermocoupleType: string;
-    circleDiameter: number;
-    noiseFloor: number;
+    circleDiameter: number | null;
+    noiseFloor: number | null;
 
     constructor() {
         this.attachment = '';
         this.thermocoupleType = '';
-        this.circleDiameter = 0;
-        this.noiseFloor = 0;
+        this.circleDiameter = null;
+        this.noiseFloor = null;
     }
 
     static schema = Zod.object({
@@ -19,8 +19,8 @@ export class ThermocoupleMetadata {
 		equipment: Zod.object({
 			attachment: Zod.string().min(1, 'Attachment is required'),
 			thermocoupleType: Zod.string().min(1, 'Thermocouple Type is required'),
-			circleDiameter: Zod.number().min(0, 'Circle Diameter is required'),
-			noiseFloor: Zod.number().min(0, 'Noise Floor is required')
+			circleDiameter: Zod.number({ error: 'Circle Diameter is required' }).min(0, 'Circle Diameter must be 0 or greater'),
+			noiseFloor: Zod.number().min(0, 'Noise Floor must be 0 or greater').nullable().optional()
 		})
 	});
 
@@ -28,8 +28,8 @@ export class ThermocoupleMetadata {
         const metadata = new ThermocoupleMetadata();
         metadata.attachment = json.attachment || '';
         metadata.thermocoupleType = json.thermocoupleType || '';
-        metadata.circleDiameter = json.circleDiameter || 0;
-        metadata.noiseFloor = json.noiseFloor || 0;
+        metadata.circleDiameter = json.circleDiameter ?? null;
+        metadata.noiseFloor = json.noiseFloor ?? null;
         return metadata;
     }
 
