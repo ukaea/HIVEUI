@@ -1,18 +1,18 @@
 import Zod from "zod";
 
 export class FlowRange {
-    minimum: number;
-    maximum: number;
+    minimum: number | null;
+    maximum: number | null;
 
     constructor() {
-        this.minimum = 0;
-        this.maximum = 0;
+        this.minimum = null;
+        this.maximum = null;
     }
 
     static fromJSON(json: any): FlowRange {
         const range = new FlowRange();
-        range.minimum = json.minimum || 0;
-        range.maximum = json.maximum || 0;
+        range.minimum = json.minimum ?? null;
+        range.maximum = json.maximum ?? null;
         return range;
     }
 
@@ -42,8 +42,8 @@ export class FlowmeterMetadata {
 			assetId: Zod.string().optional(),
 			flowmeterType: Zod.string().min(1, 'Flowmeter Type is required'),
 			flowRange: Zod.object({
-				minimum: Zod.number().min(0, 'Minimum Flow is required'),
-				maximum: Zod.number().min(0, 'Maximum Flow is required')
+				minimum: Zod.number({ error: 'Minimum Flow is required' }).min(0, 'Minimum Flow must be 0 or greater'),
+				maximum: Zod.number({ error: 'Maximum Flow is required' }).min(0, 'Maximum Flow must be 0 or greater')
 			})
 		})
 	});

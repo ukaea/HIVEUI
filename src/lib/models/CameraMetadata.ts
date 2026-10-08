@@ -1,18 +1,18 @@
 import Zod from "zod";
 
 export class CameraResolution {
-    x: number;
-    y: number;
+    x: number | null;
+    y: number | null;
 
     constructor() {
-        this.x = 0;
-        this.y = 0;
+        this.x = null;
+        this.y = null;
     }
 
     static fromJSON(json: any): CameraResolution {
         const resolution = new CameraResolution();
-        resolution.x = json.x || json.resolutionX || 0;
-        resolution.y = json.y || json.resolutionY || 0;
+        resolution.x = json.x ?? json.resolutionX ?? null;
+        resolution.y = json.y ?? json.resolutionY ?? null;
         return resolution;
     }
 
@@ -40,8 +40,8 @@ export class CameraMetadata {
 			serialNumber: Zod.string().optional(),
 			assetId: Zod.string().optional(),
 			resolution: Zod.object({
-				x: Zod.number().min(1, 'Resolution X is required'),
-				y: Zod.number().min(1, 'Resolution Y is required')
+				x: Zod.number({ error: 'Resolution X is required' }).min(1, 'Resolution X must be greater than 0'),
+				y: Zod.number({ error: 'Resolution Y is required' }).min(1, 'Resolution Y must be greater than 0')
 			})
 		})
 	});

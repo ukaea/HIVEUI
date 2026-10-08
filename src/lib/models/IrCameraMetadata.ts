@@ -1,18 +1,18 @@
 import Zod from "zod";
 
 export class Resolution {
-    x: number;
-    y: number;
+    x: number | null;
+    y: number | null;
 
     constructor() {
-        this.x = 0;
-        this.y = 0;
+        this.x = null;
+        this.y = null;
     }
 
     static fromJSON(json: any): Resolution {
         const resolution = new Resolution();
-        resolution.x = json.x || 0;
-        resolution.y = json.y || 0;
+        resolution.x = json.x ?? null;
+        resolution.y = json.y ?? null;
         return resolution;
     }
 
@@ -25,18 +25,18 @@ export class Resolution {
 }
 
 export class SpectralRange {
-    minimum: number;
-    maximum: number;
+    minimum: number | null;
+    maximum: number | null;
 
     constructor() {
-        this.minimum = 0;
-        this.maximum = 0;
+        this.minimum = null;
+        this.maximum = null;
     }
 
     static fromJSON(json: any): SpectralRange {
         const range = new SpectralRange();
-        range.minimum = json.minimum || 0;
-        range.maximum = json.maximum || 0;
+        range.minimum = json.minimum ?? null;
+        range.maximum = json.maximum ?? null;
         return range;
     }
 
@@ -49,18 +49,18 @@ export class SpectralRange {
 }
 
 export class TemperatureRange {
-    minimum: number;
-    maximum: number;
+    minimum: number | null;
+    maximum: number | null;
 
     constructor() {
-        this.minimum = 0;
-        this.maximum = 0;
+        this.minimum = null;
+        this.maximum = null;
     }
 
     static fromJSON(json: any): TemperatureRange {
         const range = new TemperatureRange();
-        range.minimum = json.minimum || 0;
-        range.maximum = json.maximum || 0;
+        range.minimum = json.minimum ?? null;
+        range.maximum = json.maximum ?? null;
         return range;
     }
 
@@ -113,18 +113,18 @@ export class IrCameraDeviceInformation {
 }
 
 export class IrCameraDeviceSettings {
-    emissivity: number;
-    framerate: number;
+    emissivity: number | null;
+    framerate: number | null;
 
     constructor() {
-        this.emissivity = 0;
-        this.framerate = 0;
+        this.emissivity = null;
+        this.framerate = null;
     }
 
     static fromJSON(json: any): IrCameraDeviceSettings {
         const settings = new IrCameraDeviceSettings();
-        settings.emissivity = json.emissivity || 0;
-        settings.framerate = json.framerate || 0;
+        settings.emissivity = json.emissivity ?? null;
+        settings.framerate = json.framerate ?? null;
         return settings;
     }
 
@@ -149,21 +149,21 @@ export class IrCameraMetadata {
 				model: Zod.string().min(1, 'Model is required'),
 				serialNumber: Zod.string().min(1, 'Serial Number is required'),
 				resolution: Zod.object({
-					x: Zod.number().min(1, 'Resolution X is required'),
-					y: Zod.number().min(1, 'Resolution Y is required')
+					x: Zod.number({ error: 'Resolution X is required' }).min(1, 'Resolution X must be greater than 0'),
+					y: Zod.number({ error: 'Resolution Y is required' }).min(1, 'Resolution Y must be greater than 0')
 				}),
 				spectralRange: Zod.object({
-					minimum: Zod.number().min(0, 'Minimum Wavelength is required'),
-					maximum: Zod.number().min(0, 'Maximum Wavelength is required')
+					minimum: Zod.number({ error: 'Minimum Wavelength is required' }).min(0, 'Minimum Wavelength must be 0 or greater'),
+					maximum: Zod.number({ error: 'Maximum Wavelength is required' }).min(0, 'Maximum Wavelength must be 0 or greater')
 				}),
 				temperatureRange: Zod.object({
-					minimum: Zod.number().min(0, 'Minimum Temperature is required'),
-					maximum: Zod.number().min(0, 'Maximum Temperature is required')
+					minimum: Zod.number({ error: 'Minimum Temperature is required' }).min(0, 'Minimum Temperature must be 0 or greater'),
+					maximum: Zod.number({ error: 'Maximum Temperature is required' }).min(0, 'Maximum Temperature must be 0 or greater')
 				})
 			}),
 			deviceSettings: Zod.object({
-				emissivity: Zod.number().min(0, 'Emissivity is required'),
-				framerate: Zod.number().min(0, 'Framerate is required')
+				emissivity: Zod.number().min(0, 'Emissivity must be 0 or greater').nullable().optional(),
+				framerate: Zod.number().min(0, 'Framerate must be 0 or greater').nullable().optional()
 			})
 		})
 	});
