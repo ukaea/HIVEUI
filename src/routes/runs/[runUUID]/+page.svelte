@@ -123,6 +123,7 @@
 
 	let experimentOptions: MenuOption[] = [];
 	let configurationOptions: MenuOption[] = [];
+	let configurationsLoading = true;
 
 	let pulseQualityOptions: MenuOption[] = [
 		{ label: 'Success', value: 'Success' },
@@ -550,6 +551,8 @@
 			}));
 		} catch (error) {
 			console.error('Error fetching configurations:', error);
+		} finally {
+			configurationsLoading = false;
 		}
 	}
 
@@ -623,6 +626,7 @@
 							options={configurationOptions}
 							label="Configuration"
 							value={draft.configurationNumber}
+							loading={configurationsLoading}
 							autoplacement={false}
 							on:change={(e) => {
 								draft.configurationNumber = e.detail.value;

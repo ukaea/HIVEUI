@@ -96,7 +96,7 @@
 		try {
 			allSamples = await sampleService.fetchAll();
 			sampleOptions = allSamples.map((sample) => ({
-				label: String(sample.sampleNumber),
+				label: `${sample.sampleNumber} - ${sample.name}`,
 				value: sample.sampleNumber
 			}));
 		} catch (error) {

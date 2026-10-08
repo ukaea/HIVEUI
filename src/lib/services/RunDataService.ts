@@ -1,6 +1,7 @@
 import { RunMetadata } from '$lib/models/RunMetadata';
 import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
 import { PulseCombinedMetadata } from '$lib/models/PulseCombinedMetadata';
+import { stripEmptyOptional } from './stripEmptyOptional';
 
 /** Result of the postprocessing DAG, in the DAG's own vocabulary. */
 export interface PostprocessResult {
@@ -32,7 +33,7 @@ export class RunDataService {
     }
 
     async saveRun(run: RunMetadata): Promise<void> {
-        const cleanedData = RunMetadata.toJSON(run);
+        const cleanedData = stripEmptyOptional(RunMetadata.toJSON(run), RunMetadata.schema);
 
         try {
             const response = await fetch('/api/run/save-run', {
