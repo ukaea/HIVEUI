@@ -1,4 +1,6 @@
 // $lib/services/GenericDataService.ts
+import type Zod from 'zod';
+import { stripEmptyOptional } from './stripEmptyOptional';
 
 
 /**
@@ -7,6 +9,7 @@
 export interface MetadataModel<T> {
     fromJSON(json: any): T | Promise<T>;
     toJSON(instance: T): any;
+    schema?: Zod.ZodType;
 }
 
 /**
@@ -85,7 +88,7 @@ export class GenericDataService<T> {
         const id = item[this.config.idField];
         if (!id) throw new Error(`${String(this.config.idField)} is required.`);
 
-        const cleanedData = this.config.modelClass.toJSON(item);
+        const cleanedData = stripEmptyOptional(this.config.modelClass.toJSON(item), this.config.modelClass.schema);
 
         try {
             const response = await fetch('/api/save-json', {
