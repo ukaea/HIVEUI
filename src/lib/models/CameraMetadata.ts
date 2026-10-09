@@ -11,8 +11,8 @@ export class CameraResolution {
 
     static fromJSON(json: any): CameraResolution {
         const resolution = new CameraResolution();
-        resolution.x = json.x ?? json.resolutionX ?? null;
-        resolution.y = json.y ?? json.resolutionY ?? null;
+        resolution.x = Number(json.x) || Number(json.resolutionX) || null;
+        resolution.y = Number(json.y) || Number(json.resolutionY) || null;
         return resolution;
     }
 
@@ -32,16 +32,16 @@ export class CameraMetadata {
     resolution: CameraResolution;
 
     static schema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipmentName: Zod.string().trim().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().trim().min(1, 'Equipment Type is required'),
 		equipment: Zod.object({
-			make: Zod.string().min(1, 'Make is required'),
-			model: Zod.string().min(1, 'Model is required'),
-			serialNumber: Zod.string().optional(),
-			assetId: Zod.string().optional(),
+			make: Zod.string().trim().min(1, 'Make is required'),
+			model: Zod.string().trim().min(1, 'Model is required'),
+			serialNumber: Zod.string().trim().optional(),
+			assetId: Zod.string().trim().optional(),
 			resolution: Zod.object({
-				x: Zod.number({ error: 'Resolution X is required' }).min(1, 'Resolution X must be greater than 0'),
-				y: Zod.number({ error: 'Resolution Y is required' }).min(1, 'Resolution Y must be greater than 0')
+                x: Zod.number().min(0.1, 'Resolution X is required'),
+				y: Zod.number().min(0.1, 'Resolution Y is required')
 			})
 		})
 	});

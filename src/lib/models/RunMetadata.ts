@@ -154,12 +154,12 @@ export class RunMetadata {
         operator1: Zod.object({
             firstName: Zod.string().min(1, "Operator 1 First Name is required"),
             lastName: Zod.string().min(1, "Operator 1 Last Name is required"),
-            email: Zod.string().email('Invalid email address')
+            email: Zod.email('Invalid email address')
         }),
         operator2: Zod.object({
             firstName: Zod.string().min(1, "Operator 2 First Name is required"),
             lastName: Zod.string().min(1, "Operator 2 Last Name is required"),
-            email: Zod.string().email('Invalid email address')
+            email: Zod.email('Invalid email address')
         }),
         heatingInformation: Zod.object({
             heatingType: Zod.enum(["Induction", "DC"]),

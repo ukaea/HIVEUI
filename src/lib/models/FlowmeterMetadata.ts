@@ -11,8 +11,8 @@ export class FlowRange {
 
     static fromJSON(json: any): FlowRange {
         const range = new FlowRange();
-        range.minimum = json.minimum ?? null;
-        range.maximum = json.maximum ?? null;
+        range.minimum = Number(json.minimum) || null;
+        range.maximum = Number(json.maximum) || null;
         return range;
     }
 
