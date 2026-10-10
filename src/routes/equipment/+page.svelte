@@ -212,6 +212,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -233,7 +234,8 @@
 
 					<h4 class="col-span-2 mt-1">Thermocouple Information</h4>
 					<TextField
-						label="Attachment"
+						label='Attachment'
+						required
 						value={draft.equipment.attachment}
 						on:change={(e) => {
 							draft.equipment.attachment = e.detail.value;
@@ -243,6 +245,7 @@
 					/>
 					<TextField
 						label="Thermocouple Type"
+						required
 						value={draft.equipment.thermocoupleType}
 						on:change={(e) => {
 							draft.equipment.thermocoupleType = e.detail.value;
@@ -252,6 +255,7 @@
 					/>
 					<TextField
 						label="Circle Diameter (mm)"
+						required
 						type="decimal"
 						value={draft.equipment.circleDiameter}
 						on:change={(e) => {
@@ -266,6 +270,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -288,6 +293,7 @@
 					<h4 class="col-span-2 mt-1">Camera Information</h4>
 					<TextField
 						label="Make"
+						required
 						value={draft.equipment.make}
 						on:change={(e) => {
 							draft.equipment.make = e.detail.value;
@@ -297,6 +303,7 @@
 					/>
 					<TextField
 						label="Model"
+						required
 						value={draft.equipment.model}
 						on:change={(e) => {
 							draft.equipment.model = e.detail.value;
@@ -325,6 +332,7 @@
 					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
 						label="Resolution X"
+						required
 						type="decimal"
 						value={draft.equipment.resolution.x}
 						on:change={(e) => {
@@ -335,6 +343,7 @@
 					/>
 					<TextField
 						label="Resolution Y"
+						required
 						type="decimal"
 						value={draft.equipment.resolution.y}
 						on:change={(e) => {
@@ -349,6 +358,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -371,6 +381,7 @@
 					<h4 class="col-span-2 mt-1">Lens Information</h4>
 					<TextField
 						label="Make"
+						required
 						value={draft.equipment.deviceInformation.make}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.make = e.detail.value;
@@ -380,6 +391,7 @@
 					/>
 					<TextField
 						label="Model"
+						required
 						value={draft.equipment.deviceInformation.model}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.model = e.detail.value;
@@ -389,6 +401,7 @@
 					/>
 					<TextField
 						label="Serial Number"
+						required
 						value={draft.equipment.deviceInformation.serialNumber}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.serialNumber = e.detail.value;
@@ -398,6 +411,7 @@
 					/>
 					<TextField
 						label="Focal Length (mm)"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.focalLength}
 						on:change={(e) => {
@@ -431,6 +445,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -453,6 +468,7 @@
 					<h4 class="col-span-2 mt-1">Flowmeter Information</h4>
 					<TextField
 						label="Make"
+						required
 						value={draft.equipment.make}
 						on:change={(e) => {
 							draft.equipment.make = e.detail.value;
@@ -462,6 +478,7 @@
 					/>
 					<TextField
 						label="Model"
+						required
 						value={draft.equipment.model}
 						on:change={(e) => {
 							draft.equipment.model = e.detail.value;
@@ -471,6 +488,7 @@
 					/>
 					<TextField
 						label="Serial Number"
+						required
 						value={draft.equipment.serialNumber}
 						on:change={(e) => {
 							draft.equipment.serialNumber = e.detail.value;
@@ -489,6 +507,7 @@
 					/>
 					<TextField
 						label="Flowmeter Type"
+						required
 						value={draft.equipment.flowmeterType}
 						on:change={(e) => {
 							draft.equipment.flowmeterType = e.detail.value;
@@ -499,6 +518,7 @@
 					<h4 class="col-span-2 mt-4">Flow Range (L/min)</h4>
 					<TextField
 						label="Minimum Flow"
+						required
 						type="decimal"
 						value={draft.equipment.flowRange.minimum}
 						on:change={(e) => {
@@ -509,6 +529,7 @@
 					/>
 					<TextField
 						label="Maximum Flow"
+						required
 						type="decimal"
 						value={draft.equipment.flowRange.maximum}
 						on:change={(e) => {
@@ -523,6 +544,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -545,6 +567,7 @@
 					<h4 class="col-span-2 mt-1">Pyrometer Information</h4>
 					<TextField
 						label="Make"
+						required
 						value={draft.equipment.make}
 						on:change={(e) => {
 							draft.equipment.make = e.detail.value;
@@ -554,6 +577,7 @@
 					/>
 					<TextField
 						label="Model"
+						required
 						value={draft.equipment.model}
 						on:change={(e) => {
 							draft.equipment.model = e.detail.value;
@@ -563,6 +587,7 @@
 					/>
 					<TextField
 						label="Serial Number"
+						required
 						value={draft.equipment.serialNumber}
 						on:change={(e) => {
 							draft.equipment.serialNumber = e.detail.value;
@@ -582,6 +607,7 @@
 					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
 					<TextField
 						label="Minimum Wavelength"
+						required
 						type="decimal"
 						value={draft.equipment.spectralRange.minimum}
 						on:change={(e) => {
@@ -592,6 +618,7 @@
 					/>
 					<TextField
 						label="Maximum Wavelength"
+						required
 						type="decimal"
 						value={draft.equipment.spectralRange.maximum}
 						on:change={(e) => {
@@ -603,6 +630,7 @@
 					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
 					<TextField
 						label="Minimum Temperature"
+						required
 						type="decimal"
 						value={draft.equipment.temperatureRange.minimum}
 						on:change={(e) => {
@@ -613,6 +641,7 @@
 					/>
 					<TextField
 						label="Maximum Temperature"
+						required
 						type="decimal"
 						value={draft.equipment.temperatureRange.maximum}
 						on:change={(e) => {
@@ -627,6 +656,7 @@
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
 						label="Equipment Name"
+						required
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
@@ -649,6 +679,7 @@
 					<h4 class="col-span-2 mt-1">IR Camera Information</h4>
 					<TextField
 						label="Make"
+						required
 						value={draft.equipment.deviceInformation.make}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.make = e.detail.value;
@@ -658,6 +689,7 @@
 					/>
 					<TextField
 						label="Model"
+						required
 						value={draft.equipment.deviceInformation.model}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.model = e.detail.value;
@@ -667,6 +699,7 @@
 					/>
 					<TextField
 						label="Serial Number"
+						required
 						value={draft.equipment.deviceInformation.serialNumber}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.serialNumber = e.detail.value;
@@ -677,6 +710,7 @@
 					<h4 class="col-span-2 mt-4">Resolution (px)</h4>
 					<TextField
 						label="Resolution X"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.resolution.x}
 						on:change={(e) => {
@@ -687,6 +721,7 @@
 					/>
 					<TextField
 						label="Resolution Y"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.resolution.y}
 						on:change={(e) => {
@@ -698,6 +733,7 @@
 					<h4 class="col-span-2 mt-4">Spectral Range (μm)</h4>
 					<TextField
 						label="Minimum Wavelength"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.spectralRange.minimum}
 						on:change={(e) => {
@@ -708,6 +744,7 @@
 					/>
 					<TextField
 						label="Maximum Wavelength"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.spectralRange.maximum}
 						on:change={(e) => {
@@ -719,6 +756,7 @@
 					<h4 class="col-span-2 mt-4">Temperature Range (°C)</h4>
 					<TextField
 						label="Minimum Temperature"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.temperatureRange.minimum}
 						on:change={(e) => {
@@ -729,6 +767,7 @@
 					/>
 					<TextField
 						label="Maximum Temperature"
+						required
 						type="decimal"
 						value={draft.equipment.deviceInformation.temperatureRange.maximum}
 						on:change={(e) => {
@@ -804,5 +843,9 @@
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
+	}
+	:global(.equipmentInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
 	}
 </style>
