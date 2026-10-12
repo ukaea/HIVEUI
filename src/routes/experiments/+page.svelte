@@ -9,6 +9,7 @@
 	import { MemberService } from '$lib/services/MembersService';
 	import { env } from '$env/dynamic/public';
 	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
+	import { formSchema, formErrors } from '$lib/client/form';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -49,22 +50,12 @@
 		}
 	}
 
-	async function handleMetadataSubmit() {
-		if (!selectedExperiment) {
-			alert('No metadata selected.');
-			return;
-		}
-
-		//Validate against zod schema
-		const parseResult = ExperimentMetadata.schema.safeParse(selectedExperiment);
-		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.issues);
-			return;
-		}
+	async function handleMetadataSubmit(value: ExperimentMetadata) {
+		const experiment = { ...value, ...ExperimentMetadata.schema.parse(value) } as ExperimentMetadata;
 
 		try {
-			await experimentService.submit(selectedExperiment);
-			console.log('Submitted experiment metadata:', selectedExperiment);
+			await experimentService.submit(experiment);
+			console.log('Submitted experiment metadata:', experiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
@@ -166,7 +157,16 @@
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
 	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
 	<div class="p-4">
-		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
+		<Form
+			initial={selectedExperiment}
+			schema={formSchema(ExperimentMetadata.schema)}
+			novalidate
+			on:change={(e) => handleMetadataSubmit(e.detail)}
+			let:draft
+			let:refresh
+			let:errors={rawErrors}
+		>
+			{@const errors = formErrors(ExperimentMetadata.schema, rawErrors)}
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<div class="col-span-2 flex gap-4">
@@ -219,7 +219,6 @@
 					clearable
 					disabled={!isNewEntry}
 					on:change={(e) => {
-						if (!isNewEntry) return;
 						draft.startDate = e.detail.value;
 						refresh();
 					}}
@@ -233,7 +232,6 @@
 					clearable
 					disabled={!isNewEntry}
 					on:change={(e) => {
-						if (!isNewEntry) return;
 						draft.endDate = e.detail.value;
 						refresh();
 					}}
@@ -248,7 +246,7 @@
 						<SelectField
 							label="Select from Members"
 							disabled={!isNewEntry}
-							value={isManualEdit ? '' : current.leadInvestigator?.email}
+							value={isManualEdit ? '' : draft.leadInvestigator.email}
 							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
 							on:change={(e) => {
 								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
@@ -267,7 +265,7 @@
 				</h4>
 				<TextField
 					label="First Name"
-					value={current.leadInvestigator?.firstName}
+					value={draft.leadInvestigator.firstName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -279,7 +277,7 @@
 				/>
 				<TextField
 					label="Last Name"
-					value={current.leadInvestigator?.lastName}
+					value={draft.leadInvestigator.lastName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -291,7 +289,7 @@
 				/>
 				<TextField
 					label="Email"
-					value={current.leadInvestigator?.email}
+					value={draft.leadInvestigator.email}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -357,20 +355,10 @@
 				{/if}
 				<div class="flex gap-2">
 					{#if isNewEntry}
-						<Button
-							type="submit"
-							variant="fill"
-							on:click={() => {
-								selectedExperiment = current;
-								handleMetadataSubmit();
-							}}>Save</Button
-						>
+						<Button type="submit" variant="fill">Save</Button>
 					{/if}
 					<Button
-						on:click={() => {
-							revertAll();
-							handleFormCancel();
-						}}
+						on:click={handleFormCancel}
 						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
 					>
 				</div>
