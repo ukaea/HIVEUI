@@ -33,13 +33,7 @@
 		{ name: 'title', align: 'left', header: 'Title' },
 		{ name: 'description', align: 'left', header: 'Description' },
 		{ name: 'customer.organisation', align: 'left', header: 'Customer' },
-		{
-			name: 'leadInvestigator.lastName',
-			align: 'left',
-			header: 'Lead Investigator',
-			format: (_: string, row: ExperimentMetadata) =>
-				[row.leadInvestigator?.firstName, row.leadInvestigator?.lastName].filter(Boolean).join(' ')
-		},
+		{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
 		{
 			name: 'startDate',
 			align: 'left',
@@ -151,7 +145,7 @@
 		<h2 class="text-2xl font-bold">Experiments</h2>
 		<Button on:click={handleNewEntry} variant="fill">New Experiment</Button>
 	</div>
-	<div class="table-container bg-surface-100">
+	<div class="table-container">
 		<Table
 			data={sortedExperiments}
 			{columns}
@@ -249,25 +243,29 @@
 			</div>
 
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<div class="col-span-2 mt-1 flex items-center gap-3">
-					<h4>Lead Investigator</h4>
-					<SelectField
-						label="Select from Members"
-						disabled={!isNewEntry}
-						value={isManualEdit ? '' : draft.leadInvestigator.email}
-						options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
-						on:change={(e) => {
-							const selectedMember = allMembers.find((member) => member.email === e.detail.value);
-							draft.leadInvestigator = {
-								firstName: selectedMember?.firstName ?? '',
-								lastName: selectedMember?.lastName ?? '',
-								email: selectedMember?.email ?? ''
-							};
-							isManualEdit = false;
-							refresh();
-						}}
-					/>
-				</div>
+				<h4 class="col-span-2 mt-1 flex items-center gap-3">
+					<div>Lead Investigator</div>
+					<div>
+						<SelectField
+							label="Select from Members"
+							disabled={!isNewEntry}
+							value={isManualEdit ? '' : draft.leadInvestigator.email}
+							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
+							on:change={(e) => {
+								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
+								if (selectedMember) {
+									draft.leadInvestigator = {
+										firstName: selectedMember.firstName,
+										lastName: selectedMember.lastName,
+										email: selectedMember.email
+									};
+									isManualEdit = false;
+									refresh();
+								}
+							}}
+						/>
+					</div>
+				</h4>
 				<TextField
 					label="First Name"
 					value={draft.leadInvestigator.firstName}
@@ -371,6 +369,7 @@
 
 <style>
 	.table-container {
+		background-color: white;
 		box-shadow:
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
