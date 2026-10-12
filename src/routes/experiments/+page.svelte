@@ -1,11 +1,9 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
-	import { SelectField } from 'svelte-ux';
-	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { Button, Table, Dialog, Form, TextField, DateField, SelectField } from 'svelte-ux';
+	import { tableOrderStore, type ColumnDef } from '@layerstack/svelte-table';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
 	import { env } from '$env/dynamic/public';
 	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
@@ -18,15 +16,48 @@
 	let open = false;
 	let isNewEntry = false;
 	let isManualEdit = false;
+	let saving = false;
+	let duplicateNumberError: string | undefined;
 
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
 
-	experimentOrder.subscribe(() => {
-		allExperiments = allExperiments.sort($experimentOrder.handler);
-	});
+	$: sortedExperiments = [...allExperiments].sort($experimentOrder.handler);
+
+	const columns: ColumnDef<ExperimentMetadata>[] = [
+		{
+			name: 'experimentNumber',
+			align: 'left',
+			header: 'Experiment Number',
+			format: (value: number | null) => (value == null ? '' : `HIVE-E-${value}`)
+		},
+		{ name: 'title', align: 'left', header: 'Title' },
+		{ name: 'description', align: 'left', header: 'Description' },
+		{ name: 'customer.organisation', align: 'left', header: 'Customer' },
+		{
+			name: 'leadInvestigator.lastName',
+			align: 'left',
+			header: 'Lead Investigator',
+			format: (_: string, row: ExperimentMetadata) =>
+				[row.leadInvestigator?.firstName, row.leadInvestigator?.lastName].filter(Boolean).join(' ')
+		},
+		{
+			name: 'startDate',
+			align: 'left',
+			header: 'Start Date',
+			format: (value: Date | string | null) => {
+				if (!value) return '';
+				const date = new Date(value);
+				return date.toLocaleDateString('en-GB', {
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric'
+				});
+			}
+		}
+	];
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
-		modelClass: ExperimentMetadataModel,
+		modelClass: ExperimentMetadata,
 		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
@@ -35,7 +66,6 @@
 	async function fetchExperiments() {
 		try {
 			allExperiments = await experimentService.fetchAll();
-			console.log('Fetched experiments:', allExperiments);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -51,17 +81,25 @@
 	}
 
 	async function handleMetadataSubmit(value: ExperimentMetadata) {
+		if (saving) return;
 		const experiment = { ...value, ...ExperimentMetadata.schema.parse(value) } as ExperimentMetadata;
 
+		if (isNewEntry && allExperiments.some((e) => e.experimentNumber === experiment.experimentNumber)) {
+			duplicateNumberError = `Experiment ${experiment.experimentNumber} already exists`;
+			return;
+		}
+
+		saving = true;
 		try {
 			await experimentService.submit(experiment);
-			console.log('Submitted experiment metadata:', experiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit experiment: ${(error as Error).message}`);
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -99,10 +137,7 @@
 	function handleModalClose() {
 		open = false;
 		selectedExperiment = null;
-	}
-
-	function handleFormCancel() {
-		handleModalClose();
+		duplicateNumberError = undefined;
 	}
 
 	onMount(() => {
@@ -116,37 +151,10 @@
 		<h2 class="text-2xl font-bold">Experiments</h2>
 		<Button on:click={handleNewEntry} variant="fill">New Experiment</Button>
 	</div>
-	<div class="table-container">
+	<div class="table-container bg-surface-100">
 		<Table
-			data={allExperiments}
-			columns={[
-				{
-					name: 'experimentNumber',
-					align: 'left',
-					header: 'Experiment Number',
-					// @ts-expect-error
-					format: (value) => (value == null ? '' : `HIVE-E-${value}`)
-				},
-				{ name: 'title', align: 'left', header: 'Title' },
-				{ name: 'description', align: 'left', header: 'Description' },
-				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
-				{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
-				{
-					name: 'startDate',
-					align: 'left',
-					header: 'Start Date',
-					// @ts-expect-error
-					format: (value) => {
-						if (!value) return '';
-						const date = new Date(value);
-						return date.toLocaleDateString('en-GB', {
-							day: '2-digit',
-							month: '2-digit',
-							year: 'numeric'
-						});
-					}
-				}
-			]}
+			data={sortedExperiments}
+			{columns}
 			order={experimentOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -155,7 +163,7 @@
 </div>
 
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
+	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Experiment Details'}</div>
 	<div class="p-4">
 		<Form
 			initial={selectedExperiment}
@@ -180,9 +188,10 @@
 						on:keydown={allowDigitsOnly}
 						on:change={(e) => {
 							draft.experimentNumber = e.detail.value;
+							duplicateNumberError = undefined;
 							refresh();
 						}}
-						error={errors.experimentNumber}
+						error={errors.experimentNumber ?? duplicateNumberError}
 					/>
 					<TextField
 						label="Title"
@@ -240,29 +249,25 @@
 			</div>
 
 			<div class="p-4 grid grid-cols-2 gap-4">
-				<h4 class="col-span-2 mt-1 flex items-center gap-3">
-					<div>Lead Investigator</div>
-					<div>
-						<SelectField
-							label="Select from Members"
-							disabled={!isNewEntry}
-							value={isManualEdit ? '' : draft.leadInvestigator.email}
-							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
-							on:change={(e) => {
-								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
-								if (selectedMember) {
-									draft.leadInvestigator = {
-										firstName: selectedMember.firstName,
-										lastName: selectedMember.lastName,
-										email: selectedMember.email
-									};
-									isManualEdit = false;
-									refresh();
-								}
-							}}
-						/>
-					</div>
-				</h4>
+				<div class="col-span-2 mt-1 flex items-center gap-3">
+					<h4>Lead Investigator</h4>
+					<SelectField
+						label="Select from Members"
+						disabled={!isNewEntry}
+						value={isManualEdit ? '' : draft.leadInvestigator.email}
+						options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
+						on:change={(e) => {
+							const selectedMember = allMembers.find((member) => member.email === e.detail.value);
+							draft.leadInvestigator = {
+								firstName: selectedMember?.firstName ?? '',
+								lastName: selectedMember?.lastName ?? '',
+								email: selectedMember?.email ?? ''
+							};
+							isManualEdit = false;
+							refresh();
+						}}
+					/>
+				</div>
 				<TextField
 					label="First Name"
 					value={draft.leadInvestigator.firstName}
@@ -355,12 +360,9 @@
 				{/if}
 				<div class="flex gap-2">
 					{#if isNewEntry}
-						<Button type="submit" variant="fill">Save</Button>
+						<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save</Button>
 					{/if}
-					<Button
-						on:click={handleFormCancel}
-						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
-					>
+					<Button on:click={handleModalClose} style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button>
 				</div>
 			</div>
 		</Form>
@@ -369,7 +371,6 @@
 
 <style>
 	.table-container {
-		background-color: white;
 		box-shadow:
 			0 4px 6px -1px rgba(0, 0, 0, 0.1),
 			0 2px 4px -1px rgba(0, 0, 0, 0.06);
