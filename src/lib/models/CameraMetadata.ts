@@ -11,8 +11,8 @@ export class CameraResolution {
 
     static fromJSON(json: any): CameraResolution {
         const resolution = new CameraResolution();
-        resolution.x = Number(json.x) || Number(json.resolutionX) || null;
-        resolution.y = Number(json.y) || Number(json.resolutionY) || null;
+        resolution.x = Number(json.x) || null;
+        resolution.y = Number(json.y) || null;
         return resolution;
     }
 
