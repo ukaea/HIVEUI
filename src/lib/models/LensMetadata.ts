@@ -48,8 +48,8 @@ export class LensFieldOfView {
 
     static fromJSON(json: any): LensFieldOfView {
         const fieldofview = new LensFieldOfView();
-        fieldofview.x = Number(json.x) || Number(json.resolutionX) || null;
-        fieldofview.y = Number(json.y) || Number(json.resolutionY) || null;
+        fieldofview.x = Number(json.x) || null;
+        fieldofview.y = Number(json.y) || null;
         return fieldofview;
     }
 
@@ -70,7 +70,7 @@ export class LensMetadata {
 			deviceInformation: Zod.object({
 				make: Zod.string().min(1, 'Make is required'),
 				model: Zod.string().min(1, 'Model is required'),
-				serialNumber: Zod.string().min(1, 'Serial Number is required'),
+				serialNumber: Zod.string().optional(),
 				focalLength: Zod.number().min(0, 'Focal Length is required'),
                 fieldOfView : Zod.object({
                     x: Zod.number().optional(),

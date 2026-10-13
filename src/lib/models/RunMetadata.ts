@@ -131,7 +131,7 @@ export class CoolantInformation {
 }
 
 export class RunMetadata {
-    runUUID: string | null;
+    runUUID: string;
     runNumber: number | null;
     sampleNumber: number | null;
     experimentNumber: number | null;
@@ -144,7 +144,7 @@ export class RunMetadata {
     status: string;
     dagRunId: string;
     ingestDagRunId: string;
-    currentStep: number | null;
+    currentStep: number;
     createdAt: string;
     pulseMap: PulseMapEntry[];
 
@@ -213,7 +213,7 @@ export class RunMetadata {
         this.status = 'draft';
         this.dagRunId = '';
         this.ingestDagRunId = '';
-        this.currentStep = null;
+        this.currentStep = 0;
         this.createdAt = new Date().toISOString();
         this.pulseMap = [];
     }
@@ -240,7 +240,7 @@ export class RunMetadata {
         run.status = json.status || 'draft';
         run.dagRunId = json.dagRunId || '';
         run.ingestDagRunId = json.ingestDagRunId || '';
-        run.currentStep = json.currentStep || null;
+        run.currentStep = json.currentStep || 0;
         run.createdAt = json.createdAt || new Date().toISOString();
         run.pulseMap = normalizePulseMap(json.pulseMap);
         return run;
