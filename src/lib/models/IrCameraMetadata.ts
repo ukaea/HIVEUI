@@ -11,8 +11,8 @@ export class Resolution {
 
     static fromJSON(json: any): Resolution {
         const resolution = new Resolution();
-        resolution.x = json.x ?? null;
-        resolution.y = json.y ?? null;
+        resolution.x = Number(json.x) || null;
+        resolution.y = Number(json.y) || null;
         return resolution;
     }
 
@@ -35,8 +35,8 @@ export class SpectralRange {
 
     static fromJSON(json: any): SpectralRange {
         const range = new SpectralRange();
-        range.minimum = json.minimum ?? null;
-        range.maximum = json.maximum ?? null;
+        range.minimum = Number(json.minimum) || null;
+        range.maximum = Number(json.minimum) || null;
         return range;
     }
 
@@ -59,8 +59,8 @@ export class TemperatureRange {
 
     static fromJSON(json: any): TemperatureRange {
         const range = new TemperatureRange();
-        range.minimum = json.minimum ?? null;
-        range.maximum = json.maximum ?? null;
+        range.minimum = Number(json.minimum) || null;
+        range.maximum = Number(json.minimum) || null;
         return range;
     }
 
@@ -112,33 +112,33 @@ export class IrCameraDeviceInformation {
     }
 }
 
-export class IrCameraDeviceSettings {
-    emissivity: number | null;
-    framerate: number | null;
+// export class IrCameraDeviceSettings {
+//     emissivity: number;
+//     framerate: number;
 
-    constructor() {
-        this.emissivity = null;
-        this.framerate = null;
-    }
+//     constructor() {
+//         this.emissivity = 0;
+//         this.framerate = 0;
+//     }
 
-    static fromJSON(json: any): IrCameraDeviceSettings {
-        const settings = new IrCameraDeviceSettings();
-        settings.emissivity = json.emissivity ?? null;
-        settings.framerate = json.framerate ?? null;
-        return settings;
-    }
+//     static fromJSON(json: any): IrCameraDeviceSettings {
+//         const settings = new IrCameraDeviceSettings();
+//         settings.emissivity = json.emissivity || 0;
+//         settings.framerate = json.framerate || 0;
+//         return settings;
+//     }
 
-    static toJSON(settings: IrCameraDeviceSettings): any {
-        return {
-            emissivity: settings.emissivity,
-            framerate: settings.framerate
-        };
-    }
-}
+//     static toJSON(settings: IrCameraDeviceSettings): any {
+//         return {
+//             emissivity: settings.emissivity,
+//             framerate: settings.framerate
+//         };
+//     }
+// }
 
 export class IrCameraMetadata {
     deviceInformation: IrCameraDeviceInformation;
-    deviceSettings: IrCameraDeviceSettings;
+    // deviceSettings: IrCameraDeviceSettings;
 
     static schema = Zod.object({
 		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
@@ -149,28 +149,34 @@ export class IrCameraMetadata {
 				model: Zod.string().min(1, 'Model is required'),
 				serialNumber: Zod.string().min(1, 'Serial Number is required'),
 				resolution: Zod.object({
-					x: Zod.number({ error: 'Resolution X is required' }).min(1, 'Resolution X must be greater than 0'),
-					y: Zod.number({ error: 'Resolution Y is required' }).min(1, 'Resolution Y must be greater than 0')
+					x: Zod.number().min(0, 'Resolution X is required'),
+					y: Zod.number().min(0, 'Resolution Y is required')
 				}),
-				spectralRange: Zod.object({
-					minimum: Zod.number({ error: 'Minimum Wavelength is required' }).min(0, 'Minimum Wavelength must be 0 or greater'),
-					maximum: Zod.number({ error: 'Maximum Wavelength is required' }).min(0, 'Maximum Wavelength must be 0 or greater')
-				}),
+                spectralRange: Zod.object({
+                    minimum: Zod.number().min(0.1, 'Minimum Wavelength is required')
+                                    .refine((value) => !Number.isInteger(value), {
+                                            message: 'Minimum Wavelength must be a decimal number'
+                                    }),
+                    maximum: Zod.number().min(0.1, 'Maximum Wavelength is required')
+                                    .refine((value) => !Number.isInteger(value), {
+                                            message: 'Maximum Wavelength must be a decimal number'
+                                    })
+                }),
 				temperatureRange: Zod.object({
 					minimum: Zod.number({ error: 'Minimum Temperature is required' }).min(0, 'Minimum Temperature must be 0 or greater'),
 					maximum: Zod.number({ error: 'Maximum Temperature is required' }).min(0, 'Maximum Temperature must be 0 or greater')
 				})
 			}),
-			deviceSettings: Zod.object({
-				emissivity: Zod.number().min(0, 'Emissivity must be 0 or greater').nullable().optional(),
-				framerate: Zod.number().min(0, 'Framerate must be 0 or greater').nullable().optional()
-			})
+			// deviceSettings: Zod.object({
+			// 	emissivity: Zod.number().min(0, 'Emissivity is required'),
+			// 	framerate: Zod.number().min(0, 'Framerate is required')
+			// })
 		})
 	});
 
     constructor() {
         this.deviceInformation = new IrCameraDeviceInformation();
-        this.deviceSettings = new IrCameraDeviceSettings();
+        // this.deviceSettings = new IrCameraDeviceSettings();
     }
 
     static fromJSON(json: any): IrCameraMetadata {
@@ -178,16 +184,16 @@ export class IrCameraMetadata {
         metadata.deviceInformation = json.deviceInformation ? 
             IrCameraDeviceInformation.fromJSON(json.deviceInformation) : 
             new IrCameraDeviceInformation();
-        metadata.deviceSettings = json.deviceSettings ? 
-            IrCameraDeviceSettings.fromJSON(json.deviceSettings) : 
-            new IrCameraDeviceSettings();
+        // metadata.deviceSettings = json.deviceSettings ? 
+        //     IrCameraDeviceSettings.fromJSON(json.deviceSettings) : 
+        //     new IrCameraDeviceSettings();
         return metadata;
     }
 
     static toJSON(metadata: IrCameraMetadata): any {
         return {
             deviceInformation: IrCameraDeviceInformation.toJSON(metadata.deviceInformation),
-            deviceSettings: IrCameraDeviceSettings.toJSON(metadata.deviceSettings)
+            // deviceSettings: IrCameraDeviceSettings.toJSON(metadata.deviceSettings)
         };
     }
 }

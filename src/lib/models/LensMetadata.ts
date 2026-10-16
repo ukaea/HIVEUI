@@ -4,19 +4,15 @@ export class LensDeviceInformation {
     make: string;
     model: string;
     serialNumber: string;
-    focalLength: string;
-    aperture: string;
-    fieldOfViewX: string;
-    fieldOfViewY: string;
+    focalLength: number | null;
+    fieldOfView: LensFieldOfView;
 
     constructor() {
         this.make = '';
         this.model = '';
         this.serialNumber = '';
-        this.focalLength = '';
-        this.aperture = '';
-        this.fieldOfViewX = '';
-        this.fieldOfViewY = '';
+        this.focalLength = null;
+        this.fieldOfView = new LensFieldOfView()
     }
 
     static fromJSON(json: any): LensDeviceInformation {
@@ -24,10 +20,8 @@ export class LensDeviceInformation {
         device.make = json.make || '';
         device.model = json.model || '';
         device.serialNumber = json.serialNumber || '';
-        device.focalLength = json.focalLength || '';
-        device.aperture = json.aperture || '';
-        device.fieldOfViewX = json.fieldOfViewX || '';
-        device.fieldOfViewY = json.fieldOfViewY || '';
+        device.focalLength = Number(json.focalLength) || null;
+        device.fieldOfView = json.fieldOfView ? LensFieldOfView.fromJSON(json.fieldOfView) : new LensFieldOfView();
         return device;
     }
 
@@ -37,9 +31,32 @@ export class LensDeviceInformation {
             model: device.model,
             serialNumber: device.serialNumber,
             focalLength: device.focalLength,
-            aperture: device.aperture,
-            fieldOfViewX: device.fieldOfViewX,
-            fieldOfViewY: device.fieldOfViewY
+            fieldOfView: LensFieldOfView.toJSON(device.fieldOfView)
+        };
+    }
+}
+
+
+export class LensFieldOfView {
+    x: number | null;
+    y: number | null;
+
+    constructor() {
+        this.x = null;
+        this.y = null;
+    }
+
+    static fromJSON(json: any): LensFieldOfView {
+        const fieldofview = new LensFieldOfView();
+        fieldofview.x = Number(json.x) || null;
+        fieldofview.y = Number(json.y) || null;
+        return fieldofview;
+    }
+
+    static toJSON(resolution: LensFieldOfView): any {
+        return {
+            x: resolution.x,
+            y: resolution.y
         };
     }
 }
@@ -53,14 +70,16 @@ export class LensMetadata {
 			deviceInformation: Zod.object({
 				make: Zod.string().min(1, 'Make is required'),
 				model: Zod.string().min(1, 'Model is required'),
-				serialNumber: Zod.string().min(1, 'Serial Number is required'),
-				focalLength: Zod.string().min(1, 'Focal Length is required'),
-				aperture: Zod.string().optional(),
-				fieldOfViewX: Zod.string().min(1, 'Field of View X is required'),
-				fieldOfViewY: Zod.string().min(1, 'Field of View Y is required')
+				serialNumber: Zod.string().optional(),
+				focalLength: Zod.number().min(0, 'Focal Length is required'),
+                fieldOfView : Zod.object({
+                    x: Zod.number().optional(),
+                    y: Zod.number().optional(),
+                    }).optional()
+                })
+				
 			})
-		})
-	});
+		});
 
     constructor() {
         this.deviceInformation = new LensDeviceInformation();

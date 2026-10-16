@@ -11,8 +11,8 @@ export class SpectralRange {
 
     static fromJSON(json: any): SpectralRange {
         const range = new SpectralRange();
-        range.minimum = json.minimum ?? null;
-        range.maximum = json.maximum ?? null;
+        range.minimum = Number(json.minimum) || null;
+        range.maximum = Number(json.maximum) || null;
         return range;
     }
 
@@ -35,8 +35,8 @@ export class TemperatureRange {
 
     static fromJSON(json: any): TemperatureRange {
         const range = new TemperatureRange();
-        range.minimum = json.minimum ?? null;
-        range.maximum = json.maximum ?? null;
+        range.minimum = Number(json.minimum) || null;
+        range.maximum = Number(json.maximum) || null;
         return range;
     }
 
@@ -57,16 +57,22 @@ export class PyrometerMetadata {
     temperatureRange: TemperatureRange;
 
     static schema = Zod.object({
-		equipmentName: Zod.string().min(1, 'Equipment Name is required'),
-		equipmentType: Zod.string().min(1, 'Equipment Type is required'),
+		equipmentName: Zod.string().trim().min(1, 'Equipment Name is required'),
+		equipmentType: Zod.string().trim().min(1, 'Equipment Type is required'),
 		equipment: Zod.object({
-			make: Zod.string().min(1, 'Make is required'),
-			model: Zod.string().min(1, 'Model is required'),
-			serialNumber: Zod.string().optional(),
+			make: Zod.string().trim().min(1, 'Make is required'),
+			model: Zod.string().trim().min(1, 'Model is required'),
+			serialNumber: Zod.string().trim().min(1, 'Serial Number is required'),
 			assetId: Zod.string().optional(),
 			spectralRange: Zod.object({
-				minimum: Zod.number({ error: 'Minimum Wavelength is required' }).min(0, 'Minimum Wavelength must be 0 or greater'),
-				maximum: Zod.number({ error: 'Maximum Wavelength is required' }).min(0, 'Maximum Wavelength must be 0 or greater')
+				minimum: Zod.number().min(0.1, 'Minimum Wavelength is required')
+                                .refine((value) => !Number.isInteger(value), {
+                                        message: 'Minimum Wavelength must be a decimal number'
+                                }),
+				maximum: Zod.number().min(0.1, 'Maximum Wavelength is required')
+                                .refine((value) => !Number.isInteger(value), {
+                                        message: 'Maximum Wavelength must be a decimal number'
+                                })
 			}),
 			temperatureRange: Zod.object({
 				minimum: Zod.number({ error: 'Minimum Temperature is required' }).min(0, 'Minimum Temperature must be 0 or greater'),

@@ -784,6 +784,15 @@
 							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors['coolantInformation.targetCoolantTemperature']}
 						/>
+						<h3 class="col-span-3 font-bold mt-4"> </h3>
+						<div class="col-span-full">
+						<TextField 
+							label="Comment" 
+							value={draft.comment}
+							type="text"
+							on:change={(e) => { draft.comment = e.detail.value; }}
+							multiline clearable />
+						</div>
 					</div>
 
 					<div class="flex justify-between mt-6">
