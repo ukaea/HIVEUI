@@ -57,28 +57,28 @@ export function normalizePulseMap(raw: any): PulseMapEntry[] {
 export class HeatingInformation {
     heatingType: string;
     currentType: string;
-    inputPower: number;
-    inputCurrent: number;
-    inputVoltage: number;
-    outputCurrent: number;
+    inputPower: number | null;
+    inputCurrent: number | null;
+    inputVoltage: number | null;
+    outputCurrent: number | null;
 
     constructor() {
         this.heatingType = '';
         this.currentType = '';
-        this.inputPower = 0.0;
-        this.inputCurrent = 0.0;
-        this.inputVoltage = 0.0;
-        this.outputCurrent = 0.0; 
+        this.inputPower = null;
+        this.inputCurrent = null;
+        this.inputVoltage = null;
+        this.outputCurrent = null; 
     }
 
     static fromJSON(json: any): HeatingInformation {
         const heat = new HeatingInformation();
         heat.heatingType = json.heatingType || '';
         heat.currentType = json.currentType || '';
-        heat.inputPower = json.inputPower || 0.0;
-        heat.inputCurrent = json.inputCurrent || 0.0;
-        heat.inputVoltage = json.inputVoltage || 0.0;
-        heat.outputCurrent = json.outputCurrent || 0.0;
+        heat.inputPower = json.inputPower || null;
+        heat.inputCurrent = json.inputCurrent || null;
+        heat.inputVoltage = json.inputVoltage || null;
+        heat.outputCurrent = json.outputCurrent || null;
         return heat
     }
 
@@ -97,24 +97,24 @@ export class HeatingInformation {
 export class CoolantInformation {
     sampleCooling: boolean;
     coolantType: string;
-    targetCoolantFlow: number;
-    targetCoolantTemperature: number;
-    measuredCoolantFlow: number;
+    targetCoolantFlow: number | null;
+    targetCoolantTemperature: number | null;
+    measuredCoolantFlow: number | null;
 
     constructor() {
         this.sampleCooling = false;
         this.coolantType = '';
-        this.targetCoolantFlow = 0.0;
-        this.targetCoolantTemperature = 0.0;
-        this.measuredCoolantFlow = 0.0;
+        this.targetCoolantFlow = null;
+        this.targetCoolantTemperature = null;
+        this.measuredCoolantFlow = null;
     }
     static fromJSON(json: any): CoolantInformation{
         const coolant = new CoolantInformation();
         coolant.sampleCooling = json.sampleCooling === true;
         coolant.coolantType = json.coolantType || '';
-        coolant.targetCoolantFlow = Number(json.targetCoolantFlow) || 0.0;
-        coolant.targetCoolantTemperature = Number(json.targetCoolantTemperature) || 0.0;
-        coolant.measuredCoolantFlow = Number(json.measuredCoolantFlow) || 0.0;
+        coolant.targetCoolantFlow = Number(json.targetCoolantFlow) || null;
+        coolant.targetCoolantTemperature = Number(json.targetCoolantTemperature) || null;
+        coolant.measuredCoolantFlow = Number(json.measuredCoolantFlow) || null;
         return coolant
     }
 
@@ -122,9 +122,9 @@ export class CoolantInformation {
         return {
         sampleCooling: metadata.sampleCooling === true,
         coolantType: metadata.coolantType || '',
-        targetCoolantFlow: Number(metadata.targetCoolantFlow) || 0.0,
-        targetCoolantTemperature: Number(metadata.targetCoolantTemperature) || 0.0,
-        measuredCoolantFlow: Number(metadata.measuredCoolantFlow) || 0.0
+        targetCoolantFlow: Number(metadata.targetCoolantFlow) || null,
+        targetCoolantTemperature: Number(metadata.targetCoolantTemperature) || null,
+        measuredCoolantFlow: Number(metadata.measuredCoolantFlow) || null
         }
     }
 
@@ -132,14 +132,15 @@ export class CoolantInformation {
 
 export class RunMetadata {
     runUUID: string;
-    runNumber: number;
-    sampleNumber: number;
-    experimentNumber: number;
+    runNumber: number | null;
+    sampleNumber: number | null;
+    experimentNumber: number | null;
     configurationNumber: number | null;
     operator1: PersonMetadata;
     operator2: PersonMetadata;
     heatingInformation: HeatingInformation;
     coolantInformation: CoolantInformation;
+    comment: string;
     status: string;
     dagRunId: string;
     ingestDagRunId: string;
@@ -154,12 +155,12 @@ export class RunMetadata {
         operator1: Zod.object({
             firstName: Zod.string().min(1, "Operator 1 First Name is required"),
             lastName: Zod.string().min(1, "Operator 1 Last Name is required"),
-            email: Zod.string().email('Invalid email address')
+            email: Zod.email('Invalid email address')
         }),
         operator2: Zod.object({
             firstName: Zod.string().min(1, "Operator 2 First Name is required"),
             lastName: Zod.string().min(1, "Operator 2 Last Name is required"),
-            email: Zod.string().email('Invalid email address')
+            email: Zod.email('Invalid email address')
         }),
         heatingInformation: Zod.object({
             heatingType: Zod.enum(["Induction", "DC"]),
@@ -195,18 +196,20 @@ export class RunMetadata {
                 }
             }
         }),
+        comment: Zod.string().optional(),
     });
 
     constructor() {
         this.runUUID = generateUUID();
-        this.runNumber = 0;
-        this.sampleNumber = 0;
-        this.experimentNumber = 0;
+        this.runNumber = null;
+        this.sampleNumber = null;
+        this.experimentNumber = null;
         this.configurationNumber = null;
         this.operator1 = new PersonMetadata();
         this.operator2 = new PersonMetadata();
         this.heatingInformation = new HeatingInformation();
         this.coolantInformation = new CoolantInformation();
+        this.comment = '';
         this.status = 'draft';
         this.dagRunId = '';
         this.ingestDagRunId = '';
@@ -218,9 +221,9 @@ export class RunMetadata {
     static fromJSON(json: any): RunMetadata {
         const run = new RunMetadata();
         run.runUUID = json.runUUID || run.runUUID;
-        run.runNumber = Number(json.runNumber) || 0;
-        run.sampleNumber = Number(json.sampleNumber) || 0;
-        run.experimentNumber = Number(json.experimentNumber) || 0;
+        run.runNumber = Number(json.runNumber) || null;
+        run.sampleNumber = Number(json.sampleNumber) || null;
+        run.experimentNumber = Number(json.experimentNumber) || null;
         run.configurationNumber = Number(json.configurationNumber ?? json.configurationId) || null;
         run.operator1 = json.operator1 ?
             PersonMetadata.fromJSON(json.operator1) :
@@ -246,9 +249,9 @@ export class RunMetadata {
     static toJSON(metadata: RunMetadata): any {
         return {
             runUUID: metadata.runUUID,
-            runNumber: Number(metadata.runNumber) || 0,
-            sampleNumber: Number(metadata.sampleNumber) || 0,
-            experimentNumber: Number(metadata.experimentNumber) || 0,
+            runNumber: Number(metadata.runNumber) || null,
+            sampleNumber: Number(metadata.sampleNumber) || null,
+            experimentNumber: Number(metadata.experimentNumber) || null,
             configurationNumber: metadata.configurationNumber,
             operator1: PersonMetadata.toJSON(metadata.operator1),
             operator2: PersonMetadata.toJSON(metadata.operator2),

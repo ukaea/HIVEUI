@@ -6,7 +6,6 @@
 	import { onMount } from 'svelte';
 	import { Button, Dialog, Form, SelectField, Table, TextField } from 'svelte-ux';
 	import Zod from 'zod';
-	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
 
 	let allEquipment: EquipmentMetadata[] = [];
 	let selectedEquipment: EquipmentMetadata | null = null;
@@ -224,7 +223,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -236,7 +234,7 @@
 
 					<h4 class="col-span-2 mt-1">Thermocouple Information</h4>
 					<TextField
-						label="Attachment"
+						label='Attachment'
 						required
 						value={draft.equipment.attachment}
 						on:change={(e) => {
@@ -258,8 +256,7 @@
 					<TextField
 						label="Circle Diameter (mm)"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.circleDiameter}
 						on:change={(e) => {
 							draft.equipment.circleDiameter = e.detail.value;
@@ -284,7 +281,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -337,8 +333,7 @@
 					<TextField
 						label="Resolution X"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.resolution.x}
 						on:change={(e) => {
 							draft.equipment.resolution.x = e.detail.value;
@@ -349,8 +344,7 @@
 					<TextField
 						label="Resolution Y"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.resolution.y}
 						on:change={(e) => {
 							draft.equipment.resolution.y = e.detail.value;
@@ -375,7 +369,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -419,6 +412,7 @@
 					<TextField
 						label="Focal Length (mm)"
 						required
+						type="decimal"
 						value={draft.equipment.deviceInformation.focalLength}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.focalLength = e.detail.value;
@@ -429,7 +423,6 @@
 					<h4 class="col-span-2 mt-4">Field of View (px)</h4>
 					<TextField
 						label="Field of View X"
-						required
 						value={draft.equipment.deviceInformation.fieldOfViewX}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.fieldOfViewX = e.detail.value;
@@ -439,7 +432,6 @@
 					/>
 					<TextField
 						label="Field of View Y"
-						required
 						value={draft.equipment.deviceInformation.fieldOfViewY}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.fieldOfViewY = e.detail.value;
@@ -464,7 +456,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -528,8 +519,7 @@
 					<TextField
 						label="Minimum Flow"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.flowRange.minimum}
 						on:change={(e) => {
 							draft.equipment.flowRange.minimum = e.detail.value;
@@ -540,8 +530,7 @@
 					<TextField
 						label="Maximum Flow"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.flowRange.maximum}
 						on:change={(e) => {
 							draft.equipment.flowRange.maximum = e.detail.value;
@@ -566,7 +555,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -599,6 +587,7 @@
 					/>
 					<TextField
 						label="Serial Number"
+						required
 						value={draft.equipment.serialNumber}
 						on:change={(e) => {
 							draft.equipment.serialNumber = e.detail.value;
@@ -619,8 +608,7 @@
 					<TextField
 						label="Minimum Wavelength"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.spectralRange.minimum}
 						on:change={(e) => {
 							draft.equipment.spectralRange.minimum = e.detail.value;
@@ -631,8 +619,7 @@
 					<TextField
 						label="Maximum Wavelength"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.spectralRange.maximum}
 						on:change={(e) => {
 							draft.equipment.spectralRange.maximum = e.detail.value;
@@ -644,8 +631,7 @@
 					<TextField
 						label="Minimum Temperature"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.temperatureRange.minimum}
 						on:change={(e) => {
 							draft.equipment.temperatureRange.minimum = e.detail.value;
@@ -656,8 +642,7 @@
 					<TextField
 						label="Maximum Temperature"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.temperatureRange.maximum}
 						on:change={(e) => {
 							draft.equipment.temperatureRange.maximum = e.detail.value;
@@ -682,7 +667,6 @@
 
 					<TextField
 						label="Equipment Type"
-						required
 						value={draft.equipmentType}
 						on:change={(e) => {
 							draft.equipment.tcType = e.detail.value;
@@ -727,8 +711,7 @@
 					<TextField
 						label="Resolution X"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.resolution.x}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.resolution.x = e.detail.value;
@@ -739,8 +722,7 @@
 					<TextField
 						label="Resolution Y"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.resolution.y}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.resolution.y = e.detail.value;
@@ -752,8 +734,7 @@
 					<TextField
 						label="Minimum Wavelength"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.spectralRange.minimum}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.spectralRange.minimum = e.detail.value;
@@ -764,8 +745,7 @@
 					<TextField
 						label="Maximum Wavelength"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.spectralRange.maximum}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.spectralRange.maximum = e.detail.value;
@@ -777,8 +757,7 @@
 					<TextField
 						label="Minimum Temperature"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.temperatureRange.minimum}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.temperatureRange.minimum = e.detail.value;
@@ -789,8 +768,7 @@
 					<TextField
 						label="Maximum Temperature"
 						required
-						on:keydown={allowDigitsOnly}
-						type="integer"
+						type="decimal"
 						value={draft.equipment.deviceInformation.temperatureRange.maximum}
 						on:change={(e) => {
 							draft.equipment.deviceInformation.temperatureRange.maximum = e.detail.value;
@@ -860,16 +838,14 @@
 		overflow-x: auto;
 	}
 
-	:global(.equipmentInputDialog label:has(input:required, textarea:required) .label::after) {
-		content: ' *';
-		color: hsl(0 85% 65%);
-	}
-
 	:global(.equipmentInputDialog) {
-		width: min(48rem, calc(100vw - 2rem));
 		max-height: 90vh;
 		overflow-y: auto;
 		display: flex;
 		flex-direction: column;
+	}
+	:global(.equipmentInputDialog label:has(input:required, textarea:required) .label::after) {
+		content: ' *';
+		color: hsl(0 85% 65%);
 	}
 </style>
