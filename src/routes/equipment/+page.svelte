@@ -2,10 +2,11 @@
 	import { env } from '$env/dynamic/public';
 	import { CameraMetadata, DicMetadata, EquipmentMetadata, FlowmeterMetadata, IrCameraMetadata, LensMetadata, PyrometerMetadata, ThermocoupleMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { formErrors, formSchema } from '$lib/client/form';
+	import { tableOrderStore, type ColumnDef } from '@layerstack/svelte-table';
 	import { onMount } from 'svelte';
 	import { Button, Dialog, Form, SelectField, Table, TextField } from 'svelte-ux';
-	import Zod from 'zod';
+	import type { ZodType } from 'zod';
 
 	let allEquipment: EquipmentMetadata[] = [];
 	let selectedEquipment: EquipmentMetadata | null = null;
@@ -13,11 +14,18 @@
 
 	let isNewEntry = false;
 	let open = false;
+	let saving = false;
+	let duplicateNameError: string | undefined;
+
+	$: schema = getSchema(selectedEquipmentType);
 
 	const equipmentOrder = tableOrderStore({ initialBy: 'equipmentName', initialDirection: 'asc' });
-	equipmentOrder.subscribe(() => {
-		allEquipment = allEquipment.sort($equipmentOrder.handler);
-	});
+	$: sortedEquipment = [...allEquipment].sort($equipmentOrder.handler);
+
+	const columns: ColumnDef<EquipmentMetadata>[] = [
+		{ name: 'equipmentName', align: 'left', header: 'Name' },
+		{ name: 'equipmentType', align: 'left', header: 'Type' }
+	];
 
 	const equipmentService = new GenericDataService<EquipmentMetadata>({
 		modelClass: EquipmentMetadata,
@@ -44,38 +52,27 @@
 		}
 	}
 
-	async function handleMetadataSubmit() {
-		if (!selectedEquipment) {
-			alert('No metadata selected.');
+	async function handleMetadataSubmit(value: EquipmentMetadata) {
+		if (saving || !schema) return;
+		const equipment = { ...value, ...(schema.parse(value) as object) } as EquipmentMetadata;
+
+		const originalName = isNewEntry ? undefined : selectedEquipment?.equipmentName;
+		if (equipment.equipmentName !== originalName && allEquipment.some((e) => e.equipmentName === equipment.equipmentName)) {
+			duplicateNameError = `Equipment ${equipment.equipmentName} already exists`;
 			return;
 		}
 
-		if (!selectedEquipmentType) {
-			alert('No equipment type selected.');
-			return;
-		}
-
-		let schema = getSchema(selectedEquipmentType);
-		if (!schema) {
-			alert('No schema found for the selected equipment type.');
-			return;
-		}
-
-		//Validate against zod schema
-		const parseResult = schema.safeParse(selectedEquipment);
-		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.errors);
-			return;
-		}
-
+		saving = true;
 		try {
-			await equipmentService.submit(selectedEquipment);
+			await equipmentService.submit(equipment);
 			alert(isNewEntry ? 'New equipment submitted successfully!' : 'Equipment updated successfully!');
 			handleModalClose();
 			await fetchEquipment();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit equipment: ${(error as Error).message}`);
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -116,10 +113,9 @@
 		}
 	}
 
-	function handleRowClick(row: any): void {
+	function handleRowClick(row: EquipmentMetadata): void {
 		selectedEquipment = JSON.parse(JSON.stringify(row));
 		selectedEquipmentType = row.equipmentType || 'thermocouple';
-		console.log('Selected Equipment:', selectedEquipment);
 		isNewEntry = false;
 		open = true;
 	}
@@ -142,17 +138,14 @@
 		open = false;
 		selectedEquipment = null;
 		isNewEntry = false;
-	}
-
-	function handleFormCancel() {
-		handleModalClose();
+		duplicateNameError = undefined;
 	}
 
 	onMount(() => {
 		fetchEquipment();
 	});
 
-	function getSchema(selectedEquipmentType: string | null | undefined): Zod.ZodType<any, Zod.ZodTypeDef, any> | undefined {
+	function getSchema(selectedEquipmentType: string | null | undefined): ZodType | undefined {
 		switch (selectedEquipmentType) {
 			case 'thermocouple':
 				return ThermocoupleMetadata.schema;
@@ -191,11 +184,8 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={allEquipment}
-			columns={[
-				{ name: 'equipmentName', align: 'left', header: 'Name' },
-				{ name: 'equipmentType', align: 'left', header: 'Type' }
-			]}
+			data={sortedEquipment}
+			{columns}
 			order={equipmentOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -204,10 +194,19 @@
 </div>
 
 <Dialog {open} on:close={handleModalClose} class="equipmentInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Equipment' : 'Edit Equipment'}</div>
+	<div slot="title">{isNewEntry ? 'Create New Equipment' : 'Equipment Details'}</div>
 	<div class="p-4">
-		<Form initial={selectedEquipment} schema={getSchema(selectedEquipmentType)} let:draft let:refresh let:state let:current let:revertAll let:errors>
+		<Form
+			initial={selectedEquipment}
+			schema={schema && formSchema(schema)}
+			novalidate
+			on:change={(e) => handleMetadataSubmit(e.detail)}
+			let:draft
+			let:refresh
+			let:errors={rawErrors}
+		>
 			{#if selectedEquipmentType === 'thermocouple'}
+				{@const errors = formErrors(ThermocoupleMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -216,9 +215,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -266,6 +266,7 @@
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'camera'}
+				{@const errors = formErrors(CameraMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -274,9 +275,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -354,6 +356,7 @@
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'lens'}
+				{@const errors = formErrors(LensMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -362,9 +365,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -423,24 +427,27 @@
 					<h4 class="col-span-2 mt-4">Field of View (px)</h4>
 					<TextField
 						label="Field of View X"
-						value={draft.equipment.deviceInformation.fieldOfViewX}
+						type="decimal"
+						value={draft.equipment.deviceInformation.fieldOfView.x}
 						on:change={(e) => {
-							draft.equipment.deviceInformation.fieldOfViewX = e.detail.value;
+							draft.equipment.deviceInformation.fieldOfView.x = e.detail.value;
 							refresh();
 						}}
-						error={errors.equipment?.deviceInformation?.fieldOfViewX}
+						error={errors.equipment?.deviceInformation?.fieldOfView?.x}
 					/>
 					<TextField
 						label="Field of View Y"
-						value={draft.equipment.deviceInformation.fieldOfViewY}
+						type="decimal"
+						value={draft.equipment.deviceInformation.fieldOfView.y}
 						on:change={(e) => {
-							draft.equipment.deviceInformation.fieldOfViewY = e.detail.value;
+							draft.equipment.deviceInformation.fieldOfView.y = e.detail.value;
 							refresh();
 						}}
-						error={errors.equipment?.deviceInformation?.fieldOfViewY}
+						error={errors.equipment?.deviceInformation?.fieldOfView?.y}
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'flowmeter'}
+				{@const errors = formErrors(FlowmeterMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -449,9 +456,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -540,6 +548,7 @@
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'pyrometer'}
+				{@const errors = formErrors(PyrometerMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -548,9 +557,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -652,6 +662,7 @@
 					/>
 				</div>
 			{:else if selectedEquipmentType === 'ir-camera'}
+				{@const errors = formErrors(IrCameraMetadata.schema, rawErrors)}
 				<div class="p-4 grid grid-cols-2 gap-4">
 					<h4 class="col-span-2 mt-1">General Information</h4>
 					<TextField
@@ -660,9 +671,10 @@
 						value={draft.equipmentName}
 						on:change={(e) => {
 							draft.equipmentName = e.detail.value;
+							duplicateNameError = undefined;
 							refresh();
 						}}
-						error={errors.equipmentName}
+						error={errors.equipmentName ?? duplicateNameError}
 					/>
 
 					<TextField
@@ -807,21 +819,8 @@
 					</div>
 				{/if}
 				<div class="flex gap-2">
-					<Button
-						type="submit"
-						variant="fill"
-						on:click={() => {
-							selectedEquipment = current;
-							handleMetadataSubmit();
-						}}>Save</Button
-					>
-					<Button
-						on:click={() => {
-							revertAll();
-							handleFormCancel();
-						}}
-						style={{ marginLeft: 'auto' }}>Cancel</Button
-					>
+					<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save</Button>
+					<Button on:click={handleModalClose} style={{ marginLeft: 'auto' }}>Cancel</Button>
 				</div>
 			</div>
 		</Form>
