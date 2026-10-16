@@ -149,33 +149,36 @@ export class RunMetadata {
     pulseMap: PulseMapEntry[];
 
     static schema = Zod.object({
-        runNumber: Zod.number().min(1, 'Run Number is required'),
-        sampleNumber: Zod.number().min(1, 'Sample Number is required'),
-        experimentNumber: Zod.number().min(1, 'Experiment Number is required'),
+        runNumber: Zod.number({ error: 'Run Number is required' })
+            .int('Run Number must be a whole number')
+            .min(1, 'Run Number must be greater than 0'),
+        sampleNumber: Zod.number({ error: 'Sample is required' }).min(1, 'Sample is required'),
+        experimentNumber: Zod.number({ error: 'Experiment is required' }).min(1, 'Experiment is required'),
+        configurationNumber: Zod.number({ error: 'Configuration is required' }).min(1, 'Configuration is required'),
         operator1: Zod.object({
-            firstName: Zod.string().min(1, "Operator 1 First Name is required"),
-            lastName: Zod.string().min(1, "Operator 1 Last Name is required"),
-            email: Zod.email('Invalid email address')
+            firstName: Zod.string().trim().min(1, "Operator 1 First Name is required"),
+            lastName: Zod.string().trim().min(1, "Operator 1 Last Name is required"),
+            email: Zod.string().trim().min(1, { error: 'Email is required', abort: true }).email('Invalid email address')
         }),
         operator2: Zod.object({
-            firstName: Zod.string().min(1, "Operator 2 First Name is required"),
-            lastName: Zod.string().min(1, "Operator 2 Last Name is required"),
-            email: Zod.email('Invalid email address')
+            firstName: Zod.string().trim().min(1, "Operator 2 First Name is required"),
+            lastName: Zod.string().trim().min(1, "Operator 2 Last Name is required"),
+            email: Zod.string().trim().min(1, { error: 'Email is required', abort: true }).email('Invalid email address')
         }),
         heatingInformation: Zod.object({
-            heatingType: Zod.enum(["Induction", "DC"]),
-            currentType: Zod.enum(["AC", "DC"]),
-            inputPower: Zod.number().optional(),
-            inputCurrent: Zod.number().optional(),
-            inputVoltage: Zod.number().optional(),
-            outputCurrent: Zod.number().min(1, 'Output Current is required'),
+            heatingType: Zod.enum(["Induction", "DC"], { error: 'Heating Type is required' }),
+            currentType: Zod.string().optional(),
+            inputPower: Zod.number().nullable().optional(),
+            inputCurrent: Zod.number().nullable().optional(),
+            inputVoltage: Zod.number().nullable().optional(),
+            outputCurrent: Zod.number().nullable().optional(),
         }),
         coolantInformation: Zod.object({
             sampleCooling: Zod.boolean(),
             coolantType: Zod.string(),
-            targetCoolantFlow: Zod.number(),
-            targetCoolantTemperature: Zod.number(),
-            measuredCoolantFlow: Zod.number()
+            targetCoolantFlow: Zod.number().nullable(),
+            targetCoolantTemperature: Zod.number().nullable(),
+            measuredCoolantFlow: Zod.number().nullable().optional()
         }).superRefine((coolant, ctx) => {
             if (!coolant.sampleCooling) {
                 return;
@@ -184,13 +187,12 @@ export class RunMetadata {
             const required: [keyof typeof coolant, string][] = [
                 ['coolantType', 'Coolant Type is required'],
                 ['targetCoolantFlow', 'Target Coolant Flow is required'],
-                ['targetCoolantTemperature', 'Target Coolant Temperature is required'],
-                ['measuredCoolantFlow', 'Measured Coolant Flow is required']
+                ['targetCoolantTemperature', 'Target Coolant Temperature is required']
             ];
 
             for (const [field, message] of required) {
                 const value = coolant[field];
-                const missing = typeof value === 'string' ? value.length < 1 : Number(value) < 1;
+                const missing = value == null || (typeof value === 'string' && value.length < 1);
                 if (missing) {
                     ctx.addIssue({ code: 'custom', path: [field], message });
                 }
@@ -237,6 +239,7 @@ export class RunMetadata {
         run.coolantInformation = json.coolantInformation ?
             CoolantInformation.fromJSON(json.coolantInformation) :
             new CoolantInformation();
+        run.comment = json.comment || '';
         run.status = json.status || 'draft';
         run.dagRunId = json.dagRunId || '';
         run.ingestDagRunId = json.ingestDagRunId || '';
@@ -257,6 +260,7 @@ export class RunMetadata {
             operator2: PersonMetadata.toJSON(metadata.operator2),
             heatingInformation: HeatingInformation.toJSON(metadata.heatingInformation),
             coolantInformation: CoolantInformation.toJSON(metadata.coolantInformation),
+            comment: metadata.comment,
             status: metadata.status,
             dagRunId: metadata.dagRunId,
             ingestDagRunId: metadata.ingestDagRunId,

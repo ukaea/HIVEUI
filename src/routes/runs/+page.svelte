@@ -1,53 +1,70 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
 	import { goto } from '$app/navigation';
-	import { Button, Table, Dialog, TextField } from 'svelte-ux';
-	import { SelectField, type MenuOption } from 'svelte-ux';
-	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { Button, Table, Dialog, Form, TextField, SelectField, type MenuOption } from 'svelte-ux';
+	import { tableOrderStore, type ColumnDef } from '@layerstack/svelte-table';
 	import { RunMetadata } from '$lib/models/RunMetadata';
 	import { ExperimentMetadata, ConfigurationMetadata, SampleMetadata } from '$lib/models';
 	import { RunDataService } from '$lib/services/RunDataService';
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
-	import { ConfigurationMetadataModel } from '$lib/models/ConfigurationMetadata';
-	import { SampleMetadataModel } from '$lib/models/SampleMetadata';
 	import { env } from '$env/dynamic/public';
 	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
+	import { formSchema, formErrors } from '$lib/client/form';
 
 	let allRuns: RunMetadata[] = [];
 	let allExperiments: ExperimentMetadata[] = [];
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let allSamples: SampleMetadata[] = [];
 	let open = false;
-	let newRunNumber: number | null = null;
-	let newSampleNumber = 0;
-	let newExperimentNumber: number = 0;
-	let newConfigurationNumber: number | null = null;
+	let creating = false;
+	let duplicateRunError: string | undefined;
+
+	const newRunSchema = RunMetadata.schema.pick({
+		runNumber: true,
+		experimentNumber: true,
+		sampleNumber: true,
+		configurationNumber: true
+	});
+
+	type NewRun = {
+		runNumber: number | null;
+		experimentNumber: number | null;
+		sampleNumber: number | null;
+		configurationNumber: number | null;
+	};
+
+	const emptyNewRun: NewRun = { runNumber: null, experimentNumber: null, sampleNumber: null, configurationNumber: null };
 
 	const order = tableOrderStore({ initialBy: 'runNumber', initialDirection: 'asc' });
 
-	order.subscribe(() => {
-		allRuns = allRuns.sort($order.handler);
-	});
+	$: sortedRuns = [...allRuns].sort($order.handler);
+
+	const columns: ColumnDef<RunMetadata>[] = [
+		{ name: 'runNumber', align: 'left', header: 'Run Number' },
+		{ name: 'experimentNumber', align: 'left', header: 'Experiment' },
+		{ name: 'sampleNumber', align: 'left', header: 'Sample' },
+		{ name: 'status', align: 'left', header: 'Status' },
+		{ name: 'createdAt', align: 'left', header: 'Date', format: (value: string) => formatDate(value) }
+	];
 
 	const runService = new RunDataService();
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
-		modelClass: ExperimentMetadataModel,
+		modelClass: ExperimentMetadata,
 		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
 	});
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
-		modelClass: ConfigurationMetadataModel,
+		modelClass: ConfigurationMetadata,
 		endpoint: '/db/configurations',
 		idField: 'configurationNumber',
 		displayName: 'configurations'
 	});
 
 	const sampleService = new GenericDataService<SampleMetadata>({
-		modelClass: SampleMetadataModel,
+		modelClass: SampleMetadata,
 		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/samples' : '/remote/samples',
 		idField: 'sampleNumber',
 		displayName: 'samples'
@@ -59,7 +76,7 @@
 
 	async function fetchRuns() {
 		try {
-			allRuns = await runService.fetchAll($order.handler);
+			allRuns = await runService.fetchAll();
 		} catch (error) {
 			console.error('Error fetching runs:', error);
 			alert((error as Error).message);
@@ -106,42 +123,33 @@
 	}
 
 	function handleNewRun() {
-		newRunNumber = null;
-		newSampleNumber = 0;
-		newExperimentNumber = 0;
-		newConfigurationNumber = null;
 		open = true;
 	}
 
 	function handleModalClose() {
 		open = false;
+		duplicateRunError = undefined;
 	}
 
-	async function handleCreateRun() {
-		if (!newExperimentNumber || !newSampleNumber || !newRunNumber || !newConfigurationNumber) {
-			alert('All fields are required');
-			return;
-		}
+	async function handleCreateRun(value: NewRun) {
+		if (creating) return;
+		const { runNumber, experimentNumber, sampleNumber, configurationNumber } = newRunSchema.parse(value);
 
 		const duplicate = allRuns.some(
-			(run) =>
-				run.experimentNumber === newExperimentNumber &&
-				run.sampleNumber === newSampleNumber &&
-				run.runNumber === newRunNumber
+			(run) => run.experimentNumber === experimentNumber && run.sampleNumber === sampleNumber && run.runNumber === runNumber
 		);
 		if (duplicate) {
-			alert(
-				`Run ${newRunNumber} already exists for Experiment ${newExperimentNumber} / Sample ${newSampleNumber}. Please choose a different run number.`
-			);
+			duplicateRunError = `Run ${runNumber} already exists for Experiment ${experimentNumber} / Sample ${sampleNumber}`;
 			return;
 		}
 
 		const newRun = new RunMetadata();
-		newRun.experimentNumber = newExperimentNumber;
-		newRun.sampleNumber = newSampleNumber;
-		newRun.runNumber = newRunNumber;
-		newRun.configurationNumber = newConfigurationNumber;
+		newRun.experimentNumber = experimentNumber;
+		newRun.sampleNumber = sampleNumber;
+		newRun.runNumber = runNumber;
+		newRun.configurationNumber = configurationNumber;
 
+		creating = true;
 		try {
 			await runService.saveRun(newRun);
 			handleModalClose();
@@ -149,6 +157,8 @@
 		} catch (error) {
 			console.error('Error creating run:', error);
 			alert(`Failed to create run: ${(error as Error).message}`);
+		} finally {
+			creating = false;
 		}
 	}
 
@@ -195,24 +205,8 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={allRuns}
-			columns={[
-				{ name: 'runNumber', align: 'left', header: 'Run Number' },
-				{ name: 'experimentNumber', align: 'left', header: 'Experiment' },
-				{ name: 'sampleNumber', align: 'left', header: 'Sample' },
-				{
-					name: 'status',
-					align: 'left',
-					header: 'Status',
-				},
-				{
-					name: 'createdAt',
-					align: 'left',
-					header: 'Date',
-					// @ts-expect-error
-					format: (value) => formatDate(value)
-				}
-			]}
+			data={sortedRuns}
+			{columns}
 			{order}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -227,52 +221,74 @@
 		</div>
 	</div>
 	<div class="p-4">
-		<div class="grid grid-cols-2 gap-4">
-			<TextField
-				label="Run Number"
-				type="integer"
-				value={newRunNumber}
-				required
-				on:keydown={allowDigitsOnly}
-				on:change={(e) => {
-					newRunNumber = Number(e.detail.value) || null;
-				}}
-			/>
-			<SelectField
-				options={experimentOptions}
-				label="Experiment"
-				value={newExperimentNumber}
-				required
-				autoplacement={false}
-				on:change={(e) => {
-					newExperimentNumber = Number(e.detail.value) || 0;
-				}}
-			/>
-			<SelectField
-				options={sampleOptions}
-				label="Sample"
-				value={newSampleNumber}
-				required
-				autoplacement={false}
-				on:change={(e) => {
-					newSampleNumber = Number(e.detail.value) || 0;
-				}}
-			/>
-			<SelectField
-				options={configurationOptions}
-				label="Configuration"
-				value={newConfigurationNumber}
-				required
-				autoplacement={false}
-				on:change={(e) => {
-					newConfigurationNumber = e.detail.value;
-				}}
-			/>
-		</div>
-		<div class="flex justify-end mt-4 gap-2">
-			<Button on:click={handleModalClose}>Cancel</Button>
-			<Button variant="fill" on:click={handleCreateRun}>Create</Button>
-		</div>
+		<Form
+			initial={emptyNewRun}
+			schema={formSchema(newRunSchema)}
+			novalidate
+			on:change={(e) => handleCreateRun(e.detail)}
+			let:draft
+			let:refresh
+			let:errors={rawErrors}
+		>
+			{@const errors = formErrors(newRunSchema, rawErrors)}
+			<div class="grid grid-cols-2 gap-4">
+				<TextField
+					label="Run Number"
+					type="integer"
+					value={draft.runNumber}
+					required
+					on:keydown={allowDigitsOnly}
+					on:change={(e) => {
+						draft.runNumber = e.detail.value;
+						duplicateRunError = undefined;
+						refresh();
+					}}
+					error={errors.runNumber ?? duplicateRunError}
+				/>
+				<SelectField
+					options={experimentOptions}
+					label="Experiment"
+					value={draft.experimentNumber}
+					required
+					autoplacement={false}
+					on:change={(e) => {
+						draft.experimentNumber = e.detail.value;
+						duplicateRunError = undefined;
+						refresh();
+					}}
+					error={errors.experimentNumber}
+				/>
+				<SelectField
+					options={sampleOptions}
+					label="Sample"
+					value={draft.sampleNumber}
+					required
+					autoplacement={false}
+					on:change={(e) => {
+						draft.sampleNumber = e.detail.value;
+						duplicateRunError = undefined;
+						refresh();
+					}}
+					error={errors.sampleNumber}
+				/>
+				<SelectField
+					options={configurationOptions}
+					label="Configuration"
+					value={draft.configurationNumber}
+					required
+					autoplacement={false}
+					on:change={(e) => {
+						draft.configurationNumber = e.detail.value;
+						refresh();
+					}}
+					error={errors.configurationNumber}
+				/>
+			</div>
+			<div class="flex justify-end mt-4 gap-2">
+				<Button on:click={handleModalClose}>Cancel</Button>
+				<Button type="submit" variant="fill" loading={creating} disabled={creating}>Create</Button>
+			</div>
+		</Form>
 	</div>
 </Dialog>
 
