@@ -1,14 +1,13 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField, DateField } from 'svelte-ux';
-	import { SelectField } from 'svelte-ux';
-	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { Button, Table, Dialog, Form, TextField, DateField, SelectField } from 'svelte-ux';
+	import { tableOrderStore, type ColumnDef } from '@layerstack/svelte-table';
 	import { ExperimentMetadata, PersonMetadata } from '$lib/models';
 	import { GenericDataService } from '$lib/services/GenericDataService';
-	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 	import { MemberService } from '$lib/services/MembersService';
 	import { env } from '$env/dynamic/public';
 	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
+	import { formSchema, formErrors } from '$lib/client/form';
 
 	let allExperiments: ExperimentMetadata[] = [];
 	let selectedExperiment: ExperimentMetadata | null = null;
@@ -17,15 +16,42 @@
 	let open = false;
 	let isNewEntry = false;
 	let isManualEdit = false;
+	let saving = false;
+	let duplicateNumberError: string | undefined;
 
 	const experimentOrder = tableOrderStore({ initialBy: 'experimentNumber', initialDirection: 'asc' });
 
-	experimentOrder.subscribe(() => {
-		allExperiments = allExperiments.sort($experimentOrder.handler);
-	});
+	$: sortedExperiments = [...allExperiments].sort($experimentOrder.handler);
+
+	const columns: ColumnDef<ExperimentMetadata>[] = [
+		{
+			name: 'experimentNumber',
+			align: 'left',
+			header: 'Experiment Number',
+			format: (value: number | null) => (value == null ? '' : `HIVE-E-${value}`)
+		},
+		{ name: 'title', align: 'left', header: 'Title' },
+		{ name: 'description', align: 'left', header: 'Description' },
+		{ name: 'customer.organisation', align: 'left', header: 'Customer' },
+		{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
+		{
+			name: 'startDate',
+			align: 'left',
+			header: 'Start Date',
+			format: (value: Date | string | null) => {
+				if (!value) return '';
+				const date = new Date(value);
+				return date.toLocaleDateString('en-GB', {
+					day: '2-digit',
+					month: '2-digit',
+					year: 'numeric'
+				});
+			}
+		}
+	];
 
 	const experimentService = new GenericDataService<ExperimentMetadata>({
-		modelClass: ExperimentMetadataModel,
+		modelClass: ExperimentMetadata,
 		endpoint: env.PUBLIC_LOCAL_ONLY === 'true' ? '/local/experiments' : '/remote/experiments',
 		idField: 'experimentNumber',
 		displayName: 'experiments'
@@ -34,7 +60,6 @@
 	async function fetchExperiments() {
 		try {
 			allExperiments = await experimentService.fetchAll();
-			console.log('Fetched experiments:', allExperiments);
 		} catch (error) {
 			console.error('Error fetching experiments:', error);
 			alert((error as Error).message);
@@ -49,28 +74,26 @@
 		}
 	}
 
-	async function handleMetadataSubmit() {
-		if (!selectedExperiment) {
-			alert('No metadata selected.');
+	async function handleMetadataSubmit(value: ExperimentMetadata) {
+		if (saving) return;
+		const experiment = { ...value, ...ExperimentMetadata.schema.parse(value) } as ExperimentMetadata;
+
+		if (isNewEntry && allExperiments.some((e) => e.experimentNumber === experiment.experimentNumber)) {
+			duplicateNumberError = `Experiment ${experiment.experimentNumber} already exists`;
 			return;
 		}
 
-		//Validate against zod schema
-		const parseResult = ExperimentMetadata.schema.safeParse(selectedExperiment);
-		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.issues);
-			return;
-		}
-
+		saving = true;
 		try {
-			await experimentService.submit(selectedExperiment);
-			console.log('Submitted experiment metadata:', selectedExperiment);
+			await experimentService.submit(experiment);
 			alert(isNewEntry ? 'New experiment submitted successfully!' : 'Experiment updated successfully!');
 			handleModalClose();
 			await fetchExperiments();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit experiment: ${(error as Error).message}`);
+		} finally {
+			saving = false;
 		}
 	}
 
@@ -108,10 +131,7 @@
 	function handleModalClose() {
 		open = false;
 		selectedExperiment = null;
-	}
-
-	function handleFormCancel() {
-		handleModalClose();
+		duplicateNumberError = undefined;
 	}
 
 	onMount(() => {
@@ -127,35 +147,8 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={allExperiments}
-			columns={[
-				{
-					name: 'experimentNumber',
-					align: 'left',
-					header: 'Experiment Number',
-					// @ts-expect-error
-					format: (value) => (value == null ? '' : `HIVE-E-${value}`)
-				},
-				{ name: 'title', align: 'left', header: 'Title' },
-				{ name: 'description', align: 'left', header: 'Description' },
-				{ name: 'customer.organisation', align: 'left', header: 'Customer' },
-				{ name: 'leadInvestigator.lastName', align: 'left', header: 'Lead Investigator' },
-				{
-					name: 'startDate',
-					align: 'left',
-					header: 'Start Date',
-					// @ts-expect-error
-					format: (value) => {
-						if (!value) return '';
-						const date = new Date(value);
-						return date.toLocaleDateString('en-GB', {
-							day: '2-digit',
-							month: '2-digit',
-							year: 'numeric'
-						});
-					}
-				}
-			]}
+			data={sortedExperiments}
+			{columns}
 			order={experimentOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -164,9 +157,18 @@
 </div>
 
 <Dialog {open} on:close={handleModalClose} class="experimentInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Edit Experiment Metadata'}</div>
+	<div slot="title">{isNewEntry ? 'Create New Experiment' : 'Experiment Details'}</div>
 	<div class="p-4">
-		<Form initial={selectedExperiment} schema={ExperimentMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
+		<Form
+			initial={selectedExperiment}
+			schema={formSchema(ExperimentMetadata.schema)}
+			novalidate
+			on:change={(e) => handleMetadataSubmit(e.detail)}
+			let:draft
+			let:refresh
+			let:errors={rawErrors}
+		>
+			{@const errors = formErrors(ExperimentMetadata.schema, rawErrors)}
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Experiment Details</h4>
 				<div class="col-span-2 flex gap-4">
@@ -180,9 +182,10 @@
 						on:keydown={allowDigitsOnly}
 						on:change={(e) => {
 							draft.experimentNumber = e.detail.value;
+							duplicateNumberError = undefined;
 							refresh();
 						}}
-						error={errors.experimentNumber}
+						error={errors.experimentNumber ?? duplicateNumberError}
 					/>
 					<TextField
 						label="Title"
@@ -219,7 +222,6 @@
 					clearable
 					disabled={!isNewEntry}
 					on:change={(e) => {
-						if (!isNewEntry) return;
 						draft.startDate = e.detail.value;
 						refresh();
 					}}
@@ -233,7 +235,6 @@
 					clearable
 					disabled={!isNewEntry}
 					on:change={(e) => {
-						if (!isNewEntry) return;
 						draft.endDate = e.detail.value;
 						refresh();
 					}}
@@ -248,7 +249,7 @@
 						<SelectField
 							label="Select from Members"
 							disabled={!isNewEntry}
-							value={isManualEdit ? '' : current.leadInvestigator?.email}
+							value={isManualEdit ? '' : draft.leadInvestigator.email}
 							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
 							on:change={(e) => {
 								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
@@ -267,7 +268,7 @@
 				</h4>
 				<TextField
 					label="First Name"
-					value={current.leadInvestigator?.firstName}
+					value={draft.leadInvestigator.firstName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -279,7 +280,7 @@
 				/>
 				<TextField
 					label="Last Name"
-					value={current.leadInvestigator?.lastName}
+					value={draft.leadInvestigator.lastName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -291,7 +292,7 @@
 				/>
 				<TextField
 					label="Email"
-					value={current.leadInvestigator?.email}
+					value={draft.leadInvestigator.email}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -357,22 +358,9 @@
 				{/if}
 				<div class="flex gap-2">
 					{#if isNewEntry}
-						<Button
-							type="submit"
-							variant="fill"
-							on:click={() => {
-								selectedExperiment = current;
-								handleMetadataSubmit();
-							}}>Save</Button
-						>
+						<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save</Button>
 					{/if}
-					<Button
-						on:click={() => {
-							revertAll();
-							handleFormCancel();
-						}}
-						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
-					>
+					<Button on:click={handleModalClose} style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button>
 				</div>
 			</div>
 		</Form>

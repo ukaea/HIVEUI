@@ -54,6 +54,9 @@ export class ExperimentMetadata {
 			})
 		}).optional(),
 		schemaVersion: Zod.string().min(1, 'Schema Version is required')
+	}).refine((data) => !data.endDate || !data.startDate || data.endDate >= data.startDate, {
+		path: ['endDate'],
+		error: 'End Date must be on or after Start Date'
 	});
 
     constructor() {

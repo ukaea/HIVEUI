@@ -73,10 +73,16 @@ export class PyrometerMetadata {
                                 .refine((value) => !Number.isInteger(value), {
                                         message: 'Maximum Wavelength must be a decimal number'
                                 })
+			}).refine((range) => range.maximum >= range.minimum, {
+				path: ['maximum'],
+				error: 'Maximum Wavelength must be greater than or equal to Minimum Wavelength'
 			}),
 			temperatureRange: Zod.object({
 				minimum: Zod.number({ error: 'Minimum Temperature is required' }).min(0, 'Minimum Temperature must be 0 or greater'),
 				maximum: Zod.number({ error: 'Maximum Temperature is required' }).min(0, 'Maximum Temperature must be 0 or greater')
+			}).refine((range) => range.maximum >= range.minimum, {
+				path: ['maximum'],
+				error: 'Maximum Temperature must be greater than or equal to Minimum Temperature'
 			})
 		})
 	});

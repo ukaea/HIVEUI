@@ -44,6 +44,9 @@ export class FlowmeterMetadata {
 			flowRange: Zod.object({
 				minimum: Zod.number({ error: 'Minimum Flow is required' }).min(0, 'Minimum Flow must be 0 or greater'),
 				maximum: Zod.number({ error: 'Maximum Flow is required' }).min(0, 'Maximum Flow must be 0 or greater')
+			}).refine((range) => range.maximum >= range.minimum, {
+				path: ['maximum'],
+				error: 'Maximum Flow must be greater than or equal to Minimum Flow'
 			})
 		})
 	});

@@ -1,20 +1,19 @@
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { Button, Table, Dialog, Form, TextField} from 'svelte-ux';
-	import { SelectField,} from 'svelte-ux';
-	import { tableOrderStore } from '@layerstack/svelte-table';
+	import { Button, Table, Dialog, Form, TextField, SelectField } from 'svelte-ux';
+	import { tableOrderStore, type ColumnDef } from '@layerstack/svelte-table';
 	import { ConfigurationMetadata, DiagnosticMetadata, EquipmentMetadata } from '$lib/models';
+	import type { AttachedDiagnostic } from '$lib/models/ConfigurationMetadata';
 	import { GenericDataService } from '$lib/services/GenericDataService';
 	import { env } from '$env/dynamic/public';
 	import { allowDigitsOnly } from '$lib/client/allowDigitsOnly';
+	import { formSchema, formErrors } from '$lib/client/form';
 
 	let allConfigurations: ConfigurationMetadata[] = [];
 	let selectedConfiguration: ConfigurationMetadata | null = null;
 
 	const configurationOrder = tableOrderStore({ initialBy: 'configurationName', initialDirection: 'asc' });
-	configurationOrder.subscribe(() => {
-		allConfigurations = allConfigurations.sort($configurationOrder.handler);
-	});
+	$: sortedConfigurations = [...allConfigurations].sort($configurationOrder.handler);
 
 	let allEquipment: EquipmentMetadata[] = [];
 	let selectedEquipment: EquipmentMetadata | null = null;
@@ -24,18 +23,54 @@
 	let newDiagnosticPort = '';
 
 	const diagnosticOrder = tableOrderStore({ initialBy: 'diagnosticName', initialDirection: 'asc' });
-	diagnosticOrder.subscribe(() => {
-		allDiagnostics = allDiagnostics.sort($diagnosticOrder.handler);
-	});
+	$: sortedDiagnostics = [...allDiagnostics].sort($diagnosticOrder.handler);
+
+	const diagnosticColumns: ColumnDef<DiagnosticMetadata>[] = [
+		{
+			name: 'diagnosticNumber',
+			align: 'left',
+			header: 'Diagnostic Number',
+			format: (value: number | null) => (value == null ? '' : `D-${value}`)
+		},
+		{ name: 'diagnosticName', align: 'left', header: 'Diagnostic Name' },
+		{
+			name: 'equipment',
+			align: 'left',
+			header: 'Equipment',
+			format: (value: EquipmentMetadata[]) =>
+				Array.isArray(value) && value.length ? value.map((equipment) => equipment.equipmentName).join('\n') : '-'
+		}
+	];
+
+	const configurationColumns: ColumnDef<ConfigurationMetadata>[] = [
+		{
+			name: 'configurationNumber',
+			align: 'left',
+			header: 'Configuration Number',
+			format: (value: number | null) => (value == null ? '' : `C-${value}`)
+		},
+		{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
+		{
+			name: 'diagnostics',
+			align: 'left',
+			header: 'Diagnostics',
+			format: (value: AttachedDiagnostic[]) =>
+				Array.isArray(value) && value.length ? value.map((diagnostic) => diagnostic.diagnosticName).join('\n') : '-'
+		}
+	];
 
 	// Main configuration dialog
 	let open = false;
 	let isNewEntry = false;
+	let saving = false;
+	let duplicateConfigurationError: string | undefined;
 
 	// Diagnostic creation dialog
 	let diagnosticDialogOpen = false;
 	let newDiagnostic: DiagnosticMetadata | null = null;
 	let isNewDiagnostic = false;
+	let savingDiagnostic = false;
+	let duplicateDiagnosticError: string | undefined;
 
 	const configurationService = new GenericDataService<ConfigurationMetadata>({
 		modelClass: ConfigurationMetadata,
@@ -85,73 +120,65 @@
 		}
 	}
 
-	async function handleConfigurationSubmit() {
-		if (!selectedConfiguration) return;
+	async function handleConfigurationSubmit(value: ConfigurationMetadata) {
+		if (saving) return;
+		const configuration = { ...value, ...ConfigurationMetadata.schema.parse(value) } as ConfigurationMetadata;
 
-		const parseResult = ConfigurationMetadata.schema.safeParse(selectedConfiguration);
-		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.issues);
+		if (isNewEntry && allConfigurations.some((c) => c.configurationNumber === configuration.configurationNumber)) {
+			duplicateConfigurationError = `Configuration ${configuration.configurationNumber} already exists`;
 			return;
 		}
 
-		const configurationNumber = selectedConfiguration.configurationNumber;
-		if (isNewEntry && allConfigurations.some((config) => config.configurationNumber === configurationNumber)) {
-			alert(`Configuration Number ${configurationNumber} already exists.`);
-			return;
-		}
-
+		saving = true;
 		try {
-			await configurationService.submit(selectedConfiguration);
+			await configurationService.submit(configuration);
 			alert(isNewEntry ? 'New configuration submitted successfully!' : 'Configuration updated successfully!');
 			handleModalClose();
 			await fetchConfigurations();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit configuration: ${(error as Error).message}`);
+		} finally {
+			saving = false;
 		}
 	}
 
-	async function handleDiagnosticSubmit() {
-		if (!newDiagnostic) return;
+	async function handleDiagnosticSubmit(value: DiagnosticMetadata) {
+		if (savingDiagnostic) return;
+		const diagnostic = { ...value, ...DiagnosticMetadata.schema.parse(value) } as DiagnosticMetadata;
 
-		const parseResult = DiagnosticMetadata.schema.safeParse(newDiagnostic);
-		if (!parseResult.success) {
-			console.error('Validation errors:', parseResult.error.issues);
+		if (isNewDiagnostic && allDiagnostics.some((d) => d.diagnosticNumber === diagnostic.diagnosticNumber)) {
+			duplicateDiagnosticError = `Diagnostic ${diagnostic.diagnosticNumber} already exists`;
 			return;
 		}
 
-		const diagnosticNumber = newDiagnostic.diagnosticNumber;
-		if (isNewDiagnostic && allDiagnostics.some((diagnostic) => diagnostic.diagnosticNumber === diagnosticNumber)) {
-			alert(`Diagnostic Number ${diagnosticNumber} already exists.`);
-			return;
-		}
-
+		savingDiagnostic = true;
 		try {
-			await diagnosticService.submit(newDiagnostic);
+			await diagnosticService.submit(diagnostic);
 			alert(isNewDiagnostic ? 'New diagnostic submitted successfully!' : 'Diagnostic updated successfully!');
 			handleDiagnosticDialogClose();
 			await fetchDiagnostics();
 		} catch (error) {
 			console.error('Submission error:', error);
 			alert(`Failed to submit diagnostic: ${(error as Error).message}`);
+		} finally {
+			savingDiagnostic = false;
 		}
 	}
 
-	function handleDelete(): void {
+	async function handleDelete() {
 		if (!selectedConfiguration) return;
 
 		if (confirm(`Are you sure you want to delete configuration ${selectedConfiguration.configurationName}?`)) {
-			configurationService
-				.delete(selectedConfiguration)
-				.then(() => {
-					alert('Configuration deleted successfully');
-					handleModalClose();
-					fetchConfigurations();
-				})
-				.catch((error) => {
-					console.error('Delete error:', error);
-					alert(`Failed to delete configuration: ${(error as Error).message}`);
-				});
+			try {
+				await configurationService.delete(selectedConfiguration);
+				alert('Configuration deleted successfully');
+				handleModalClose();
+				await fetchConfigurations();
+			} catch (error) {
+				console.error('Delete error:', error);
+				alert(`Failed to delete configuration: ${(error as Error).message}`);
+			}
 		}
 	}
 
@@ -201,6 +228,7 @@
 	function handleModalClose() {
 		open = false;
 		selectedConfiguration = null;
+		duplicateConfigurationError = undefined;
 	}
 
 	function handleDiagnosticRowClick(row: DiagnosticMetadata): void {
@@ -226,32 +254,34 @@
 		diagnosticDialogOpen = false;
 		newDiagnostic = null;
 		selectedEquipment = null;
+		duplicateDiagnosticError = undefined;
 	}
 
-	function handleFormCancel() {
-		handleModalClose();
+	function withoutIndex<T>(items: T[], index: number): T[] {
+		return items.filter((_, i) => i !== index);
 	}
 
-	function handleDiagnosticFormCancel() {
-		handleDiagnosticDialogClose();
-	}
-
-	function addEquipmentToDiagnostic(equipment: any) {
-		if (newDiagnostic && !newDiagnostic.equipment.some((eq) => eq.equipmentName === equipment.equipmentName)) {
-			newDiagnostic.equipment = [...newDiagnostic.equipment, equipment];
+	function addSelectedDiagnostic(draft: ConfigurationMetadata) {
+		if (!selectedDiagnostic) return;
+		const diagnosticNumber = selectedDiagnostic.diagnosticNumber;
+		if (!draft.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === diagnosticNumber)) {
+			draft.diagnostics = [...draft.diagnostics, { ...selectedDiagnostic, port: newDiagnosticPort.trim() }];
+		} else {
+			alert('Diagnostic already added to this configuration.');
 		}
+		selectedDiagnostic = null;
+		newDiagnosticPort = '';
 	}
 
-	function removeEquipmentFromDiagnostic(equipmentName: string) {
-		if (newDiagnostic) {
-			newDiagnostic.equipment = newDiagnostic.equipment.filter((eq) => eq.equipmentName !== equipmentName);
+	function addSelectedEquipment(draft: DiagnosticMetadata) {
+		if (!selectedEquipment) return;
+		const equipmentName = selectedEquipment.equipmentName;
+		if (!draft.equipment.some((equipment) => equipment.equipmentName === equipmentName)) {
+			draft.equipment = [...draft.equipment, selectedEquipment];
+		} else {
+			alert('Equipment already added to this diagnostic.');
 		}
-	}
-
-	function removeDiagnosticFromConfiguration(index: number) {
-		if (selectedConfiguration) {
-			selectedConfiguration.diagnostics = selectedConfiguration.diagnostics.filter((_, i) => i !== index);
-		}
+		selectedEquipment = null;
 	}
 
 	onMount(() => {
@@ -270,24 +300,8 @@
 	</div>
 	<div class="table-container mb-8">
 		<Table
-			data={allDiagnostics}
-			columns={[
-				{
-					name: 'diagnosticNumber',
-					align: 'left',
-					header: 'Diagnostic Number',
-					// @ts-expect-error
-					format: (value) => (value == null ? '' : `D-${value}`)
-				},
-				{ name: 'diagnosticName', align: 'left', header: 'Diagnostic Name' },
-				{
-					name: 'equipment',
-					align: 'left',
-					header: 'Equipment',
-					format: (value) =>
-						Array.isArray(value) && value.length ? value.map((equipment) => equipment.equipmentName).join('\n') : '-'
-				}
-			]}
+			data={sortedDiagnostics}
+			columns={diagnosticColumns}
 			order={diagnosticOrder}
 			on:cellClick={(e) => handleDiagnosticRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -300,24 +314,8 @@
 	</div>
 	<div class="table-container">
 		<Table
-			data={allConfigurations}
-			columns={[
-				{
-					name: 'configurationNumber',
-					align: 'left',
-					header: 'Configuration Number',
-					// @ts-expect-error
-					format: (value) => (value == null ? '' : `C-${value}`)
-				},
-				{ name: 'configurationName', align: 'left', header: 'Configuration Name' },
-				{
-					name: 'diagnostics',
-					align: 'left',
-					header: 'Diagnostics',
-					format: (value) =>
-						Array.isArray(value) && value.length ? value.map((diagnostic) => diagnostic.diagnosticName).join('\n') : '-'
-				}
-			]}
+			data={sortedConfigurations}
+			columns={configurationColumns}
 			order={configurationOrder}
 			on:cellClick={(e) => handleRowClick(e.detail.rowData)}
 			class="styled-table"
@@ -326,9 +324,19 @@
 </div>
 
 <Dialog {open} on:close={handleModalClose} class="configurationInputDialog">
-	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Edit Configuration'}</div>
+	<div slot="title">{isNewEntry ? 'Create New Configuration' : 'Configuration Details'}</div>
 	<div class="p-4">
-		<Form initial={selectedConfiguration} schema={ConfigurationMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
+		<Form
+			initial={selectedConfiguration}
+			schema={formSchema(ConfigurationMetadata.schema)}
+			novalidate
+			on:change={(e) => handleConfigurationSubmit(e.detail)}
+			let:draft
+			let:refresh
+			let:current
+			let:errors={rawErrors}
+		>
+			{@const errors = formErrors(ConfigurationMetadata.schema, rawErrors)}
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Configuration Details</h4>
 				<div class="col-span-2 flex gap-4">
@@ -342,9 +350,10 @@
 						on:keydown={allowDigitsOnly}
 						on:change={(e) => {
 							draft.configurationNumber = e.detail.value;
+							duplicateConfigurationError = undefined;
 							refresh();
 						}}
-						error={errors.configurationNumber}
+						error={errors.configurationNumber ?? duplicateConfigurationError}
 					/>
 					<TextField
 						label="Configuration Name"
@@ -383,7 +392,7 @@
 							{#if isNewEntry}
 								<Button
 									on:click={() => {
-										draft.diagnostics = draft.diagnostics.filter((_, i) => i !== index);
+										draft.diagnostics = withoutIndex(draft.diagnostics, index);
 										refresh();
 									}}
 									variant="outline"
@@ -413,22 +422,13 @@
 								value={newDiagnosticPort}
 								class="w-24 shrink-0"
 								on:change={(e) => {
-									newDiagnosticPort = e.detail.value ?? '';
+									newDiagnosticPort = String(e.detail.value ?? '');
 								}}
 							/>
 							<Button
 								on:click={() => {
-									if (selectedDiagnostic) {
-										if (!draft.diagnostics.some((diagnostic) => diagnostic.diagnosticNumber === selectedDiagnostic?.diagnosticNumber)) {
-											draft.diagnostics = [...draft.diagnostics, { ...selectedDiagnostic, port: String(newDiagnosticPort).trim() }];
-										} else {
-											alert('Diagnostic already added to this configuration.');
-										}
-
-										selectedDiagnostic = null;
-										newDiagnosticPort = '';
-										refresh();
-									}
+									addSelectedDiagnostic(draft);
+									refresh();
 								}}
 								variant="fill"
 								color="primary"
@@ -451,22 +451,9 @@
 				{/if}
 				<div class="flex gap-2">
 					{#if isNewEntry}
-						<Button
-							type="submit"
-							variant="fill"
-							on:click={() => {
-								selectedConfiguration = current;
-								handleConfigurationSubmit();
-							}}>Save</Button
-						>
+						<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save</Button>
 					{/if}
-					<Button
-						on:click={() => {
-							revertAll();
-							handleFormCancel();
-						}}
-						style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button
-					>
+					<Button on:click={handleModalClose} style={{ marginLeft: 'auto' }}>{isNewEntry ? 'Cancel' : 'Close'}</Button>
 				</div>
 			</div>
 		</Form>
@@ -475,9 +462,19 @@
 
 <!-- Diagnostic Creation Dialog -->
 <Dialog open={diagnosticDialogOpen} on:close={handleDiagnosticDialogClose} class="diagnosticInputDialog">
-	<div slot="title">{isNewDiagnostic ? 'Create New Diagnostic' : 'Edit Diagnostic'}</div>
+	<div slot="title">{isNewDiagnostic ? 'Create New Diagnostic' : 'Diagnostic Details'}</div>
 	<div class="p-4">
-		<Form initial={newDiagnostic} schema={DiagnosticMetadata.schema} let:draft let:refresh let:current let:revertAll let:errors>
+		<Form
+			initial={newDiagnostic}
+			schema={formSchema(DiagnosticMetadata.schema)}
+			novalidate
+			on:change={(e) => handleDiagnosticSubmit(e.detail)}
+			let:draft
+			let:refresh
+			let:current
+			let:errors={rawErrors}
+		>
+			{@const errors = formErrors(DiagnosticMetadata.schema, rawErrors)}
 			<div class="p-4 grid grid-cols-2 gap-4">
 				<h4 class="col-span-2 mt-1">Diagnostic Details</h4>
 				<div class="col-span-2 flex gap-4">
@@ -491,9 +488,10 @@
 						on:keydown={allowDigitsOnly}
 						on:change={(e) => {
 							draft.diagnosticNumber = e.detail.value;
+							duplicateDiagnosticError = undefined;
 							refresh();
 						}}
-						error={errors.diagnosticNumber}
+						error={errors.diagnosticNumber ?? duplicateDiagnosticError}
 					/>
 					<TextField
 						label="Diagnostic Name"
@@ -521,7 +519,7 @@
 							{#if isNewDiagnostic}
 								<Button
 									on:click={() => {
-										draft.equipment = draft.equipment.filter((_, i) => i !== index);
+										draft.equipment = withoutIndex(draft.equipment, index);
 										refresh();
 									}}
 									variant="outline"
@@ -546,16 +544,8 @@
 							/>
 							<Button
 								on:click={() => {
-									if (selectedEquipment) {
-										if (!draft.equipment.some((equipment) => equipment.equipmentName === selectedEquipment?.equipmentName)) {
-											draft.equipment = [...draft.equipment, selectedEquipment];
-										} else {
-											alert('Equipment already added to this diagnostic.');
-										}
-
-										selectedEquipment = null;
-										refresh();
-									}
+									addSelectedEquipment(draft);
+									refresh();
 								}}
 								variant="fill"
 								color="primary"
@@ -578,21 +568,9 @@
 				{/if}
 				<div class="flex gap-2">
 					{#if isNewDiagnostic}
-						<Button
-							type="submit"
-							variant="fill"
-							on:click={() => {
-								newDiagnostic = current;
-								handleDiagnosticSubmit();
-							}}>Save</Button
-						>
+						<Button type="submit" variant="fill" loading={savingDiagnostic} disabled={savingDiagnostic}>Save</Button>
 					{/if}
-					<Button
-						on:click={() => {
-							revertAll();
-							handleDiagnosticFormCancel();
-						}}>{isNewDiagnostic ? 'Cancel' : 'Close'}</Button
-					>
+					<Button on:click={handleDiagnosticDialogClose}>{isNewDiagnostic ? 'Cancel' : 'Close'}</Button>
 				</div>
 			</div>
 		</Form>

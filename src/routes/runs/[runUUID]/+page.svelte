@@ -1,8 +1,9 @@
 <script lang="ts">
-	import { beforeNavigate } from '$app/navigation';
+	import { beforeNavigate, goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { env } from '$env/dynamic/public';
 	import { waitForDAGCompletion, type DAGStatus } from '$lib/client/airflowRunPolling';
+	import { formSchema, formErrors } from '$lib/client/form';
 	import { ConfigurationMetadata, ExperimentMetadata } from '$lib/models';
 	import { ExperimentMetadataModel } from '$lib/models/ExperimentMetadata';
 
@@ -36,7 +37,6 @@
 	let loading = true;
 	let saving = false;
 	let saveNotify = false;
-	let delteNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
 	let publishStatusText = '';
@@ -188,9 +188,9 @@
 			}
 
 			runMetadata = existing;
-			experimentNumber = existing.experimentNumber;
-			sampleNumber = existing.sampleNumber;
-			runNumber = existing.runNumber;
+			experimentNumber = existing.experimentNumber ?? 0;
+			sampleNumber = existing.sampleNumber ?? 0;
+			runNumber = existing.runNumber ?? 0;
 			currentStep = existing.currentStep ?? determineStepFromStatus(existing.status);
 			runMetadata.currentStep = currentStep;
 
@@ -298,11 +298,15 @@
 
 	let metadataSaved = false;
 
-	async function handleSaveMetadata() {
+	async function handleSaveMetadata(value: RunMetadata) {
+		if (saving) return;
+		const updated = RunMetadata.fromJSON({ ...value, ...RunMetadata.schema.parse(value) });
+		updated.status = 'draft';
+
 		saving = true;
 		try {
-			runMetadata.status = 'draft';
-			await runService.saveRun(runMetadata);
+			await runService.saveRun(updated);
+			runMetadata = updated;
 			metadataSaved = true;
 			saveNotify = true;
 			setTimeout(() => { saveNotify = false; }, 3000);
@@ -315,20 +319,15 @@
 	}
 
 	async function handleDeleteMetadata() {
+		if (!window.confirm('Are you sure you want to delete the metadata?')) return;
+
 		try {
-			const confirmed = window.confirm("Are you sure you want to delete the metadata")
-			if (!confirmed) {
-				return;
-			}
-			runMetadata.status = 'draft';
 			await runService.delete(runMetadata);
-			delteNotify = true;
-			setTimeout(() => { delteNotify = false; }, 3000);
+			alert('Run deleted successfully');
+			goto('/runs');
 		} catch (error) {
 			console.error('Error deleting run metadata:', error);
 			alert(`Failed to delete: ${(error as Error).message}`);
-		} finally {
-			saving = false;
 		}
 	}
 
@@ -603,7 +602,17 @@
 		{#if currentStep === 0}
 			<div class="bg-surface-200 rounded-lg shadow p-6 text-surface-content">
 				<h3 class="text-lg font-bold mb-4">Add Metadata</h3>
-				<Form initial={formInitial} schema={RunMetadata.schema} let:draft let:refresh let:current let:errors>
+				<Form
+					initial={formInitial}
+					schema={formSchema(RunMetadata.schema)}
+					novalidate
+					on:change={(e) => handleSaveMetadata(e.detail)}
+					let:draft
+					let:refresh
+					let:current
+					let:errors={rawErrors}
+				>
+					{@const errors = formErrors(RunMetadata.schema, rawErrors)}
 					<div class="grid grid-cols-3 gap-4">
 						<TextField
 							label="Experiment Number"
@@ -659,19 +668,19 @@
 							label="First Name"
 							value={current.operator1?.firstName}
 							on:change={(e) => { draft.operator1.firstName = e.detail.value; operator1ManualEdit = true; refresh(); }}
-							error={errors['operator1.firstName']}
+							error={errors.operator1?.firstName}
 						/>
 						<TextField
 							label="Last Name"
 							value={current.operator1?.lastName}
 							on:change={(e) => { draft.operator1.lastName = e.detail.value; operator1ManualEdit = true; refresh(); }}
-							error={errors['operator1.lastName']}
+							error={errors.operator1?.lastName}
 						/>
 						<TextField
 							label="Email"
 							value={current.operator1?.email}
 							on:change={(e) => { draft.operator1.email = e.detail.value; operator1ManualEdit = true; refresh(); }}
-							error={errors['operator1.email']}
+							error={errors.operator1?.email}
 						/>
 
 						<h3 class="col-span-3 font-bold mt-4 flex items-center gap-3">
@@ -698,19 +707,19 @@
 							label="First Name"
 							value={current.operator2?.firstName}
 							on:change={(e) => { draft.operator2.firstName = e.detail.value; operator2ManualEdit = true; refresh(); }}
-							error={errors['operator2.firstName']}
+							error={errors.operator2?.firstName}
 						/>
 						<TextField
 							label="Last Name"
 							value={current.operator2?.lastName}
 							on:change={(e) => { draft.operator2.lastName = e.detail.value; operator2ManualEdit = true; refresh(); }}
-							error={errors['operator2.lastName']}
+							error={errors.operator2?.lastName}
 						/>
 						<TextField
 							label="Email"
 							value={current.operator2?.email}
 							on:change={(e) => { draft.operator2.email = e.detail.value; operator2ManualEdit = true; refresh(); }}
-							error={errors['operator2.email']}
+							error={errors.operator2?.email}
 						/>
 
 						<h3 class="col-span-3 font-bold mt-4">Heating Information</h3>
@@ -720,7 +729,7 @@
 							value={draft.heatingInformation.heatingType}
 							autoplacement={false}
 							on:change={(e) => { draft.heatingInformation.heatingType = e.detail.value; refresh(); }}
-							error={errors['heatingInformation.heatingType']}
+							error={errors.heatingInformation?.heatingType}
 						/>
 						<TextField
 							label="Input Power"
@@ -728,7 +737,7 @@
 							type="integer"
 							on:change={(e) => { draft.heatingInformation.inputPower = e.detail.value; refresh(); }}
 							disabled={inputPowerToggle}
-							error={errors['heatingInformation.inputPower']}
+							error={errors.heatingInformation?.inputPower}
 						/>
 						<TextField
 							label="Input Current"
@@ -736,7 +745,7 @@
 							type="integer"
 							on:change={(e) => { draft.heatingInformation.inputCurrent = e.detail.value; refresh(); }}
 							disabled={inputPowerToggle}
-							error={errors['heatingInformation.inputCurrent']}
+							error={errors.heatingInformation?.inputCurrent}
 						/>
 						<TextField
 							label="Input Voltage"
@@ -744,7 +753,7 @@
 							type="integer"
 							on:change={(e) => { draft.heatingInformation.inputVoltage = e.detail.value; refresh(); }}
 							disabled={inputPowerToggle}
-							error={errors['heatingInformation.inputVoltage']}
+							error={errors.heatingInformation?.inputVoltage}
 						/>
 
 						<h3 class="col-span-3 font-bold mt-4">Coolant Information</h3>
@@ -757,7 +766,7 @@
 								draft.coolantInformation.sampleCooling = e.detail.value; 
 								refresh(); 
 							}}
-							error={errors['coolantInformation.sampleCooling']}
+							error={errors.coolantInformation?.sampleCooling}
 						/>
 						<SelectField
 							options={coolantTypeOptions}
@@ -766,7 +775,7 @@
 							autoplacement={false}
 							on:change={(e) => { draft.coolantInformation.coolantType = e.detail.value; refresh(); }}
 							disabled={!current.coolantInformation?.sampleCooling}
-							error={errors['coolantInformation.coolantType']}
+							error={errors.coolantInformation?.coolantType}
 						/>
 						<TextField
 							label="Target Coolant Flow"
@@ -774,7 +783,7 @@
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantFlow = e.detail.value; refresh(); }}
 							disabled={!current.coolantInformation?.sampleCooling}
-							error={errors['coolantInformation.targetCoolantFlow']}
+							error={errors.coolantInformation?.targetCoolantFlow}
 						/>
 						<TextField
 							label="Target Coolant Temperature"
@@ -782,7 +791,7 @@
 							type="integer"
 							on:change={(e) => { draft.coolantInformation.targetCoolantTemperature = e.detail.value; refresh(); }}
 							disabled={!current.coolantInformation?.sampleCooling}
-							error={errors['coolantInformation.targetCoolantTemperature']}
+							error={errors.coolantInformation?.targetCoolantTemperature}
 						/>
 						<h3 class="col-span-3 font-bold mt-4"> </h3>
 						<div class="col-span-full">
@@ -790,7 +799,7 @@
 							label="Comment" 
 							value={draft.comment}
 							type="text"
-							on:change={(e) => { draft.comment = e.detail.value; }}
+							on:change={(e) => { draft.comment = e.detail.value; refresh(); }}
 							multiline clearable />
 						</div>
 					</div>
@@ -798,24 +807,8 @@
 					<div class="flex justify-between mt-6">
 						<div></div>
 						<div class="flex gap-2">
-							<Button
-								variant="fill"
-									on:click={() => {setStep(0);
-									handleDeleteMetadata();
-								}}
-							>
-								Delete Metadata
-							</Button>
-							<Button
-								variant="fill"
-								disabled={saving}
-								on:click={() => {
-									runMetadata = RunMetadata.fromJSON(current);
-									handleSaveMetadata();
-								}}
-							>
-								{saving ? 'Saving...' : 'Save Metadata'}
-							</Button>
+							<Button variant="fill" on:click={handleDeleteMetadata}>Delete Metadata</Button>
+							<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save Metadata</Button>
 							<Button
 								variant="fill"
 								color="primary"
@@ -1104,9 +1097,6 @@
 
 	<div class="fixed top-4 right-4 z-50">
 		<Notification title="Saved successfully!" icon={mdiCheckCircleOutline} color="success" closeIcon open={saveNotify} />
-	</div>
-	<div class="fixed top-4 right-4 z-50">
-		<Notification title="Successfully Deleted!" icon={mdiCheckCircleOutline} color="success" closeIcon open={delteNotify} />
 	</div>
 </div>
 

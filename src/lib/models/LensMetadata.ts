@@ -73,8 +73,8 @@ export class LensMetadata {
 				serialNumber: Zod.string().optional(),
 				focalLength: Zod.number().min(0, 'Focal Length is required'),
                 fieldOfView : Zod.object({
-                    x: Zod.number().optional(),
-                    y: Zod.number().optional(),
+                    x: Zod.number().nullable().optional(),
+                    y: Zod.number().nullable().optional(),
                     }).optional()
                 })
 				
