@@ -5,6 +5,22 @@ import { getConfigurationById } from '$lib/server/db/configurationsRepository';
 import { airflowFetch } from '$lib/server/airflowFetch';
 import { writeFile, mkdir } from 'fs/promises';
 import { join, normalize, resolve } from 'path';
+import Zod from 'zod';
+import { RunMetadata } from '$lib/models/RunMetadata';
+import { PulseAnnotationMetadata } from '$lib/models/PulseAnnotationMetadata';
+import { PulseProcessedMetadata } from '$lib/models/PulseProcessedMetadata';
+import { stripEmptyOptional } from '$lib/services/stripEmptyOptional';
+
+const runDataSchema = RunMetadata.schema.extend({
+    diagnostics: Zod.array(Zod.array(Zod.string())),
+    schemaVersion: Zod.string().min(1)
+});
+
+const pulseDataSchema = Zod.object({
+    pulseNumber: Zod.number(),
+    ...PulseAnnotationMetadata.schema.shape,
+    ...PulseProcessedMetadata.schema.shape
+});
 
 export const POST: RequestHandler = async ({ request }) => {
     try {
@@ -30,7 +46,7 @@ export const POST: RequestHandler = async ({ request }) => {
 
         // Build payload
         const payload = {
-            runData: {
+            runData: stripEmptyOptional({
                 runNumber: Number(runMetadata.runNumber),
                 sampleNumber: Number(runMetadata.sampleNumber),
                 experimentNumber: Number(runMetadata.experimentNumber),
@@ -39,25 +55,26 @@ export const POST: RequestHandler = async ({ request }) => {
                 operator2: runMetadata.operator2,
                 heatingInformation: runMetadata.heatingInformation,
                 coolantInformation: runMetadata.coolantInformation,
+                comment: runMetadata.comment ?? '',
                 diagnostics,
                 schemaVersion: '1.0.0'
-            },
+            }, runDataSchema),
             pulseData: pulsesMetadata.map(({ pulseId, annotation, processedData }: { pulseId: number; annotation: any; processedData: any }) => {
                 const pulseStart = processedData ? new Date(processedData.pulseStartTimestamp).getTime() : 0;
                 const pulseEnd = processedData ? new Date(processedData.pulseEndTimestamp).getTime() : 0;
-                return {
+                return stripEmptyOptional({
                     pulseNumber: pulseId,
                     pulseQuality: annotation.pulseQuality,
                     comment: annotation.comment,
-                    powerSupplyReportedPower: processedData?.powerSupplyReportedPower ?? 0,
-                    pulseDuration: pulseStart && pulseEnd ? (pulseEnd - pulseStart) / 1000 : 0,
+                    powerSupplyReportedPower: processedData?.powerSupplyReportedPower ?? null,
+                    pulseDuration: pulseStart && pulseEnd ? (pulseEnd - pulseStart) / 1000 : null,
                     pulseStartTimestamp: processedData?.pulseStartTimestamp ?? null,
                     pulseEndTimestamp: processedData?.pulseEndTimestamp ?? null,
                     dataCaptureStartTimestamp: processedData?.dataCaptureStartTimestamp ?? null,
                     heatingInformation: processedData?.heatingInformation ?? null,
                     coolantInformation: processedData?.coolantInformation ?? null,
                     thermocoupleInformation: processedData?.thermocoupleInformation ?? []
-                };
+                }, pulseDataSchema);
             })
         };
 

@@ -49,36 +49,106 @@
 	// Annotation split-pane state
 	let selectedPulseIndex: number | null = null;
 	let selectedProcessedData: PulseProcessedMetadata | null = null;
-	let loadingProcessedData = false;
 	let hasUnsavedAnnotation = false;
 	let reloadingPulses = false;
 	let pulseLoadError = '';
 
 	let checkedPulseIds = new Set<number>();
-	let bulkPulseQuality = 'Success';
-	let bulkComment = '';
+	let selectionAnchor: number | null = null;
+	let pulseButtons: HTMLButtonElement[] = [];
+
+	// Show a value in the bulk editor only when every selected pulse shares it.
+	$: checkedPulses = pulses.filter((pulse) => checkedPulseIds.has(pulse.pulseId));
+	$: bulkPulseQuality = commonValue(checkedPulses.map((pulse) => pulse.annotationData.pulseQuality));
+	$: bulkComment = commonValue(checkedPulses.map((pulse) => pulse.annotationData.comment)) ?? '';
+
+	function commonValue(values: string[]): string | null {
+		return values.length > 0 && values.every((value) => value === values[0]) ? values[0] : null;
+	}
 
 	$: allPulsesChecked = pulses.length > 0 && checkedPulseIds.size === pulses.length;
 
-	function togglePulseChecked(pulseId: number) {
+	function showPulse(index: number) {
+		selectedPulseIndex = index;
+		selectedProcessedData = pulses[index]?.processedData ?? null;
+	}
+
+	function selectOnly(index: number) {
+		checkedPulseIds = new Set([pulses[index].pulseId]);
+		selectionAnchor = index;
+	}
+
+	function selectRange(from: number, to: number, additive: boolean) {
+		const [start, end] = from <= to ? [from, to] : [to, from];
+		const ids = pulses.slice(start, end + 1).map((pulse) => pulse.pulseId);
+		checkedPulseIds = new Set(additive ? [...checkedPulseIds, ...ids] : ids);
+	}
+
+	function togglePulseChecked(index: number) {
+		const pulseId = pulses[index].pulseId;
 		if (checkedPulseIds.has(pulseId)) {
 			checkedPulseIds.delete(pulseId);
 		} else {
 			checkedPulseIds.add(pulseId);
 		}
 		checkedPulseIds = checkedPulseIds;
+		selectionAnchor = index;
 	}
 
 	function toggleAllPulsesChecked() {
-		checkedPulseIds = allPulsesChecked ? new Set() : new Set(pulses.map((pulse) => pulse.pulseId));
+		if (allPulsesChecked) {
+			checkedPulseIds = selectedPulseIndex !== null ? new Set([pulses[selectedPulseIndex].pulseId]) : new Set();
+		} else {
+			checkedPulseIds = new Set(pulses.map((pulse) => pulse.pulseId));
+		}
 	}
 
-	function applyBulkAnnotation() {
-		for (const pulse of pulses) {
-			if (checkedPulseIds.has(pulse.pulseId)) {
-				pulse.annotationData.pulseQuality = bulkPulseQuality;
-				pulse.annotationData.comment = bulkComment;
-			}
+	// Standard list selection: click selects one, Ctrl/Cmd-click toggles,
+	// Shift-click selects a range from the last clicked pulse.
+	function handlePulseClick(event: MouseEvent, index: number) {
+		const toggle = event.ctrlKey || event.metaKey;
+		if (event.shiftKey && selectionAnchor !== null) {
+			selectRange(selectionAnchor, index, toggle);
+		} else if (toggle) {
+			togglePulseChecked(index);
+		} else {
+			selectOnly(index);
+		}
+		showPulse(index);
+	}
+
+	function handlePulseListKeydown(event: KeyboardEvent) {
+		if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
+			event.preventDefault();
+			checkedPulseIds = new Set(pulses.map((pulse) => pulse.pulseId));
+			return;
+		}
+
+		if (event.key === 'Escape' && selectedPulseIndex !== null) {
+			selectOnly(selectedPulseIndex);
+			return;
+		}
+
+		if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp') {
+			return;
+		}
+
+		event.preventDefault();
+		const step = event.key === 'ArrowDown' ? 1 : -1;
+		const next = Math.min(pulses.length - 1, Math.max(0, (selectedPulseIndex ?? -1) + step));
+
+		if (event.shiftKey && selectionAnchor !== null) {
+			selectRange(selectionAnchor, next, false);
+		} else {
+			selectOnly(next);
+		}
+		showPulse(next);
+		pulseButtons[next]?.focus();
+	}
+
+	function applyBulkAnnotation(changes: Partial<PulseAnnotationMetadata>) {
+		for (const pulse of checkedPulses) {
+			Object.assign(pulse.annotationData, changes);
 		}
 		pulses = pulses;
 		hasUnsavedAnnotation = true;
@@ -100,32 +170,6 @@
 			navigation.cancel();
 		}
 	});
-	async function handleSelectPulse(index: number) {
-		// To hold the previous in pulse index
-		const previousIndex = selectedPulseIndex;
-		
-		// Allow browser to maintain same page when same button is clicked.
-		if (selectedPulseIndex === index) {
-			selectedPulseIndex = previousIndex;
-			return;
-		}
-
-		// Switching between pulses on the annotation page is free — no prompt here.
-		selectedPulseIndex = index;
-		const pulse = pulses[index];
-		loadingProcessedData = true;
-		selectedProcessedData = null;
-		try {
-			const data = pulses[index]
-			if (data) {
-				selectedProcessedData = data.processedData;
-			}
-		} catch (error) {
-			console.error('Error loading processed data:', error);
-		} finally {
-			loadingProcessedData = false;
-		}
-	}
 
 	const steps = [
 		{ label: 'Metadata', description: 'Fill in run details' },
@@ -321,9 +365,15 @@
 				previousPulseId !== null
 					? pulses.findIndex((pulse) => pulse.pulseId === previousPulseId)
 					: -1;
-			selectedPulseIndex = index >= 0 ? index : null;
-			selectedProcessedData = index >= 0 ? pulses[index].processedData : null;
-			checkedPulseIds = new Set();
+			if (index >= 0) {
+				showPulse(index);
+				selectOnly(index);
+			} else {
+				selectedPulseIndex = null;
+				selectedProcessedData = null;
+				checkedPulseIds = new Set();
+				selectionAnchor = null;
+			}
 			hasUnsavedAnnotation = false;
 		} finally {
 			reloadingPulses = false;
@@ -353,7 +403,7 @@
 	}
 
 	async function handleDeleteMetadata() {
-		if (!window.confirm('Are you sure you want to delete the metadata?')) return;
+		if (!window.confirm('Are you sure you want to delete this run?')) return;
 
 		try {
 			await runService.delete(runMetadata);
@@ -412,7 +462,9 @@
 		const polling = new AbortController();
 		postprocessPolling = polling;
 
+		let lastState = '';
 		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'postprocessing', (status: DAGStatus) => {
+			lastState = status.state;
 			dagStatusText = `State: ${status.state}`;
 		}, polling.signal)
 			.then(async () => {
@@ -435,6 +487,13 @@
 				}
 				dagError = err.message || 'DAG processing failed';
 				dagStatusText = '';
+
+				if (lastState === 'failed') {
+					runMetadata.status = 'draft';
+					runService.saveRun(runMetadata).catch((saveErr) => {
+						console.error('Error persisting failed run status:', saveErr);
+					});
+				}
 			});
 	}
 
@@ -570,7 +629,9 @@
 		publishStatusText = 'Publishing...';
 		publishError = '';
 
+		let lastState = '';
 		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'ingest', (status: DAGStatus) => {
+			lastState = status.state;
 			publishStatusText = `State: ${status.state}`;
 		})
 			.then(async () => {
@@ -583,6 +644,13 @@
 			.catch((err) => {
 				publishError = err.message || 'Publish DAG failed';
 				publishStatusText = '';
+
+				if (lastState === 'failed') {
+					runMetadata.status = 'annotated';
+					runService.saveRun(runMetadata).catch((saveErr) => {
+						console.error('Error persisting failed publish status:', saveErr);
+					});
+				}
 			});
 	}
 
@@ -872,8 +940,8 @@
 					<div class="flex justify-between mt-6">
 						<div></div>
 						<div class="flex gap-2">
-							<Button variant="fill" on:click={handleDeleteMetadata}>Delete Metadata</Button>
-							<Button type="submit" variant="fill" loading={saving} disabled={saving}>Save Metadata</Button>
+							<Button variant="fill" color="danger" on:click={handleDeleteMetadata}>Delete Run</Button>
+							<Button type="submit" variant="fill" color="success" loading={saving} disabled={saving}>Save Run</Button>
 							<Button
 								variant="fill"
 								color="primary"
@@ -916,9 +984,18 @@
 					{#if dagError}
 						<div class="mt-4">
 							<p class="text-red-600 mb-2">{dagError}</p>
-							<Button variant="outline" on:click={() => startPolling(runMetadata.dagRunId)}>
-								Retry
-							</Button>
+							<div class="flex gap-2">
+								<Button on:click={() => setStep(0)}>Back</Button>
+								{#if runMetadata.status === 'processing' && runMetadata.dagRunId}
+									<Button variant="outline" on:click={() => startPolling(runMetadata.dagRunId)}>
+										Retry
+									</Button>
+								{:else}
+									<Button variant="fill" on:click={handleTriggerDAG}>
+										Trigger Analysis
+									</Button>
+								{/if}
+							</div>
 						</div>
 					{/if}
 					{#if !testMode && runMetadata.status === 'processing' && runMetadata.dagRunId}
@@ -951,7 +1028,7 @@
 				<div class="flex items-center justify-between mb-4">
 					<h3 class="text-lg font-bold">Pulse Annotation</h3>
 					<Button icon={mdiRefresh} disabled={reloadingPulses} on:click={handleRetryLoadPulses}>
-						{reloadingPulses ? 'Retrying...' : 'Retry Pulse Data'}
+						{reloadingPulses ? 'Retrying...' : 'Retry Data Fetch'}
 					</Button>
 				</div>
 
@@ -965,31 +1042,36 @@
 						<Button on:click={() => setStep(1)}>Back</Button>
 					</div>
 				{:else}
-					{#if checkedPulseIds.size > 0}
+					{#if checkedPulseIds.size > 1}
 						<div class="bg-surface-100 rounded-lg p-4 mb-4">
-							<div class="flex items-center justify-between mb-2">
-								<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400">
-									Edit {checkedPulseIds.size} selected pulse{checkedPulseIds.size === 1 ? '' : 's'}
-								</h5>
-								<Button size="sm" on:click={() => (checkedPulseIds = new Set())}>Clear Selection</Button>
-							</div>
-							<div class="grid grid-cols-[1fr_2fr_auto] gap-4 items-end">
+							<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400 mb-2">
+								Edit {checkedPulseIds.size} selected pulses
+							</h5>
+							<div class="grid grid-cols-[1fr_2fr] gap-4">
 								<SelectField
 									label="Pulse Quality"
 									options={pulseQualityOptions}
 									value={bulkPulseQuality}
+									placeholder="Mixed"
 									clearable={false}
 									autoplacement={false}
-									on:change={(e) => (bulkPulseQuality = e.detail.value)}
+									on:change={(e) => {
+										if (e.detail.value && e.detail.value !== bulkPulseQuality) {
+											applyBulkAnnotation({ pulseQuality: e.detail.value });
+										}
+									}}
 								/>
 								<TextField
 									label="Comment"
 									value={bulkComment}
-									on:change={(e) => (bulkComment = String(e.detail.value ?? ''))}
+									placeholder={bulkComment === '' && checkedPulses.some((pulse) => pulse.annotationData.comment) ? 'Mixed' : ''}
+									on:change={(e) => {
+										const comment = String(e.detail.value ?? '');
+										if (comment !== bulkComment) {
+											applyBulkAnnotation({ comment });
+										}
+									}}
 								/>
-								<Button variant="fill" color="primary" on:click={applyBulkAnnotation}>
-									Apply to Selected
-								</Button>
 							</div>
 						</div>
 					{/if}
@@ -999,34 +1081,28 @@
 						<div class="col-span-1 bg-surface-100 rounded-lg p-3 overflow-y-auto max-h-[70vh]">
 							<div class="flex items-center justify-between mb-3">
 								<h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Pulses</h4>
-								<label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
-									<input type="checkbox" checked={allPulsesChecked} on:change={toggleAllPulsesChecked} />
-									Select all
-								</label>
+								<button class="text-xs text-gray-400 hover:underline" on:click={toggleAllPulsesChecked}>
+									{allPulsesChecked ? 'Deselect all' : 'Select all'}
+								</button>
 							</div>
-							{#each pulses as pulse, i}
-								<div
-									class="w-full rounded-md mb-1 flex items-center transition-colors
-										{selectedPulseIndex === i ? 'bg-blue-600 text-white' : 'hover:bg-surface-300'}"
-								>
-									<input
-										type="checkbox"
-										class="ml-3 cursor-pointer"
-										aria-label="Select pulse {pulse.pulseId}"
-										checked={checkedPulseIds.has(pulse.pulseId)}
-										on:change={() => togglePulseChecked(pulse.pulseId)}
-									/>
+							<!-- svelte-ignore a11y-no-static-element-interactions -->
+							<div class="select-none" on:keydown={handlePulseListKeydown}>
+								{#each pulses as pulse, i}
 									<button
-										class="flex-1 text-left px-3 py-3 flex items-center justify-between"
-										on:click={() => handleSelectPulse(i)}
+										bind:this={pulseButtons[i]}
+										aria-pressed={checkedPulseIds.has(pulse.pulseId)}
+										class="w-full text-left px-3 py-3 rounded-md mb-1 flex items-center justify-between transition-colors outline-none
+											{checkedPulseIds.has(pulse.pulseId) ? 'bg-blue-600 text-white' : 'hover:bg-surface-300'}
+											{selectedPulseIndex === i ? 'ring-2 ring-inset ring-blue-300' : ''}"
+										on:click={(e) => handlePulseClick(e, i)}
 									>
 										<span class="font-semibold">Pulse {pulse.pulseId}</span>
 										<span
 											class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
 										></span>
 									</button>
-								</div>
-							{/each}
+								{/each}
+							</div>
 						</div>
 
 						<!-- Right panel: Data viewer -->
@@ -1034,11 +1110,6 @@
 							{#if selectedPulseIndex === null}
 								<div class="flex items-center justify-center h-full text-gray-400">
 									<p>Select a pulse from the list to view its data.</p>
-								</div>
-							{:else if loadingProcessedData}
-								<div class="flex items-center justify-center h-full">
-									<div class="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-600"></div>
-									<span class="ml-2 text-gray-400">Loading processed data...</span>
 								</div>
 							{:else}
 								<h4 class="text-md font-bold mb-3">Pulse {pulses[selectedPulseIndex].pulseId} Data</h4>
@@ -1193,7 +1264,10 @@
 					{#if publishError}
 						<div class="mt-4">
 							<p class="text-red-600 mb-2">{publishError}</p>
-							<Button variant="outline" on:click={() => handlePublish()}>Retry</Button>
+							<div class="flex gap-2">
+								<Button on:click={() => setStep(2)}>Back</Button>
+								<Button variant="outline" disabled={saving} on:click={() => handlePublish()}>Retry</Button>
+							</div>
 						</div>
 					{/if}
 					{#if !publishStatusText && !publishError}
