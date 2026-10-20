@@ -1,6 +1,7 @@
 // src/routes/api/save-json/+server.ts
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
+import { withMetacatGroups } from '$lib/server/metacat';
 import { getForwardJqScript, hasJqMapping } from '$lib/services/MappingService';
 import { upsertConfiguration } from '$lib/server/db/configurationsRepository';
 import { upsertDiagnostic } from '$lib/server/db/diagnosticsRepository';
@@ -144,6 +145,8 @@ export const POST: RequestHandler = async ({ request, fetch, locals }) => {
                     //DEBUG
                     console.log("DATATOSEND: ", dataToSend)
                 }
+
+                dataToSend = withMetacatGroups(dataToSend);
 
                 const remotePath = targetPath.replace(/^\/remote\//, '');
                 const remoteUrl = `${metacatBaseUrl.replace(/\/$/, '')}/${remotePath}`;

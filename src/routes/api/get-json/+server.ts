@@ -1,5 +1,6 @@
 import { env } from '$env/dynamic/private';
 import { fetchWithTokenRefresh } from '$lib/server/auth';
+import { METACAT_OWNER_GROUP } from '$lib/server/metacat';
 import { getAllConfigurations, getConfigurationById } from '$lib/server/db/configurationsRepository';
 import { getAllDiagnostics, getDiagnosticById } from '$lib/server/db/diagnosticsRepository';
 import { getBackwardJqScript, hasJqMapping } from '$lib/services/MappingService';
@@ -116,7 +117,7 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
       const metacatPath = target === 'equipment' ? 'instruments' : target;
       const remoteUrl = new URL(`${metacatBaseUrl.replace(/\/$/, '')}/${metacatPath}`);
 
-      remoteUrl.searchParams.append('filter', JSON.stringify({ where: { ownerGroup: 'HIVE' } }));
+      remoteUrl.searchParams.append('filter', JSON.stringify({ where: { ownerGroup: METACAT_OWNER_GROUP } }));
 
       console.log(`[get-json] remote fetch target=${target} metacatPath=${metacatPath} url=${remoteUrl}`);
 
