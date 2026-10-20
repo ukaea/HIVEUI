@@ -166,6 +166,7 @@
 			on:change={(e) => handleMetadataSubmit(e.detail)}
 			let:draft
 			let:refresh
+			let:current
 			let:errors={rawErrors}
 		>
 			{@const errors = formErrors(ExperimentMetadata.schema, rawErrors)}
@@ -249,7 +250,7 @@
 						<SelectField
 							label="Select from Members"
 							disabled={!isNewEntry}
-							value={isManualEdit ? '' : draft.leadInvestigator.email}
+							value={isManualEdit ? '' : current.leadInvestigator?.email}
 							options={allMembers.map((member) => ({ label: `${member.firstName} ${member.lastName}`, value: member.email }))}
 							on:change={(e) => {
 								const selectedMember = allMembers.find((member) => member.email === e.detail.value);
@@ -268,7 +269,7 @@
 				</h4>
 				<TextField
 					label="First Name"
-					value={draft.leadInvestigator.firstName}
+					value={current.leadInvestigator?.firstName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -280,7 +281,7 @@
 				/>
 				<TextField
 					label="Last Name"
-					value={draft.leadInvestigator.lastName}
+					value={current.leadInvestigator?.lastName}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
@@ -292,7 +293,7 @@
 				/>
 				<TextField
 					label="Email"
-					value={draft.leadInvestigator.email}
+					value={current.leadInvestigator?.email}
 					disabled={!isNewEntry}
 					required
 					on:change={(e) => {
