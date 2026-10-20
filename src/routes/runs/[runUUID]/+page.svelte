@@ -39,6 +39,9 @@
 	let saveNotify = false;
 	let dagStatusText = '';
 	let dagError = '';
+	let dagNotice = '';
+	let cancellingDag = false;
+	let postprocessPolling: AbortController | null = null;
 	let publishStatusText = '';
 	let publishError = '';
 	let inputPowerToggle = true;
@@ -50,6 +53,36 @@
 	let hasUnsavedAnnotation = false;
 	let reloadingPulses = false;
 	let pulseLoadError = '';
+
+	let checkedPulseIds = new Set<number>();
+	let bulkPulseQuality = 'Success';
+	let bulkComment = '';
+
+	$: allPulsesChecked = pulses.length > 0 && checkedPulseIds.size === pulses.length;
+
+	function togglePulseChecked(pulseId: number) {
+		if (checkedPulseIds.has(pulseId)) {
+			checkedPulseIds.delete(pulseId);
+		} else {
+			checkedPulseIds.add(pulseId);
+		}
+		checkedPulseIds = checkedPulseIds;
+	}
+
+	function toggleAllPulsesChecked() {
+		checkedPulseIds = allPulsesChecked ? new Set() : new Set(pulses.map((pulse) => pulse.pulseId));
+	}
+
+	function applyBulkAnnotation() {
+		for (const pulse of pulses) {
+			if (checkedPulseIds.has(pulse.pulseId)) {
+				pulse.annotationData.pulseQuality = bulkPulseQuality;
+				pulse.annotationData.comment = bulkComment;
+			}
+		}
+		pulses = pulses;
+		hasUnsavedAnnotation = true;
+	}
 
 	function confirmDiscardUnsavedAnnotation() {
 		if (hasUnsavedAnnotation) {
@@ -290,6 +323,7 @@
 					: -1;
 			selectedPulseIndex = index >= 0 ? index : null;
 			selectedProcessedData = index >= 0 ? pulses[index].processedData : null;
+			checkedPulseIds = new Set();
 			hasUnsavedAnnotation = false;
 		} finally {
 			reloadingPulses = false;
@@ -353,6 +387,7 @@
 		}
 		try {
 			dagError = '';
+			dagNotice = '';
 			dagStatusText = 'Triggering pipeline...';
 
 			const result = await runService.triggerPostprocess(experimentNumber, sampleNumber, runNumber);
@@ -373,9 +408,13 @@
 		dagStatusText = 'Processing...';
 		dagError = '';
 
+		postprocessPolling?.abort();
+		const polling = new AbortController();
+		postprocessPolling = polling;
+
 		waitForDAGCompletion(dagRunId, 5000, 10 * 60 * 1000, 'postprocessing', (status: DAGStatus) => {
 			dagStatusText = `State: ${status.state}`;
-		})
+		}, polling.signal)
 			.then(async () => {
 				dagStatusText = '';
 
@@ -391,9 +430,35 @@
 				processingDone = true;
 			})
 			.catch((err) => {
+				if (polling.signal.aborted) {
+					return;
+				}
 				dagError = err.message || 'DAG processing failed';
 				dagStatusText = '';
 			});
+	}
+
+	async function handleCancelDAG() {
+		if (!window.confirm('Are you sure you want to cancel the postprocessing run?')) return;
+
+		cancellingDag = true;
+		try {
+			await runService.cancelPostprocess(runMetadata.dagRunId);
+			postprocessPolling?.abort();
+
+			runMetadata.dagRunId = '';
+			runMetadata.status = 'draft';
+			await runService.saveRun(runMetadata);
+
+			dagStatusText = '';
+			dagError = '';
+			dagNotice = 'Postprocessing run was cancelled.';
+		} catch (error) {
+			console.error('Error cancelling DAG:', error);
+			alert(`Failed to cancel: ${(error as Error).message}`);
+		} finally {
+			cancellingDag = false;
+		}
 	}
 
 	let annotationsSaved = false;
@@ -793,7 +858,7 @@
 							disabled={!current.coolantInformation?.sampleCooling}
 							error={errors.coolantInformation?.targetCoolantTemperature}
 						/>
-						<h3 class="col-span-3 font-bold mt-4"> </h3>
+						<h3 class="col-span-3 font-bold mt-4">Comment</h3>
 						<div class="col-span-full">
 						<TextField 
 							label="Comment" 
@@ -830,6 +895,9 @@
 
 				{#if !processingDone}
 					{#if !dagStatusText && !dagError}
+						{#if dagNotice}
+							<p class="text-yellow-500 mb-2">{dagNotice}</p>
+						{/if}
 						<p class="text-gray-300 mb-4">
 							Run metadata has been saved. Click below to trigger the analysis pipeline.
 						</p>
@@ -850,6 +918,13 @@
 							<p class="text-red-600 mb-2">{dagError}</p>
 							<Button variant="outline" on:click={() => startPolling(runMetadata.dagRunId)}>
 								Retry
+							</Button>
+						</div>
+					{/if}
+					{#if !testMode && runMetadata.status === 'processing' && runMetadata.dagRunId}
+						<div class="mt-4">
+							<Button variant="fill" color="danger" loading={cancellingDag} disabled={cancellingDag} on:click={handleCancelDAG}>
+								Cancel Processing
 							</Button>
 						</div>
 					{/if}
@@ -890,21 +965,67 @@
 						<Button on:click={() => setStep(1)}>Back</Button>
 					</div>
 				{:else}
+					{#if checkedPulseIds.size > 0}
+						<div class="bg-surface-100 rounded-lg p-4 mb-4">
+							<div class="flex items-center justify-between mb-2">
+								<h5 class="font-semibold text-sm uppercase tracking-wide text-gray-400">
+									Edit {checkedPulseIds.size} selected pulse{checkedPulseIds.size === 1 ? '' : 's'}
+								</h5>
+								<Button size="sm" on:click={() => (checkedPulseIds = new Set())}>Clear Selection</Button>
+							</div>
+							<div class="grid grid-cols-[1fr_2fr_auto] gap-4 items-end">
+								<SelectField
+									label="Pulse Quality"
+									options={pulseQualityOptions}
+									value={bulkPulseQuality}
+									clearable={false}
+									autoplacement={false}
+									on:change={(e) => (bulkPulseQuality = e.detail.value)}
+								/>
+								<TextField
+									label="Comment"
+									value={bulkComment}
+									on:change={(e) => (bulkComment = String(e.detail.value ?? ''))}
+								/>
+								<Button variant="fill" color="primary" on:click={applyBulkAnnotation}>
+									Apply to Selected
+								</Button>
+							</div>
+						</div>
+					{/if}
+
 					<div class="grid grid-cols-4 gap-4">
 						<!-- Left panel: Pulse list -->
 						<div class="col-span-1 bg-surface-100 rounded-lg p-3 overflow-y-auto max-h-[70vh]">
-							<h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400 mb-3">Pulses</h4>
+							<div class="flex items-center justify-between mb-3">
+								<h4 class="text-sm font-semibold uppercase tracking-wide text-gray-400">Pulses</h4>
+								<label class="flex items-center gap-2 text-xs text-gray-400 cursor-pointer">
+									<input type="checkbox" checked={allPulsesChecked} on:change={toggleAllPulsesChecked} />
+									Select all
+								</label>
+							</div>
 							{#each pulses as pulse, i}
-								<button
-									class="w-full text-left px-3 py-3 rounded-md mb-1 flex items-center justify-between transition-colors
+								<div
+									class="w-full rounded-md mb-1 flex items-center transition-colors
 										{selectedPulseIndex === i ? 'bg-blue-600 text-white' : 'hover:bg-surface-300'}"
-									on:click={() => handleSelectPulse(i)}
 								>
-									<span class="font-semibold">Pulse {pulse.pulseId}</span>
-									<span
-										class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
-									></span>
-								</button>
+									<input
+										type="checkbox"
+										class="ml-3 cursor-pointer"
+										aria-label="Select pulse {pulse.pulseId}"
+										checked={checkedPulseIds.has(pulse.pulseId)}
+										on:change={() => togglePulseChecked(pulse.pulseId)}
+									/>
+									<button
+										class="flex-1 text-left px-3 py-3 flex items-center justify-between"
+										on:click={() => handleSelectPulse(i)}
+									>
+										<span class="font-semibold">Pulse {pulse.pulseId}</span>
+										<span
+											class="w-3 h-3 rounded-full {pulse.annotationData.pulseQuality === 'Success' ? 'bg-green-500' : pulse.annotationData.pulseQuality === 'Fail' ? 'bg-red-500' : 'bg-gray-400'}"
+										></span>
+									</button>
+								</div>
 							{/each}
 						</div>
 
