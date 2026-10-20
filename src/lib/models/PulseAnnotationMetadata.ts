@@ -10,13 +10,13 @@ export class PulseAnnotationMetadata {
     });
 
     constructor() {
-        this.pulseQuality = '';
+        this.pulseQuality = 'Success';
         this.comment = '';
     }
 
     static fromJSON(json: any): PulseAnnotationMetadata {
         const a = new PulseAnnotationMetadata();
-        a.pulseQuality = json.pulseQuality || '';
+        a.pulseQuality = json.pulseQuality || 'Success';
         a.comment = json.comment || '';
         return a;
     }

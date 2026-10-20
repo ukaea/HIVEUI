@@ -1,3 +1,5 @@
+import Zod from "zod";
+
 export class ThermocoupleInformation {
     thermocoupleId: string;
     maxValue: number;
@@ -116,6 +118,36 @@ export class PulseProcessedMetadata {
     pulseStartTimestamp: string;
     pulseEndTimestamp: string;
     dataCaptureStartTimestamp: string;
+
+    static schema = Zod.object({
+        powerSupplyReportedPower: Zod.number(),
+        heatingInformation: Zod.object({
+            measuredPower: Zod.number(),
+            outputFrequency: Zod.number(),
+            outputVoltage: Zod.number(),
+            outputCurrent: Zod.number()
+        }),
+        coolantInformation: Zod.object({
+            coolantFlow: Zod.number(),
+            coolantFlowVariance: Zod.number(),
+            coolantPressureIn: Zod.number(),
+            coolantPressureOut: Zod.number(),
+            deltaPressure: Zod.number(),
+            coolantTemperatureIn: Zod.number(),
+            coolantTemperatureInVariance: Zod.number(),
+            coolantTemperatureOut: Zod.number(),
+            coolantTemperatureOutVariance: Zod.number(),
+            deltaTemperature: Zod.number()
+        }),
+        thermocoupleInformation: Zod.array(Zod.object({
+            thermocoupleId: Zod.string(),
+            maxValue: Zod.number()
+        })),
+        pulseDuration: Zod.number(),
+        pulseStartTimestamp: Zod.string().min(1),
+        pulseEndTimestamp: Zod.string().min(1),
+        dataCaptureStartTimestamp: Zod.string().min(1)
+    });
 
     constructor() {
         this.powerSupplyReportedPower = null;

@@ -171,6 +171,19 @@ export class RunDataService {
         }
     }
 
+    async cancelPostprocess(dagRunId: string): Promise<void> {
+        const response = await fetch('/api/airflow/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ dagRunId })
+        });
+
+        if (!response.ok) {
+            const errorData = await response.json().catch(() => null);
+            throw new Error(errorData?.error ?? `Failed to cancel postprocess DAG: ${response.status} ${response.statusText}`);
+        }
+    }
+
     async fetchPostprocessResults(dagRunId: string, taskId?: string): Promise<PostprocessResult> {
         try {
             const params = new URLSearchParams({ dagRunId, type: 'postprocessing' });

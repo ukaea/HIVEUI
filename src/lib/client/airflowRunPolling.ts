@@ -23,13 +23,28 @@ export async function waitForDAGCompletion(
     intervalMs: number = 5000,
     timeoutMs: number = 10 * 60 * 1000,
     dagType: 'postprocessing' | 'ingest' = 'postprocessing',
-    onStatusUpdate?: (status: DAGStatus) => void
+    onStatusUpdate?: (status: DAGStatus) => void,
+    signal?: AbortSignal
 ): Promise<DAGStatus> {
     return new Promise((resolve, reject) => {
         const start = Date.now();
+        let timer: ReturnType<typeof setTimeout> | undefined;
+
+        signal?.addEventListener(
+            'abort',
+            () => {
+                clearTimeout(timer);
+                reject(new Error('DAG polling cancelled'));
+            },
+            { once: true }
+        );
+
         const poll = async () => {
             try {
                 const status = await pollDAGStatus(dagRunId, dagType);
+                if (signal?.aborted) {
+                    return;
+                }
                 if (onStatusUpdate) {
                     onStatusUpdate(status);
                 }
@@ -41,7 +56,7 @@ export async function waitForDAGCompletion(
                 } else if (Date.now() - start > timeoutMs) {
                     reject(new Error(`Timeout waiting for DAG: ${dagRunId}, last_state=${status.state}`));
                 } else {
-                    setTimeout(poll, intervalMs);
+                    timer = setTimeout(poll, intervalMs);
                 }
             } catch (err) {
                 reject(err);
