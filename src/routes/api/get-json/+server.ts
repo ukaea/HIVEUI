@@ -132,7 +132,11 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
       }
 
       const data = await response.json();
-      const items: unknown[] = Array.isArray(data) ? data : [data];
+      const items: unknown[] = Array.isArray(data)
+        ? data
+        : Array.isArray((data as any)?.items)
+          ? (data as any).items
+          : [data];
 
       // Instruments / equipment: per-item mapping keyed on equipmentType
       if (target === 'equipment' || target === 'instruments') {
