@@ -6,6 +6,8 @@ const BACKWARD_JQ_FILES: Record<string, string> = {
     experiments: 'experiment.jq',
     samples: 'sample.jq',
     camera: 'instrument/camera.jq',
+    lens: 'instrument/lens.jq',
+    'ir-camera': 'instrument/ircamera.jq',
     flowmeter: 'instrument/flowmeter.jq',
     pyrometer: 'instrument/pyrometer.jq',
     thermocouple: 'instrument/thermocouple.jq',

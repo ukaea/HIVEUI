@@ -157,10 +157,14 @@ export const GET: RequestHandler = async ({ url, fetch, locals, request }) => {
             continue;
           }
 
-          const jqScript = await getBackwardJqScript(equipType);
-          const mapped = await jq.run(jqScript, normalised, { input: 'json', output: 'json' });
-          console.log(`[get-json] mapped instrument pid=${item?.pid}:`, JSON.stringify(mapped, null, 2));
-          results.push(mapped);
+          try {
+            const jqScript = await getBackwardJqScript(equipType);
+            const mapped = await jq.run(jqScript, normalised, { input: 'json', output: 'json' });
+            console.log(`[get-json] mapped instrument pid=${item?.pid}:`, JSON.stringify(mapped, null, 2));
+            results.push(mapped);
+          } catch (mapErr) {
+            console.error(`[get-json] failed to map instrument pid=${item?.pid} equipmentType=${equipType}:`, mapErr);
+          }
         }
 
         console.log(`[get-json] instruments returning ${results.length}/${items.length} items`);
